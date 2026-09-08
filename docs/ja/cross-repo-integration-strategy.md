@@ -9,37 +9,11 @@
 
 ## リポジトリ全体像
 
-```
-Yoshiki0705 GitHub (公開リポジトリ)
-│
-├── fsxn-lakehouse-integrations (本リポジトリ)
-│   ├── Lakehouse / Databricks 統合パターン
-│   ├── 製造データプラットフォーム PoC
-│   ├── Iceberg メタデータカタログ
-│   └── DAIS 2026 / Summit NYC 分析
-│
-├── FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
-│   ├── 17 業種ユースケース
-│   ├── FPolicy イベント駆動パイプライン
-│   ├── 容量ガードレール
-│   └── Property-based testing
-│
-├── FSx-for-ONTAP-Agentic-Access-Aware-RAG
-│   ├── Permission-aware RAG (CDK)
-│   ├── Bedrock KB + S3 AP
-│   ├── AD 連携 ACL
-│   └── Agentic アクセス制御
-│
-├── ontap-edge-to-cloud-ai
-│   ├── エッジデバイスデータ集約
-│   ├── ONTAP → AWS AI/Analytics
-│   └── S3 AP 経由の組織横断活用
-│
-└── fsxn-observability-integrations
-    ├── EC2-free 監査ログ転送
-    ├── Datadog / Splunk / Grafana 等
-    └── S3 AP + Lambda パターン
-```
+兄弟リポジトリの一覧と各担当範囲は
+**[問いごとの参照先リポジトリ](./repository-map.md)** にあります。**古くなりうる写しを 1 つに
+保つため、ここでは再掲しません。** 本ドキュメントはその下層、実装の詳細レイヤーとして、
+各リポジトリ間で進行中の統合作業を扱います。範囲は狭く、変化は速いものです。
+
 
 ---
 

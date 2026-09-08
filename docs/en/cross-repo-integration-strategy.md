@@ -9,37 +9,11 @@
 
 ## Repository Landscape
 
-```
-Yoshiki0705 GitHub (public repositories)
-│
-├── fsxn-lakehouse-integrations (this repository)
-│   ├── Lakehouse / Databricks integration patterns
-│   ├── Manufacturing data platform PoC
-│   ├── Iceberg metadata catalog
-│   └── DAIS 2026 / Summit NYC analysis
-│
-├── FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
-│   ├── 17 industry use cases
-│   ├── FPolicy event-driven pipeline
-│   ├── Capacity guardrails
-│   └── Property-based testing
-│
-├── FSx-for-ONTAP-Agentic-Access-Aware-RAG
-│   ├── Permission-aware RAG (CDK)
-│   ├── Bedrock KB + S3 AP
-│   ├── AD-integrated ACL
-│   └── Agentic access control
-│
-├── ontap-edge-to-cloud-ai
-│   ├── Edge device data aggregation
-│   ├── ONTAP → AWS AI/Analytics
-│   └── Cross-organizational utilization via S3 AP
-│
-└── fsxn-observability-integrations
-    ├── EC2-free audit log shipping
-    ├── Datadog / Splunk / Grafana etc.
-    └── S3 AP + Lambda patterns
-```
+The list of sibling repositories and what each one owns lives in
+**[Which repository answers your question](./repository-map.md)**, so that only one copy can go
+stale. This document is the implementation-detail layer below it: the in-progress integration
+work between those repositories, which is narrower and changes faster.
+
 
 ---
 
