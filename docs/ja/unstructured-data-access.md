@@ -375,7 +375,7 @@ SELECT SNOWFLAKE.CORTEX.COMPLETE('pixtral-large',
 | S3 Select 非対応 | ファイル内の部分読み取り不可 | 全ファイルダウンロード後に処理 |
 | Event Notification 非対応 | 新ファイル検出が即時でない | Lambda ポーリング（1-5分間隔） |
 | Object Lock 非対応 | S3 レベルの WORM 不可 | ONTAP SnapLock で代替 |
-| 最大オブジェクトサイズ | 5TB（S3 API 制限） | 通常のメディアファイルは問題なし |
+| 最大オブジェクトサイズ | **アクセスポイント経由では 1 オブジェクト 50 GB** — ネイティブ S3 の上限ではありません（そちらは 2025 年 12 月以降 50 TB） | 通常のメディアファイルは問題なし。オブジェクト全体の超過は `CompleteMultipartUpload` の時点で初めて検出されるため（全バイト転送後）、クライアント側でサイズを検証すること |
 
 ### パフォーマンス考慮
 

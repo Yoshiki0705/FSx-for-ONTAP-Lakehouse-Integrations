@@ -279,7 +279,7 @@ SELECT SNOWFLAKE.CORTEX.COMPLETE('pixtral-large',
 | No S3 Select | Cannot partially read within files | Download full file then process |
 | No Event Notifications | New file detection not instant | Lambda polling (1-5 min interval) |
 | No Object Lock | No S3-level WORM | Use ONTAP SnapLock instead |
-| Max object size | 5TB (S3 API limit) | Normal media files unaffected |
+| Max object size | **50 GB per object through the access point** — not the native S3 ceiling, which is 50 TB since Dec 2025 | Normal media files unaffected. A whole-object overrun is only detected at `CompleteMultipartUpload`, after every byte is transferred, so validate size client-side |
 
 ### Performance Considerations
 

@@ -73,7 +73,19 @@ jobs:
       - name: NetApp / AWS naming standardization
         run: |
           [[ -s changed_md.txt ]] || { echo "✓ no changed .md"; exit 0; }
-          HITS=$(xargs grep -nE '\bFSxN\b|FSx ONTAP|FSx S3 AP' < changed_md.txt 2>/dev/null | grep -vE 'http|allow:naming' || true)
+          # The boundaries are explicit character classes, not \b. GNU grep's \b is
+          # locale-aware, so in a UTF-8 locale a Japanese character counts as a word
+          # constituent and `\bFSxN\b` does NOT match `FSxNを使う` or `構成でFSxN` —
+          # it matched only the English form while reporting the tree clean. Since this
+          # is the most-repeated naming rule in a Japanese-primary tree, that silence
+          # covered the majority of the text. Verified on GNU grep and BSD grep, with
+          # negative controls (`XFSxN`, `FSxNN` must not match).
+          # `_` stays inside the guard class deliberately, matching \b's ASCII semantics:
+          # `FSxN_OnPre` is a configured SVM / AD computer-account name, and a factual
+          # identifier is not a prose naming violation. Dropping `_` produced 4 such
+          # false positives on the real corpus.
+          # `FSx ONTAP` / `FSx S3 AP` need no guard: the literal space is the boundary.
+          HITS=$(xargs grep -nE '(^|[^A-Za-z0-9_])FSxN([^A-Za-z0-9_]|$)|FSx ONTAP|FSx S3 AP' < changed_md.txt 2>/dev/null | grep -vE 'http|allow:naming' || true)
           if [[ -n "$HITS" ]]; then
             echo "::error::Non-standard naming. Use 'Amazon FSx for NetApp ONTAP' / 'FSx for ONTAP' / 'FSx for ONTAP S3 AP'. (Whitelist a verbatim external citation with an inline 'allow:naming' comment.)"
             echo "$HITS"; exit 1
