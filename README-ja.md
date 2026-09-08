@@ -114,6 +114,8 @@
 
 **ドキュメント索引**: [リーディングパスガイド](docs/ja/reading-path-guide.md) · [業界別ソリューションカタログ（26 業界）](docs/ja/industry-solution-catalog.md)
 
+**AI エージェント・LLM ツール向け**: [llms.txt](llms.txt) — このリポジトリが何であるか、確度マーカーの読み方、入口、そして誤ると最も時間を失う 8 つの前提。
+
 </details>
 
 <details>

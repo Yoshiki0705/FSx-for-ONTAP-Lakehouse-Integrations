@@ -182,7 +182,11 @@ When exposing lakehouse data operations (query, catalog browse) as MCP tools via
 - **Lambda event format**: ツール名は `event.toolName` ではなく `context.client_context.custom['bedrockAgentCoreToolName']` で取得。event はフラットなパラメータ辞書
 - **E2E 検証済み構成**: Internet-origin S3 AP + VPC-external Lambda + AgentCore Gateway (ap-northeast-1) で list/read/search が動作確認済み
 
-## Template Inventory (28 templates)
+## Template Inventory
+
+> Counts below are indicative and go stale as templates are added. Count them instead:
+> `git ls-files -- '*.yaml' '*.yml' | grep -vE '^\.github/' | xargs grep -l AWSTemplateFormatVersion | wc -l`
+> (32 at the time of writing, against the 28 this section used to assert).
 
 | Category | Path Prefix | Count | Purpose |
 |----------|-------------|:-----:|---------|
