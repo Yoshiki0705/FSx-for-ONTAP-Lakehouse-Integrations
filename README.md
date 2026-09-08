@@ -23,6 +23,7 @@
 | See every known constraint, grouped by originating layer | [Known Challenges by Layer](docs/en/known-challenges.md) | 15 min |
 | Run a PoC end-to-end | [PoC Execution Guide](docs/implementation-guide/poc-execution-guide.md) | 15 min |
 | Deploy base infrastructure | [Deployment Guide](docs/en/deployment-guide.md) | 30 min |
+| Operate it: rollback, Day 2 tasks, getting ONTAP audit logs to a SIEM | [Deployment Guide — Day 2 Operations](docs/en/deployment-guide.md#day-2-operations) | 15 min |
 | Distribute data with FlexCache / SnapMirror | [FlexCache/SnapMirror Considerations](docs/en/s3ap-flexcache-snapmirror-considerations.md) | 15 min |
 | Connect FSx for ONTAP → Databricks Unity Catalog | [UC Connection Guide](docs/en/fsx-ontap-to-databricks-unity-catalog-guide.md) | 30 min |
 | Govern unstructured data (images/video/docs) in a lakehouse | [Databricks FILE type Evaluation](docs/en/databricks-file-type-evaluation.md) | 20 min |

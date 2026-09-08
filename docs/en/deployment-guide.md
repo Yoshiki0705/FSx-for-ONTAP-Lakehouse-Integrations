@@ -576,6 +576,20 @@ aws cloudwatch put-metric-alarm \
 | Verify Glue Crawler schema drift | After data changes | `aws glue start-crawler` |
 | Check Fargate task health (FPolicy) | Daily | `aws ecs describe-services` |
 
+### Getting ONTAP audit logs into a SIEM
+
+The alarms above cover the AWS side: Lambda errors, Glue job failures, stack drift. They do
+not cover what happened inside the file system. **Operations through an access point are
+recorded in the ONTAP native audit log, and that log does not reach CloudWatch on its own** —
+nor does it record the requesting IAM principal, which lives in CloudTrail data events for the
+access point instead. The two together are what an audit trail needs.
+
+Shipping that log to Datadog, Splunk, New Relic, Grafana or Elastic without running an EC2
+collector is a solved problem in a sibling repository:
+[FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations).
+It is not duplicated here. See also
+[which repository answers your question](./repository-map.md).
+
 ---
 
 ## Troubleshooting
