@@ -391,7 +391,7 @@ Horizon Iceberg REST Catalog 経由の外部エンジンアクセスは `SNOWFLA
 
 ### Snowflake Horizon Iceberg REST Catalog — 外部エンジンへのガバナンス適用（2026年5月確認）
 
-> **Snowflake サポート確認（2026年5月）**: Snowflake Horizon Catalog は外部エンジンアクセスに対してもガバナンスポリシーを強制する（Row Access Policy と Dynamic Data Masking をカタログレイヤーで評価）。
+> **自環境での確認（2026-05）**: Snowflake Horizon Catalog は外部エンジンアクセスに対してもガバナンスポリシーを強制する（Row Access Policy と Dynamic Data Masking をカタログレイヤーで評価）。
 
 | 観点 | Snowflake Horizon Catalog | Databricks Unity Catalog |
 |------|--------------------------|--------------------------|
@@ -479,7 +479,7 @@ Unity Catalog Managed Table（フルガバナンス）
 
 #### UC Iceberg REST Catalog — 外部エンジンアクセスの制約
 
-> **Databricks サポート確認（2026年5月）**: 外部エンジン（Athena、EMR Spark、Trino）が Iceberg REST Catalog 経由で UC 管理テーブルにアクセスする場合:
+> **自環境での確認（2026-05）**: 外部エンジン（Athena、EMR Spark、Trino）が Iceberg REST Catalog 経由で UC 管理テーブルにアクセスする場合:
 
 | 観点 | 動作 | 影響 |
 |------|------|------|

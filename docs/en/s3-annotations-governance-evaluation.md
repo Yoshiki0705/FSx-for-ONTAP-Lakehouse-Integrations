@@ -193,7 +193,7 @@ This evaluation is connected to:
 
 This repository already records the constraint between Databricks Unity Catalog (UC) and FSx for ONTAP S3 Access Points (S3 AP) (source: [`integrations/databricks/README.md`](../../integrations/databricks/README.md) "Support Confirmation, 2026-05" — **role-based** wording; case numbers and engineer names are withheld per steering policy).
 
-- **A UC External Location on an S3 AP registers, but reads through it are not authorised** (root cause confirmed by Databricks Support 2026-05; mechanism measured 2026-08-12; evidence tier: **Verified**). The vended down-scoped session policy is written in bucket-style ARNs, which never match the access point ARN AWS authorises against
+- **A UC External Location on an S3 AP registers, but reads through it are not authorised** (mechanism measured here 2026-08-12, with a native-S3 control; evidence tier: **Verified**). The vended down-scoped session policy is written in bucket-style ARNs, which never match the access point ARN AWS authorises against
 - **Root cause**: the **session policy** Databricks generates when vending credentials does not carry S3 AP ARNs → creation succeeds, and every read through the location is denied
 - The `access_point` field was **never released as GA** and was removed from docs. Partial success is "not a supported code path."
 - Instance Profile + boto3 can read but **fully bypasses UC governance** (PoC only)
@@ -316,7 +316,7 @@ staged S3 ──▶ S3 Metadata (Iceberg) / business Iceberg tables
 > - **Important distinction**: S3 Metadata's **system tables** (journal/inventory/annotation) live on **AWS-managed S3 Tables (table buckets)**; UC reference requires S3 Tables catalog federation (`s3tablescatalog` / `iceberg_rest`) → that path is **blocked** (a double blocker). The **realistic UC-reference target is "user-created business Iceberg tables (on general-purpose S3)"**, which Case 3 targets first.
 > - **Annotations are a parallel mechanism that does NOT integrate with UC tags/ABAC**. Annotations do not automatically contribute to UC governance (UC tags/ABAC must be set separately).
 > - **UC Row Filters / Column Masks are NOT enforced on external engines** (Athena/EMR via Iceberg REST) (source: [`docs/en/governance-and-compliance.md`](./governance-and-compliance.md)). UC governance works for UC-internal engines but is not enforced cross-engine.
-> - iceberg-metadata-catalog **Phase 4 (Databricks integration) is blocked** (`iceberg_rest` connection cannot be created; AWS/Databricks support in progress). Case 3's UC reference depends on clearing this blocker.
+> - iceberg-metadata-catalog **Phase 4 (Databricks integration) is blocked** (`iceberg_rest` connection cannot be created; asked AWS and Databricks, no answer yet). Case 3's UC reference depends on clearing this blocker.
 
 | Aspect | Assessment |
 |---|---|

@@ -4,7 +4,7 @@
 
 > **ステータス**: アーキテクチャリファレンス — Pattern A/B は PoC 実施可能、Pattern C は Databricks UC 機能開発待ち（ブロック中）
 >
-> **コンテキスト**: このガイドは、FSx for ONTAP S3 Access Points との直接的な UC External Location 統合が[現在サポートされていない](../../README.md#support-confirmation-2026-05-26)状況において、OpenSharing を使って FSx for ONTAP データを Databricks Unity Catalog ガバナンス下で利用する方法を文書化しています。
+> **コンテキスト**: このガイドは、FSx for ONTAP S3 Access Points との直接的な UC External Location 統合が[現在サポートされていない](../../README.md#where-the-denial-originates)状況において、OpenSharing を使って FSx for ONTAP データを Databricks Unity Catalog ガバナンス下で利用する方法を文書化しています。
 
 ## エグゼクティブサマリー
 
@@ -20,7 +20,7 @@ FSx for ONTAP と Databricks の統合において、OpenSharing は以下の場
 1. **OpenSharing = 共有プロトコル**（変換エンジンではない）
 2. **FSx for ONTAP S3 Access Points はオブジェクトアクセスを提供** — OpenSharing にはテーブルセマンティクスが必要
 3. **非構造化データの場合**: 共有可能な資産は派生した構造化表現（メタデータ、抽出テキスト、キャプション、embedding）
-4. **真のゼロコピー Raw ファイルアクセスには**: Unity Catalog が FSx for ONTAP S3 AP をファーストクラスのストレージロケーションとしてサポートする必要あり（機能ギャップ — [Databricks エンジニアリングに報告済み](../../README.md#support-confirmation-2026-05-26)）
+4. **真のゼロコピー Raw ファイルアクセスには**: Unity Catalog が FSx for ONTAP S3 AP をファーストクラスのストレージロケーションとしてサポートする必要あり（機能ギャップ — [Databricks エンジニアリングに報告済み](../../README.md#where-the-denial-originates)）
 
 ### Quick Start: 今日何をすべきか？
 
@@ -244,7 +244,7 @@ Databricks 受信者
 
 > これは「Databricks プラットフォームの全機能」（ACID、Time Travel、Mosaic AI、ガバナンス）のコストです。ゼロコピーパス（Athena、Snowflake External Table）はストレージ追加コスト $0 ですが、これらの機能は利用できません。
 
-> **Databricks 顧客への重要な洞察**: DataSync → S3 → UC パスは回避策ではなく、Databricks サポートが確認した**推奨本番アーキテクチャ**（2026年5月）です。ゼロコピーパスでは得られない機能を提供します: ACID トランザクション、Time Travel、MERGE、OPTIMIZE、完全な Mosaic AI、エンタープライズガバナンス。トレードオフはデータ重複と同期レイテンシです。
+> **Databricks 顧客への重要な洞察**: DataSync → S3 → UC パスは回避策ではなく、下記の実測にもとづく**本リポジトリの推奨本番アーキテクチャ**です。ゼロコピーパスでは得られない機能を提供します: ACID トランザクション、Time Travel、MERGE、OPTIMIZE、完全な Mosaic AI、エンタープライズガバナンス。トレードオフはデータ重複と同期レイテンシです。
 
 > **このパターンでの ONTAP の価値**: FabricPool により FSx for ONTAP 上のコールドデータは自動的に S3 に階層化（NFS/SMB ユーザーには透過的）、ストレージコストを削減。Snapshot により DataSync 転送のポイントインタイム整合性を確保 — Snapshot から同期することでデータの一貫したビューを保証。
 
@@ -751,7 +751,7 @@ OpenSharing（Databricks-to-Databricks プロトコル）は **Unity Catalog に
 - **UC Managed Storage** ロケーション（Databricks 管理の S3 バケット）、または
 - **UC External Location**（Storage Credential で登録された顧客 S3 バケット）
 
-FSx for ONTAP S3 AP は UC External Location として登録できません（Databricks サポートにより 2026 年 5 月確認済み）。したがって、仮に FSx for ONTAP S3 AP 上に Delta Table を作成できたとしても、共有のために UC に登録することはできません。
+FSx for ONTAP S3 AP は UC External Location 経由で読み取れません。登録は成功し、通らないのは読み取りです（Unity Catalog が払い出す down-scoped セッションポリシーがバケット形式 ARN のため。2026-08-12 実測）。したがって、仮に FSx for ONTAP S3 AP 上に Delta Table を作成できたとしても、共有のために UC に登録することはできません。
 
 参照: [Create and manage shares for OpenSharing](https://docs.databricks.com/en/delta-sharing/create-share.html) — Share は "only one Unity Catalog metastore" のアセットのみ含むことができる。
 

@@ -259,7 +259,7 @@ OPTIONS (
 
 3. **Circular dependency**: Foreign Catalog (Glue HMS type) requires `authorized_paths` → which requires External Location → which requires S3 API-accessible bucket → S3 Tables managed buckets are not S3 API-accessible.
 
-### Required Actions (Databricks Support)
+### Required Actions (open questions for Databricks)
 
 1. Confirm when `iceberg_rest` connection type will be available for ap-northeast-1 workspaces
 2. Confirm whether UC External Location will support S3 Tables managed buckets (via S3 Tables API instead of standard S3 API)

@@ -35,7 +35,7 @@
 | **影響サービス** | Databricks Unity Catalog |
 | **影響機能** | S3 AP 上の External Location / External Table / External Volume に対する**読み取り** / **`FILE EXTERNAL` 列（FILE 型、β）**。登録そのものは影響を受け**ない** — [影響範囲の訂正](#影響範囲の訂正-2026-08-12-登録は通り読み取りが通らない)を参照 |
 | **根本原因** | Unity Catalog が資格情報を払い出す際に付与する down-scoped セッションポリシーが**バケット形式 ARN**（`arn:aws:s3:::<alias>`）で書かれている一方、AWS はアクセスポイント経由のリクエストを**アクセスポイント ARN** に対して認可評価する。両者は一致せず、セッションポリシーはロールポリシーと積集合を取るため、ロール本体が許可していてもセッション内で拒否される |
-| **確認日** | 2026-05-26（Databricks Support が根本原因を提示）。2026-08-12（本リポジトリ）ネイティブ S3 のコントロール付きで機構を直接実証 |
+| **確認日** | 2026-05-26 に Databricks へ照会。2026-08-12（本リポジトリ）ネイティブ S3 のコントロール付きで機構を直接実証 |
 | **ステータス** | ❌ 未解決 — **かつ 2026-08-12 まで影響範囲の記述が誤っていた**: 登録は成功し、読み取りが失敗する |
 | **解除条件** | ロケーション URL がアクセスポイントのエイリアスである場合に、Unity Catalog が down-scoped セッションポリシーへアクセスポイント ARN 形式（`arn:aws:s3:<region>:<account>:accesspoint/<name>` および `.../object/*`）を出力すること |
 | **影響度** | **Critical** — UC ガバナンス（lineage, tags, masks, row filters）を FSx for ONTAP データに直接適用できない |
@@ -92,7 +92,7 @@ because no session policy allows the s3:ListBucket action
 | **影響サービス** | FSx for ONTAP S3 Access Points |
 | **影響機能** | Delta Lake のトランザクショナル書き込み。Hudi は未テスト。**カタログがポインタを管理する Iceberg は影響を受けない** — 下記スコープ参照 |
 | **根本原因** | FSx for ONTAP S3 AP が `If-None-Match` ヘッダーを実装していない（HTTP 501 返却） |
-| **確認日** | 2026-05-22（AWS Support 確認、プロダクトレベルの制限） |
+| **確認日** | 2026-05-22（自環境で HTTP 501 を確認） |
 | **ステータス** | ❌ 未解決 — Feature Request 提出済み |
 | **解除条件** | AWS が FSx for ONTAP S3 AP に conditional writes を実装（S3 ネイティブ 2024-08 parity） |
 | **影響度** | **Medium** — 2026-08-06 に範囲を縮小。Delta Lake の書き込みは不可だが、Athena 経由の Iceberg 書き込みは動作。読み取りは影響なし |
@@ -212,7 +212,7 @@ Athena での 2 件の同時コミットは行数が正しく、ロストアッ�
 | **影響サービス** | FSx for ONTAP S3 Access Points |
 | **影響機能** | ディレクトリスキャン、Glue Crawler、Auto Loader リスティングモード |
 | **根本原因** | FSx for ONTAP S3 AP のプロダクトレベルのパフォーマンス特性 |
-| **当初の確認日** | 2026-05-22（AWS Support がプロダクトレベルの特性として確認、30-80x として引用） |
+| **当初の確認日** | 2026-05-22（当初 30-80x として引用。下記の再測定で再現せず撤回） |
 | **再測定日** | 2026-08-05 — 10〜5,000 オブジェクトで **0.9x〜1.4x**。30-80x は再現しませんでした。[エビデンス](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml) |
 | **ステータス** | ⚠️ 範囲を縮小 — 5,000 オブジェクト以下では観測されず、それを超える規模は未定量 |
 | **解除条件** | 10 万オブジェクト以上での測定により、ペナルティが現れる境界（もしあれば）を特定すること |

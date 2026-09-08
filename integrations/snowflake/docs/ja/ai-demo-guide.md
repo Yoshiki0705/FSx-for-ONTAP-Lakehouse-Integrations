@@ -180,7 +180,7 @@ SELECT SNOWFLAKE.CORTEX.EXTRACT_ANSWER(VALUE::VARCHAR,
 
 1. **テキストベース関数は直接動作** — SUMMARIZE, TRANSLATE, SENTIMENT, COMPLETE (text), EXTRACT_ANSWER は External Table データで回避策不要
 2. **PARSE_DOCUMENT は直接動作** — ステージパス文字列を使用（TO_FILE とは異なるメカニズム）
-3. **TO_FILE は FSx for ONTAP S3 AP 外部ステージで動作しない** — "Remote file not found"（確認済み、NetApp サポートケースと一致）
+3. **TO_FILE は FSx for ONTAP S3 AP 外部ステージで動作しない** — "Remote file not found"（自環境で再現。NetApp へ照会済み）
 4. **Vision AI 回避策が存在**: `COPY FILES` → 暗号化なし内部ステージ → `TO_FILE(BUILD_SCOPED_FILE_URL())` → COMPLETE multimodal
 5. **Cross-Region Inference が必要** — ap-northeast-1 での Vision モデル利用に必須
 

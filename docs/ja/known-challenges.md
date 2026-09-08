@@ -129,7 +129,7 @@ Access Point エイリアスをどう扱うか、あるいはストレージと�
 | # | エンジン | 問題 | 症状（原文） | 回避策 |
 |---|---|---|---|---|
 | 4.1 | EMR Serverless（Iceberg 書き込み） | S3FileIO がメタデータ書き込み時に Access Point エイリアスを処理できない | `java.lang.NullPointerException: Cannot invoke "org.apache.iceberg.TableMetadata.metadataFileLocation()" because "metadata" is null` | Iceberg 書き込みには Athena を使う。同じテーブルフォーマットが成功する |
-| 4.2 | Databricks Unity Catalog | Access Point は External Location の対象としてサポートされておらず、`access_point` フィールドは GA ではない。Databricks サポートが 2026-05-26 に確認 | `CREATE TABLE` で `UC_CLOUD_STORAGE_ACCESS_FAILURE` | DataSync → 標準 S3 → External Location（[BLK-001](./blocker-tracker.md)） |
+| 4.2 | Databricks Unity Catalog | 登録は成功する。通らないのは読み取りで、Unity Catalog が払い出す down-scoped セッションポリシーがバケット形式 ARN で書かれているため（2026-08-12 自環境で実証） | `CREATE TABLE` で `UC_CLOUD_STORAGE_ACCESS_FAILURE` | DataSync → 標準 S3 → External Location（[BLK-001](./blocker-tracker.md)） |
 | 4.3 | Databricks Unity Catalog | `iceberg_rest` が Connection Type として受け付けられず、S3 Tables を Foreign Catalog として参照できない | `CONNECTION_TYPE_NOT_SUPPORTED`（2026-05-31） | Glue HMS Federation（`CREATE CONNECTION TYPE glue`）が GA の経路 |
 | 4.4 | Databricks Runtime | ランタイムの seccomp プロファイルが `mount` / `umount` を禁止しており、クラスタから NFS/SMB をマウントできない | — | 意図的なセキュリティ設計であり解消は見込まれない。ネットワーク経路を使う |
 | 4.5 | Snowflake | Dynamic Table が External Table を参照できない | `Object ref EXT_FMT_JSON of type EXTERNAL_TABLE not supported in Dynamic Table definition` | 先に `COPY INTO` で標準テーブルへ着地させ、その上に Dynamic Table を定義する。2026-08-06 に動作確認済み |

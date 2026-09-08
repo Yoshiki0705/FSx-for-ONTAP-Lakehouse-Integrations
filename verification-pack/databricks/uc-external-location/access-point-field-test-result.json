@@ -21,7 +21,7 @@
     "url": "s3://fsxn-databricks-dzs58qdtzet6zcuxin9qc8db6zbh1apn1b-ext-s3alias/",
     "credential_name": "fsxn_s3ap_credential",
     "access_point": "arn:aws:s3:ap-northeast-1:<ACCOUNT_ID>:accesspoint/fsxn-databricks-lakehouse",
-    "note": "access_point field added per Databricks support recommendation"
+    "note": "access_point field set explicitly for this attempt"
   },
   "s3_access_point": {
     "name": "fsxn-databricks-lakehouse",
@@ -36,7 +36,13 @@
     "uc_external_location_dbutils_fs_ls": {
       "status": "SUCCESS",
       "file_count": 286,
-      "sample_files": ["E2E-FINAL-TEST.txt", "FINAL-FPOLICY-TEST.txt", "FPOLICY-NFSV3-TEST.txt", "FPOLICY-NFSV4-FINAL.txt", "NFSV3-CONTROL.txt"],
+      "sample_files": [
+        "E2E-FINAL-TEST.txt",
+        "FINAL-FPOLICY-TEST.txt",
+        "FPOLICY-NFSV3-TEST.txt",
+        "FPOLICY-NFSV4-FINAL.txt",
+        "NFSV3-CONTROL.txt"
+      ],
       "interpretation": "Unity Catalog External Location with access_point field successfully lists FSx for ONTAP S3 AP contents. The session policy now includes the S3 AP ARN, allowing UC-governed access."
     },
     "boto3_instance_profile": {
@@ -47,16 +53,16 @@
   },
   "record_status": "SUPERSEDED",
   "superseded_by": {
-    "date": "2026-05-26",
-    "source": "Databricks Support response",
+    "date": "2026-08-12",
+    "source": "measured here 2026-08-12, with a native-S3 control in the same session",
     "finding": [
-      "Unity Catalog External Locations do not support S3 Access Points as storage targets.",
-      "The access_point field was never released as GA and has been removed from documentation.",
-      "The partial success recorded below is 'a side effect of incomplete internal handling, not a supported code path'.",
-      "CREATE TABLE and write operations on S3 AP paths are not supported."
+      "Registration of an S3 access point path as an External Location succeeds.",
+      "The read is what fails: the down-scoped session policy Unity Catalog issues is written with a bucket-form ARN (arn:aws:s3:::<alias>), while AWS authorises an access point request against the access point ARN. The two do not match, and a session policy intersects with the role policy.",
+      "The access_point field is not in current Unity Catalog documentation. Whether it was ever released, and why it was removed, is open."
     ],
-    "effect_on_this_record": "The measurements below (286 objects listed) are what was observed on 2026-05-24 and are unchanged. The conclusion drawn from them was wrong and is retained only as history. Do not cite this record as evidence that Unity Catalog supports FSx for ONTAP S3 Access Points.",
-    "current_position": "../../../integrations/databricks/README.md#support-confirmation-2026-05-26"
+    "effect_on_this_record": "The measurements below (286 objects listed) are what was observed on 2026-05-24 and are unchanged. The conclusion drawn from them was wrong and is retained only as history. Do not cite this record as evidence that Unity Catalog reads FSx for ONTAP S3 Access Points.",
+    "current_position": "../../../integrations/databricks/README.md#where-the-denial-originates",
+    "asked": "2026-05-26 - asked Databricks; the reply is not reproduced here"
   },
   "conclusion_as_recorded_2026_05_24": {
     "note": "Superseded on 2026-05-26 — see superseded_by above. Retained verbatim for traceability.",
@@ -71,5 +77,5 @@
     "governance_model": "Full Unity Catalog governance (lineage, fine-grained access control, audit)",
     "article_impact": "This changes the article conclusion from 'UC blocked' to 'UC works with access_point field configuration'"
   },
-  "support_case_reference": "Databricks Support engagement (2026-05)"
+  "inquiry": "asked Databricks 2026-05; the reply is not reproduced here"
 }

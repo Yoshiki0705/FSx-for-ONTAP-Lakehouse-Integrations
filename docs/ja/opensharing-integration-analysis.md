@@ -107,7 +107,7 @@ OpenSharing プロトコルの `dir` access mode（サーバーが presigned URL
 |------|------|------|
 | **FSx for ONTAP S3 AP への Delta/Iceberg トランザクショナル write** | ❌ 依然ブロック | Conditional writes（`If-None-Match`）が 501 を返す。atomic rename 非対応。FSx for ONTAP S3 AP の製品レベル制限であり、OpenSharing とは無関係 |
 | **Databricks から S3 Tables の Foreign Iceberg 読み取り** | ❌ 依然ブロック | External Location 検証が S3 Tables 内部バケットを拒否（HeadBucket 失敗）。本 credential vending テストとは無関係 |
-| **Databricks UC による FSx for ONTAP S3 AP の read** | ❌ 依然ブロック | UC External Location の `access_point` field は 2026-05-24 のテストで部分的な read に成功したが、2026-05-26 に Databricks Support が同フィールドは GA ではなく S3 AP は UC のサポート対象外であること、部分的成功は「不完全な内部処理の副作用でありサポートされたコードパスではない」ことを確認（[詳細](../../integrations/databricks/README.md#support-confirmation-2026-05-26)）。本日の STS テストは *OpenSharing recipient* という別経路の検証 |
+| **Databricks UC による FSx for ONTAP S3 AP の read** | ❌ 依然ブロック | UC External Location の `access_point` field は 2026-05-24 のテストで部分的な read に成功したが、2026-05-26 に Databricks Support が同フィールドは GA ではなく S3 AP は UC のサポート対象外であること、部分的成功は「不完全な内部処理の副作用でありサポートされたコードパスではない」ことを確認（[詳細](../../integrations/databricks/README.md#where-the-denial-originates)）。本日の STS テストは *OpenSharing recipient* という別経路の検証 |
 
 ### アーキテクチャの明確化
 
@@ -119,7 +119,7 @@ FSx for ONTAP（raw data の source of truth: 画像、CSV、センサーログ�
     │   • Direct IAM（Athena, Glue, EMR — 既存）
     │
     │ READ パス（非サポート ❌）:
-    │   • S3 AP に対する UC External Location（GA ではない。Databricks Support 2026-05-26）
+    │   • S3 AP に対する UC External Location（読み取りは拒否。2026-08-12 実測）
     │
     │ WRITE パス（FSx for ONTAP S3 AP 上ではない）:
     │   • Delta/Iceberg managed tables は標準 S3 または S3 Tables に配置

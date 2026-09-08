@@ -26,7 +26,7 @@
 
 ### Q3: SnapMirror S3 について教えてください
 
-**A**: SnapMirror S3（ONTAP S3 バケット → AWS S3 レプリケーション）は FSx for ONTAP で**意図的に無効化**されています（2026年5月 AWS サポート確認）。FSx for ONTAP から標準 S3 への同期には AWS DataSync を使用してください。詳細: [DataSync ガイド](./datasync-to-s3-guide.md)
+**A**: SnapMirror S3（ONTAP S3 バケット → AWS S3 レプリケーション）は FSx for ONTAP では使えません。2026-05 に自環境で確認した範囲では、`snapmirror object-store` コマンドと `/api/cloud/targets` REST API がいずれも拒否されます。意図的な無効化なのか未実装なのかを述べた公開情報は見つけられておらず、`open` です。FSx for ONTAP から標準 S3 への同期には AWS DataSync を使用してください。詳細: [DataSync ガイド](./datasync-to-s3-guide.md)
 
 ### Q4: FSx for ONTAP S3 Access Point の ListObjectsV2 は遅いのか？
 
@@ -221,12 +221,12 @@ aws athena start-query-execution \
 | Rename 操作なし | S3 API にはネイティブの rename がない。CopyObject は同一アクセスポイント内のみサポート。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | 最大アップロードサイズ: 50 GB | 単一オブジェクトのアップロードは 50 GB まで。それを超えるオブジェクトはダウンロードは可能だがアップロードは不可。マルチパートアップロードはサポート | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | Object Versioning なし | S3 Object Versioning は非サポート | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
-| 条件付き書き込みなし | Conditional writes（`If-None-Match`）は非サポート — HTTP 501 `NotImplemented` を返す。これは**プロダクトレベルの制限**（AWS サポート確認、2026年5月）。S3 ネイティブ conditional writes（2024年8月提供開始）との parity を求める機能要望を提出済み。Delta Lake、Iceberg、Hudi のトランザクショナル書き込みをブロック。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
+| 条件付き書き込みなし | Conditional writes（`If-None-Match`）は非サポート — HTTP 501 `NotImplemented` を返す。2026-05-22 に自環境で 501 を確認。実装予定を述べた公開情報は見つけられておらず `open` です。S3 ネイティブ conditional writes（2024年8月提供開始）との parity を求める機能要望を提出済み。Delta Lake、Iceberg、Hudi のトランザクショナル書き込みをブロック。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | ListObjectsV2 レイテンシ | 2026-08-05 再測定: 10〜5,000 オブジェクトでネイティブ S3 比 **1.3〜1.4 倍**（5,000 件では 0.9 倍）。フラット構造・ネスト構造とも同様で、当初の目標（100 ファイル未満で 1 秒未満、1,000 ファイル未満で 3 秒未満）の範囲内。従来引用していた 30-80 倍は再現せず、撤回しました。1 ディレクトリ 5,000 オブジェクトを超える場合の挙動は未測定。 | 2026-08-05 再測定（[エビデンス](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml)） |
 | S3 Event Notifications なし | S3 Event Notifications（s3:ObjectCreated 等）は非サポート。Snowpipe auto-ingest と Auto Loader ファイル通知モードを阻害。機能要望提出済み（2026年5月）。代替: FPolicy → Lambda またはスケジュールポーリング。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
-| SnapMirror S3 なし | SnapMirror S3（ONTAP S3 バケット → AWS S3 レプリケーション）は FSx for ONTAP で**意図的に無効化**（AWS サポート確認、2026年5月）。`snapmirror object-store` コマンドと `/api/cloud/targets` REST API はサービスレベルの制限としてブロック。検証済み同期メカニズムとして AWS DataSync（NFS → S3）を使用。 | 2026年5月検証 |
-| Presigned URLs: 公式には非サポート | Presigning はクライアント側の署名計算であり、サーバー側の操作ではない。サポートされている操作（例: GetObject）の Presigned URLs は、サーバーが標準の署名付きリクエストとして認識するため実際には動作する。ただし、AWS はこれを「非サポート」としており、安定性を保証していない。**本番環境では依存しないこと。** | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、[AWS Support (verified)](verified 2026-05-22) |
-| ListObjectVersions: 公式には非サポート | VersionId="null" で結果を返す（バージョニング未設定の S3 バケットと同じ動作）。機能的には ListObjectsV2 をバージョニングスキーマでラップしたものと同等。AWS は「非サポート」としている — **代わりに ListObjectsV2 を使用すること。** | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、[AWS Support (verified)](verified 2026-05-22) |
+| SnapMirror S3 なし | SnapMirror S3（ONTAP S3 バケット → AWS S3 レプリケーション）は FSx for ONTAP では使えません。`snapmirror object-store` コマンドと `/api/cloud/targets` REST API がいずれも拒否されます（2026-05 自環境で確認）。意図的な無効化か未実装かは `open`。検証済み同期メカニズムとして AWS DataSync（NFS → S3）を使用。 | 2026年5月検証 |
+| Presigned URLs: 公式には非サポート | Presigning はクライアント側の署名計算であり、サーバー側の操作ではない。サポートされている操作（例: GetObject）の Presigned URLs は、サーバーが標準の署名付きリクエストとして認識するため実際には動作する。ただし、AWS はこれを「非サポート」としており、安定性を保証していない。**本番環境では依存しないこと。** | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-05-22 自環境で確認 |
+| ListObjectVersions: 公式には非サポート | VersionId="null" で結果を返す（バージョニング未設定の S3 バケットと同じ動作）。機能的には ListObjectsV2 をバージョニングスキーマでラップしたものと同等。AWS は「非サポート」としている — **代わりに ListObjectsV2 を使用すること。** | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-05-22 自環境で確認 |
 | ストレージクラス: FSX_ONTAP のみ | 他のストレージクラスは指定不可 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | 暗号化: SSE-FSX のみ | AWS KMS マネージド、透過的な保存時暗号化 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | 同一リージョン必須 | アクセスポイントは FSx for ONTAP ボリュームと同じリージョンに作成必須 | [制限事項](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html) |
@@ -658,9 +658,9 @@ Databricks と Snowflake はいずれも `AssumeRole` 時に **session policy** 
 2. **Snowflake**: ✅ 完全解決。External Stage（GetObject、TO_FILE、PARSE_DOCUMENT、BUILD_SCOPED_FILE_URL）および Glue REST + VENDED_CREDENTIALS 経由の Iceberg がいずれも動作。
 3. **暫定推奨**: Databricks には DataSync → S3 → UC External Table パターンを使用。Snowflake には Iceberg メタデータに Glue REST + VENDED_CREDENTIALS、ファイルアクセスに External Stage を使用。
 
-### AWS サポート確認
+### 拒否の由来
 
-AWS サポート（検証済み）は、拒否が IAM ロールポリシー・AP ポリシー・ファイルシステム権限ではなく、**分析プラットフォームが AssumeRole 時に適用する session policy** に由来することを確認しました。
+拒否は IAM ロールポリシー・AP ポリシー・ファイルシステム権限ではなく、**分析プラットフォームが AssumeRole 時に適用する session policy** に由来します。下記のとおり、ネイティブ S3 のコントロールを併走させて 2026-08-12 に直接実証しました。
 
 > **Databricks について 2026-08-12 に直接実証。** Unity Catalog は自身が払い出す資格情報を渡してくれる（`POST /api/2.0/unity-catalog/temporary-path-credentials`）。作業端末から使うと、ネイティブ S3 経路に払い出された資格情報は通り、S3 AP 経路に払い出された資格情報は拒否される。同じロール・同じセッション・同じネットワークである。AWS が不一致を名指しする。評価対象は `arn:aws:s3:<region>:<account>:accesspoint/<name>` であり、セッションポリシーが持つのは `arn:aws:s3:::<alias>` である。[エビデンス](../../verification-pack/databricks/file-type/evidence/2026-08-12/evidence-record-tokyo.yaml)
 

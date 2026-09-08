@@ -88,7 +88,7 @@ FSx for ONTAP → DataSync → S3 → UC Managed Iceberg / Delta + UniForm
 
 1. **Phase 1 から開始**（AWS ネイティブ）— 最低障壁、完全検証済み
 2. **Phase 2 を追加** Databricks BI/ML が必要な場合 — プラットフォーム依存なし
-3. **Phase 3 を検証** Databricks サポートが UC Foreign Catalog 互換性を確認後
+3. **Phase 3 を検証** UC Foreign Catalog の互換性が Databricks のドキュメントに記載されてから
 4. **Phase 4 を検討** 組織が Databricks を主要プラットフォームとして標準化する場合のみ
 
 ## 参考資料

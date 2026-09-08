@@ -35,7 +35,7 @@
 | **Affected service** | Databricks Unity Catalog |
 | **Affected features** | **Reading** through an External Location / External Table / External Volume on an S3 AP / **`FILE EXTERNAL` columns (FILE type, Beta)**. Registration itself is **not** affected — see [scope corrected](#scope-corrected-2026-08-12-registration-works-reads-do-not) |
 | **Root cause** | The down-scoped session policy Unity Catalog attaches when it vends credentials is written in **bucket-style** resource ARNs (`arn:aws:s3:::<alias>`), while AWS authorises an access-point request against the **access point ARN**. The two never match, and a session policy intersects with the role policy, so the request is denied inside the session regardless of what the IAM role itself allows |
-| **Confirmed** | 2026-05-26 (Databricks Support) — root cause stated. 2026-08-12 (this repository) — mechanism demonstrated directly, with a native-S3 control |
+| **Confirmed** | 2026-05-26 — asked Databricks. 2026-08-12 (this repository) — mechanism demonstrated directly, with a native-S3 control |
 | **Status** | ❌ Unresolved — **and the scope was wrong until 2026-08-12**: registration succeeds, reads fail |
 | **Resolution criteria** | Unity Catalog emits the access point ARN form (`arn:aws:s3:<region>:<account>:accesspoint/<name>` and `.../object/*`) in the down-scoped session policy when the location URL is an access point alias |
 | **Severity** | **Critical** — Cannot apply UC governance (lineage, tags, masks, row filters) directly to FSx for ONTAP data |
@@ -105,7 +105,7 @@ Full analysis, including the separate `_object_metadata` path: [databricks-file-
 | **Affected service** | FSx for ONTAP S3 Access Points |
 | **Affected features** | Delta Lake transactional writes. Hudi untested. **Iceberg is not affected when the catalog holds the pointer** — see scope below |
 | **Root cause** | FSx for ONTAP S3 AP does not implement `If-None-Match` header (returns HTTP 501) |
-| **Confirmed** | 2026-05-22 (AWS Support, product-level limitation) |
+| **Confirmed** | 2026-05-22 (HTTP 501 observed here) |
 | **Status** | ❌ Unresolved — Feature Request filed |
 | **Resolution criteria** | AWS implements conditional writes on FSx for ONTAP S3 AP (parity with S3 native Aug 2024) |
 | **Severity** | **Medium** — narrowed 2026-08-06. Delta Lake writes are impossible; Iceberg writes via Athena work. Read path unaffected |
@@ -225,7 +225,7 @@ looks like from the storage side.
 | **Affected service** | FSx for ONTAP S3 Access Points |
 | **Affected features** | Directory scans, Glue Crawler, Auto Loader listing mode |
 | **Root cause** | Product-level performance characteristic of FSx for ONTAP S3 AP |
-| **Originally confirmed** | 2026-05-22 (AWS Support confirmed as a product-level characteristic, quoted as 30-80x) |
+| **Originally confirmed** | 2026-05-22 (quoted as 30-80x; withdrawn after the re-measurement below) |
 | **Re-measured** | 2026-08-05 — **0.9x-1.4x** at 10-5,000 objects. The 30-80x figure did not reproduce. [Evidence](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml) |
 | **Status** | ⚠️ Scope reduced — not observed at ≤5,000 objects; unquantified above that |
 | **Resolution criteria** | Measurement at 100k+ objects to establish where, if anywhere, the penalty appears |

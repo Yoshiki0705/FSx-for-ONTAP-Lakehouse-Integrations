@@ -4,7 +4,7 @@
 
 > **Status**: Architecture Reference — Pattern A/B ready for PoC, Pattern C blocked (awaiting Databricks UC feature development)
 >
-> **Context**: This guide documents how to expose FSx for ONTAP data to Databricks Unity Catalog governance using OpenSharing (formerly Delta Sharing), given that direct UC External Location integration with FSx S3 Access Points is [not currently supported](../../README.md#support-confirmation-2026-05-26).
+> **Context**: This guide documents how to expose FSx for ONTAP data to Databricks Unity Catalog governance using OpenSharing (formerly Delta Sharing), given that direct UC External Location integration with FSx S3 Access Points is [not currently supported](../../README.md#where-the-denial-originates).
 
 ## Executive Summary
 
@@ -20,7 +20,7 @@ For FSx for ONTAP integration with Databricks, OpenSharing provides a practical 
 1. **OpenSharing = sharing protocol** (not a transformation engine)
 2. **FSx for ONTAP S3 Access Points provide object access** — OpenSharing requires table semantics
 3. **For unstructured data**: The shareable asset is the derived structured representation (metadata, extracted text, captions, embeddings)
-4. **For true zero-copy raw file access**: Unity Catalog must support FSx for ONTAP S3 AP as first-class storage locations (feature gap — [reported to Databricks engineering](../../README.md#support-confirmation-2026-05-26))
+4. **For true zero-copy raw file access**: Unity Catalog must support FSx for ONTAP S3 AP as first-class storage locations (feature gap — [reported to Databricks engineering](../../README.md#where-the-denial-originates))
 
 ### Quick Start: What Should I Do Today?
 
@@ -33,7 +33,7 @@ For FSx for ONTAP integration with Databricks, OpenSharing provides a practical 
 | **Want zero-copy direct access (no S3 bucket)** | Not available today — awaiting Databricks UC feature development | Pattern C (blocked) |
 2. **FSx for ONTAP S3 Access Points provide object access** — OpenSharing requires table semantics
 3. **For unstructured data**: The shareable asset is the derived structured representation (metadata, extracted text, captions, embeddings)
-4. **For true zero-copy raw file access**: Unity Catalog must support FSx for ONTAP S3 AP as first-class storage locations (feature gap — [reported to Databricks engineering](../../README.md#support-confirmation-2026-05-26))
+4. **For true zero-copy raw file access**: Unity Catalog must support FSx for ONTAP S3 AP as first-class storage locations (feature gap — [reported to Databricks engineering](../../README.md#where-the-denial-originates))
 
 ---
 
@@ -247,7 +247,7 @@ This is the **fully supported, production-ready path** for Databricks + FSx for 
 
 > This is the cost of "full Databricks platform capabilities" (ACID, Time Travel, Mosaic AI, governance). Compare with zero-copy paths (Athena, Snowflake External Table) which add $0 storage cost but lack these capabilities.
 
-> **Key insight for Databricks customers**: The DataSync → S3 → UC path is not a workaround — it is the **recommended production architecture** confirmed by Databricks Support (May 2026). It provides capabilities that zero-copy paths cannot: ACID transactions, Time Travel, MERGE, OPTIMIZE, full Mosaic AI, and enterprise governance. The trade-off is data duplication and sync latency.
+> **Key insight for Databricks customers**: The DataSync → S3 → UC path is not a workaround — it is the **production architecture this repository recommends**, on the measurements below. It provides capabilities that zero-copy paths cannot: ACID transactions, Time Travel, MERGE, OPTIMIZE, full Mosaic AI, and enterprise governance. The trade-off is data duplication and sync latency.
 
 > **ONTAP value in this pattern**: FabricPool automatically tiers cold data on FSx for ONTAP to S3 (transparent to NFS/SMB users), reducing storage costs. Snapshots provide point-in-time consistency for DataSync transfers — sync from a Snapshot to ensure a consistent view of the data.
 
@@ -752,7 +752,7 @@ OpenSharing (Databricks-to-Databricks protocol) shares tables that are **registe
 - A **UC Managed Storage** location (Databricks-managed S3 bucket), OR
 - A **UC External Location** (customer S3 bucket registered with Storage Credential)
 
-FSx for ONTAP S3 AP cannot be registered as a UC External Location (confirmed by Databricks Support, May 2026). Therefore, even if you could create a Delta Table on FSx for ONTAP S3 AP, you could not register it in UC for sharing.
+FSx for ONTAP S3 AP cannot be read through a UC External Location: registration succeeds and the read is what fails, because the down-scoped session policy Unity Catalog issues carries a bucket-form ARN (measured here 2026-08-12). Therefore, even if you could create a Delta Table on FSx for ONTAP S3 AP, you could not register it in UC for sharing.
 
 Reference: [Create and manage shares for OpenSharing](https://docs.databricks.com/en/delta-sharing/create-share.html) — Shares can contain tables from "only one Unity Catalog metastore."
 

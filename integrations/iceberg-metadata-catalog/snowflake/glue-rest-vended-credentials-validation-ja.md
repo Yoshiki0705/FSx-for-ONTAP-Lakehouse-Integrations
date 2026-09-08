@@ -189,9 +189,9 @@ Error 004174 はこれらのフィールドがレスポンスに存在しない�
 1. Snowflake は Glue REST で S3 Tables に対して `VENDED_CREDENTIALS` を使用できない（確認された制限）
 2. Trino/Spark は独自の IAM credentials (SigV4) を使用するため Glue REST にアクセス可能
 3. Snowflake は vended credentials の代わりに External Volume（独自のストレージ credentials）を使用する必要がある可能性
-4. Snowflake と AWS の両サポートに確認された相互運用性ギャップとして報告すべき
+4. 相互運用性のギャップとして Snowflake と AWS の双方に起票すべき
 
-**Snowflake サポートによる正式確認 (2026-06-02, Snowflake support confirmation)**:
+**期待される credential フィールド（Apache Iceberg REST の仕様）**:
 `ACCESS_DELEGATION_MODE = VENDED_CREDENTIALS` の場合、Snowflake は Iceberg REST `loadTable` レスポンスの config マップに標準 Apache Iceberg credential フィールドが含まれることを期待します:
 - `s3.access-key-id`（必須）
 - `s3.secret-access-key`（必須）
@@ -200,14 +200,14 @@ Error 004174 はこれらのフィールドがレスポンスに存在しない�
 
 Error 004174 はこれらのフィールドが欠落している場合に発生します。
 
-**Snowflake サポートのエラー進行分析 (2026-06-02)**:
+**エラー進行（自アカウントで観測、2026-06-02）**:
 アカウントから確認できるエラー進行:
 1. 004139（Lake Formation 権限エラー）→ メタデータアクセスブロック
 2. 004174（credential 取得失敗）→ メタデータ解決成功、ストレージ credentials なし
 
 これにより証明: Glue REST 到達可能、カタログとテーブル解決成功、メタデータ認証を超えて進行、しかし利用可能な credential ペイロードを取得できない。
 
-## Snowflake サポートが提案した代替パス
+## 代替パス
 
 ### 1. Object Store Catalog Integration（読み取り専用、credential vending 不要）
 
@@ -243,7 +243,7 @@ CREATE ICEBERG TABLE FSXN_LAKEHOUSE.PUBLIC.s3tables_metadata
 | VENDED_CREDENTIALS 明示指定 + External Volume なしでテスト | 顧客（我々） | ✅ 完了 — **成功** (2026-06-05) |
 | Snowflake サポートに成功報告 | 顧客（我々） | ✅ 完了 (2026-06-08) |
 | AUTO_REFRESH、time travel、カラムレベル権限の検証 | 顧客（我々） | 🔄 フォローアップで質問済み |
-| Snowflake サポートのフォローアップ質問回答 | Snowflake | 🔄 待ち |
+| フォローアップ質問への回答 | Snowflake | 🔄 待ち |
 | ドキュメント改善（S3 Tables + VENDED_CREDENTIALS の KB 記事） | Snowflake | 🔄 リクエスト済み (2026-06-08) |
 
 ## 参考資料

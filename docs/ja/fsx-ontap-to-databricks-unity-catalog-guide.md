@@ -97,9 +97,9 @@ FSx for ONTAP データを OpenSharing で共有するには:
 
 **A: 2026 年 5 月時点で、Databricks は S3 Access Point を UC External Location として正式にサポートしていません。**
 
-検証結果（本リポジトリ、Databricks Support 確認済み 2026-05-26）:
+検証結果（本リポジトリ、2026-08-12 再測定）:
 - `access_point` フィールドは GA リリースされておらず、ドキュメントからも削除済み
-- 一部動作（トップレベルのファイル一覧、明示パスのファイル読み取り）は「内部処理の副作用であり、サポートされたコードパスではない」（Databricks Support 回答）
+- 一部動作（トップレベルのファイル一覧、明示パスのファイル読み取り）は、拒否される経路を通っていないために成功しています（2026-08-12 実測）
 - CREATE TABLE、サブディレクトリ一覧は `AccessDenied` / `UC_CLOUD_STORAGE_ACCESS_FAILURE`
 
 ### Q5: ONTAP S3（S3 互換エンドポイント）を UC に登録できないの？
@@ -569,7 +569,7 @@ SELECT * FROM uc_delta.catalog.schema.sensor_data LIMIT 10;
 
 | パス | ステータス | 検証日 | エビデンス |
 |------|-----------|--------|-----------|
-| S3 AP → UC External Location | ❌ **非サポート確認** | 2026-05-26 | Databricks Support 回答 |
+| S3 AP → UC External Location | ⚠️ **登録は成功・読み取りは拒否** | 2026-08-12 | 自環境で実測（ネイティブ S3 のコントロール付き） |
 | ONTAP S3 → UC External Location | ❌ **非サポート確認** | 2026-05 | 02_research_findings.md |
 | NFS mount from Databricks | ❌ **ブロック** | 2026-05 | seccomp 制限 |
 | DataSync → S3 → UC | ✅ **検証済み** | 2026-05 | datasync-to-s3-guide.md |
@@ -967,7 +967,7 @@ FSx for ONTAP 上のデータを Databricks AI/ML 機能で活用する経路:
 | 項目 | ステータス | 解除条件 |
 |------|-----------|---------|
 | UC External Location S3 AP 対応 | ❌ 非対応（feature request 提出済み） | Databricks のプラットフォーム開発 |
-| UC Foreign Iceberg × S3 Tables | ❌ ブロック確認（2026-06-21） | `iceberg_rest` type 非対応 + S3 Tables EL 登録不可。Databricks Support 確認待ち |
+| UC Foreign Iceberg × S3 Tables | ❌ ブロック確認（2026-06-21） | `iceberg_rest` type 非対応 + S3 Tables EL 登録不可。Databricks へ照会し回答待ち |
 | OpenSharing Volumes コネクタ | 🔲 設計段階 | Databricks 開発 + FSx for ONTAP 対応 |
 | Lakebase × FSx for ONTAP | ⚠️ Lakebase ap-northeast-1 非対応 | Databricks リージョン拡大 |
 

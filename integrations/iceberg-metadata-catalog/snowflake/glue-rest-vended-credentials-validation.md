@@ -234,7 +234,7 @@ CREATE ICEBERG TABLE test_metadata
 
 **Key insight**: The previous failures were caused by `ACCESS_DELEGATION_MODE` defaulting to `EXTERNAL_VOLUME_CREDENTIALS`, NOT by missing credential vending capability. When explicitly set to `VENDED_CREDENTIALS`, the Glue REST + Lake Formation stack correctly vends temporary credentials to Snowflake.
 
-**Snowflake's expected credential format (officially confirmed by Snowflake Support 2026-06-02, Snowflake support confirmation)**:
+**Snowflake's expected credential format (the Apache Iceberg REST specification)**:
 When `ACCESS_DELEGATION_MODE = VENDED_CREDENTIALS`, Snowflake expects the Iceberg REST `loadTable` response to include the standard Apache Iceberg credential fields within the response configuration map:
 - `s3.access-key-id` (required)
 - `s3.secret-access-key` (required)
@@ -261,7 +261,7 @@ This is the root cause of Snowflake's "Failed to retrieve credentials from the C
 3. Snowflake may need to use an External Volume (with its own storage credentials) instead of vended credentials
 4. This should be reported to both Snowflake and AWS support as a confirmed interoperability gap
 
-**AWS Support clarification (2026-06-02)**:
+**Observed here (2026-06-02)**:
 Lake Formation **does** support credential vending for S3 Tables — but through its proprietary mechanism (`GetTemporaryGlueTableCredentials` / `lakeformation:GetDataAccess`), NOT the standard Iceberg REST `/credentials` API.
 
 - **SigV4 clients (PyIceberg, EMR Spark, Athena, Redshift)**: Lake Formation credential vending works transparently. IAM role needs `lakeformation:GetDataAccess` + Lake Formation Application Integration enabled. No direct S3 permissions needed.
@@ -282,7 +282,7 @@ Lake Formation **does** support credential vending for S3 Tables — but through
 ~~1. Glue REST `/v1/credentials` endpoint not returning expected format for S3 Tables federated catalog~~
 → CONFIRMED: The endpoint does not exist (UnknownOperationException)
 
-## Alternative Paths Identified by Snowflake Support
+## Alternative paths
 
 ### 1. Object Store Catalog Integration (Read-only, no credential vending needed)
 
@@ -318,7 +318,7 @@ CREATE ICEBERG TABLE FSXN_LAKEHOUSE.PUBLIC.s3tables_metadata
 | Test with explicit VENDED_CREDENTIALS + no External Volume | Customer (us) | ✅ Done — **SUCCESS** (2026-06-05) |
 | Report success to Snowflake Support | Customer (us) | ✅ Done (2026-06-08) |
 | Validate AUTO_REFRESH, time travel, column-level | Customer (us) | ✅ Done (2026-06-08): AUTO_REFRESH ✅, Time Travel ✅, column-level ❌ |
-| Snowflake Support response to follow-up questions | Snowflake | 🔄 Pending |
+| Response to follow-up questions | Snowflake | 🔄 Pending |
 | Documentation improvement (KB article for S3 Tables + VENDED_CREDENTIALS) | Snowflake | 🔄 Requested (2026-06-08) |
 
 ## References
