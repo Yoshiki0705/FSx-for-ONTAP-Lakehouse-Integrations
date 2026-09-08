@@ -501,6 +501,20 @@ aws cloudformation describe-stack-events \
 | Glue Crawler スキーマドリフト確認 | データ変更後 | `aws glue start-crawler` |
 | Fargate タスクヘルス確認（FPolicy） | 日次 | `aws ecs describe-services` |
 
+### ONTAP 監査ログの SIEM への取り込み
+
+上記のアラームが見ているのは AWS 側です。Lambda のエラー、Glue ジョブの失敗、スタックのドリフト。
+**ファイルシステムの内側で何が起きたかは見ていません。** アクセスポイント経由の操作は ONTAP の
+ネイティブ監査ログに記録されますが、**このログは自力では CloudWatch に届きません。** 要求元の
+IAM プリンシパルも記録されず、そちらはアクセスポイントに対する CloudTrail データイベント側に
+あります。**監査証跡として成立させるには 2 つが必要です。**
+
+このログを EC2 コレクタ無しで Datadog・Splunk・New Relic・Grafana・Elastic へ送る方法は、
+姉妹リポジトリ
+[FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
+で解決済みです。**ここでは再掲しません。**
+[問いごとの参照先リポジトリ](./repository-map.md) も参照してください。
+
 ---
 
 ## トラブルシューティング

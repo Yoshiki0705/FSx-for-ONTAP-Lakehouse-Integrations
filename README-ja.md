@@ -22,6 +22,7 @@
 | S3 AP のディレクトリ設計・性能特性を理解する | [S3 AP 設計考慮事項](docs/ja/s3ap-design-considerations.md) | 15分 |
 | PoC をエンドツーエンドで実行する | [PoC 実行ガイド](docs/implementation-guide/poc-execution-guide-ja.md) | 15分 |
 | ベースインフラをデプロイする | [デプロイガイド](docs/ja/deployment-guide.md) | 30分 |
+| 運用する: ロールバック、Day 2 作業、ONTAP 監査ログの SIEM 連携 | [デプロイガイド — Day 2 運用](docs/ja/deployment-guide.md#day-2-運用) | 15分 |
 | FlexCache / SnapMirror でマルチリージョン配信する | [FlexCache/SnapMirror 考慮事項](docs/ja/s3ap-flexcache-snapmirror-considerations.md) | 15分 |
 | FSx for ONTAP → Databricks Unity Catalog を接続する | [UC 接続ガイド](docs/ja/fsx-ontap-to-databricks-unity-catalog-guide.md) | 30分 |
 | 非構造化データ（画像/動画/文書）をレイクハウスでガバナンスする | [Databricks FILE 型評価](docs/ja/databricks-file-type-evaluation.md) | 20分 |
