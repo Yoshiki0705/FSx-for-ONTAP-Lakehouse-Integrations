@@ -36,7 +36,7 @@ Amazon FSx for ONTAP S3 Access Points により、FSx for ONTAP ボリューム�
 - Block Public Access がデフォルトで強制（無効化不可）
 - ONTAP バージョン 9.17.1 以降が必要
 
-## 何が変わるか
+## 導入で変わる点
 
 | 成果 | 指標 |
 |------|------|

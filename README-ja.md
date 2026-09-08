@@ -9,7 +9,7 @@
 
 ---
 
-## はじめる
+## 目的別の出発点
 
 | やりたいこと | ガイド | 所要時間 |
 |---|---|:---:|
@@ -83,6 +83,7 @@
 | 同一リージョン要件 | 分析エンジンと FSx for ONTAP を同一リージョンに配置 | [リージョン設計ガイド](docs/ja/region-design-guide.md) |
 | ONTAP S3 object-store-server と S3 AP の競合 | 同一 SVM に共存不可 | 別 SVM を使用 |
 | AD 参加済み SVM の S3 AP は DC 接続が必須 | AD 不通時にデータ操作が失敗 | [AD 統合メモ](docs/en/fsx-ontap-s3ap-networking.md) |
+| アクセスポイントは全リクエストを**1 つの ID** で認可 | 元の per-file ACL が、AP 経由で読む分析 / RAG パイプラインに引き継がれない | 絞り込みはストレージ層ではなくインデックス側で設計 — [Adoption Playbook: データ活用ハブ](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/ja/domains/data-utilization) |
 
 </details>
 
@@ -109,6 +110,7 @@
 |---|---|
 | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | FSx for ONTAP S3 AP 向け 17 サーバーレスパターン |
 | [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) | エッジ (Raspberry Pi) → ONTAP → Kafka — [製造プラットフォーム](integrations/manufacturing-data-platform/)にフィード |
+| [FSx-for-ONTAP-Adoption-Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) | ライフサイクルとドメインで整理した導入設計ノート。データ活用ハブが、本リポジトリの統合の上流にあるアクセスポイントの制約とデータセット版管理の判断を扱う |
 
 **ドキュメント索引**: [リーディングパスガイド](docs/ja/reading-path-guide.md) · [業界別ソリューションカタログ（26 業界）](docs/ja/industry-solution-catalog.md)
 

@@ -123,7 +123,8 @@ Amazon S3 は FSx for ONTAP ボリュームに接続された全アクセスポ�
 | ログソース | キャプチャ対象 | 保持期間 | 用途 |
 |-----------|-------------|---------|------|
 | **AWS CloudTrail** | FSx for ONTAP API コール（CreateAccessPoint 等）、S3 データイベント（AP 経由の GetObject、PutObject） | 設定可能（コンプライアンスには 1 年以上推奨） | 誰が何にいつどこからアクセスしたか |
-| **FSx for ONTAP 監査ログ** | NFS/SMB ファイルアクセスイベント（ONTAP fpolicy/audit 経由） | ONTAP 上で設定可能 | S3 AP を経由しない直接ファイルシステムアクセス |
+| **FSx for ONTAP 監査ログ**（`vserver audit`） | ファイルアクセスイベント。NFS / SMB は `Source=CIFS` / `NFS`、**S3 Access Point 経由も `Source=HTTP`（オブジェクト操作）と `Source=S3`（LIST）で記録される** | ONTAP 上で設定可能。監査 ACE（SACL）が必要 | NFS / SMB / S3 Access Point いずれの経路も操作を記録する。**ただし AP 経由では要求者が残らない**（`SubjectUserName` は `Not Present`、`SubjectIP` は AWS のサービス側アドレス）ため、要求元 IAM プリンシパルは CloudTrail と時刻で突き合わせる。`HeadObject` は記録されない（実測 2026-08-26 / ONTAP 9.18.1P3D1） |
+| **FPolicy**（監査とは別機構） | NFS / SMB のファイル操作のみ | ONTAP 上で設定可能 | NFS / SMB 経路の検知・遮断。**S3 Access Point 経由の操作には使えない**（通知されず、`mandatory` 指定でも遮断されない。実測 2026-08-26 / ONTAP 9.18.1P3D1） |
 | **Lakehouse 監査ログ** | クエリ履歴、テーブル変更（プラットフォーム固有） | プラットフォーム依存 | 分析アクティビティ追跡 |
 | **VPC フローログ** | FSx for ONTAP ENI へ/からのネットワークトラフィック | 設定可能 | ネットワークレベルのアクセス検証 |
 | **S3 Access Point アクセスログ** | CloudTrail 経由の S3 データイベント | CloudTrail と同じ | S3 API レベルのアクセス監査 |

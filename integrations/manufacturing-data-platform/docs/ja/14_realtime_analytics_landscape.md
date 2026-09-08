@@ -46,7 +46,7 @@ Lakehouse//RT が提起する問い: **Layer 2 に専用 RT データベース�
 
 ## LTAP: パイプラインの終焉？ — アーキテクチャ影響分析
 
-### LTAP とは何か
+### LTAP の定義
 
 LTAP (Lake Transactional/Analytical Processing) は DAIS 2026 キーノートで Ali Ghodsi が発表した新アーキテクチャ概念（evidence tier: **Public**）。40年間続いた OLTP/OLAP 分離を「レイク上の単一データコピー」で解消すると主張する。
 
@@ -147,7 +147,7 @@ LTAP/Lakebase は structured/operational データの統合だが、FSx for ONTA
 > - Lakehouse//RT がミリ秒クエリを提供しても、エージェントが S3 AP 経由でペイロードをフォローフェッチする場合、ONTAP S3 プロトコルのオーバーヘッドが加算される。P99 レイテンシの実測が必要。
 > - 大量ペイロードの同時読み取り（マルチエージェント並列）時の S3 AP スループット上限も検証要。
 
-### 判断フレームワーク: いつ LTAP を採用するか
+### 判断フレームワーク: LTAP の採用条件
 
 ```
                           ┌──────────────────┐

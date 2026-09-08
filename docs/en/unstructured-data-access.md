@@ -279,7 +279,7 @@ SELECT SNOWFLAKE.CORTEX.COMPLETE('pixtral-large',
 | No S3 Select | Cannot partially read within files | Download full file then process |
 | No Event Notifications | New file detection not instant | Lambda polling (1-5 min interval) |
 | No Object Lock | No S3-level WORM | Use ONTAP SnapLock instead |
-| Max object size | 5TB (S3 API limit) | Normal media files unaffected |
+| Max object size | **50 GB per object through the access point** — not the native S3 ceiling, which is 50 TB since Dec 2025 | Normal media files unaffected. A whole-object overrun is only detected at `CompleteMultipartUpload`, after every byte is transferred, so validate size client-side |
 
 ### Performance Considerations
 
@@ -295,7 +295,7 @@ SELECT SNOWFLAKE.CORTEX.COMPLETE('pixtral-large',
 - **UNIX permissions**: FSx for ONTAP file permissions enforced via S3 AP
 - **AD integration**: Active Directory user mapping for access control
 - **Encryption**: FSx for ONTAP at-rest encryption + S3 AP in-transit encryption (TLS)
-- **Audit**: ONTAP FPolicy + CloudTrail for complete access logging
+- **Audit**: the ONTAP native audit log (`vserver audit`) + CloudTrail. **FPolicy covers NFS / SMB only and does not record operations through an S3 access point.** The audit log does record them, but not the requester, so the calling IAM principal has to be correlated with CloudTrail data events by timestamp. [The measured FPolicy / S3 access point coverage](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/en/s3ap-monitoring-coverage-implications.md)
 
 ### ONTAP Value for Unstructured Data
 

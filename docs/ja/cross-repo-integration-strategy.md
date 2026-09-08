@@ -286,7 +286,7 @@ Zerobus Ingest → Delta 直接 (Kafka バイパス、Databricks 専用) 🆕 �
 
 | 本リポジトリの要件 | fsxn-observability-integrations での対応 |
 |-------------------|----------------------------------------|
-| FPolicy 監査ログ × エージェントアクセス突合 | ✅ 設計完了: [`docs/ja/agent-fpolicy-correlation-pattern.md`](https://github.com/Yoshiki0705/fsxn-observability-integrations/blob/main/docs/ja/agent-fpolicy-correlation-pattern.md) (PR #22) |
+| FPolicy 監査ログ × エージェントアクセス突合 | ⚠️ **要再設計**: [`docs/ja/agent-fpolicy-correlation-pattern.md`](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/agent-fpolicy-correlation-pattern.md) (PR #22)。エージェントが S3 Access Point 経由でデータに到達する場合、FPolicy に通知が来ないため突合が成立しません（実測 2026-08-26）。入力を ONTAP ネイティブ監査ログに置き換える必要があります |
 | Omnigent ツール呼び出しログ | OpenTelemetry → CloudWatch 連携 |
 | Unity Catalog 監査 × ONTAP 監査の突合 | 両監査ログの時間軸結合クエリ |
 
@@ -313,7 +313,7 @@ Zerobus Ingest → Delta 直接 (Kafka バイパス、Databricks 専用) 🆕 �
 - [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 - [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG)
 - [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai)
-- [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations)
+- [fsxn-observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
 - [AWS: Build a RAG application with Bedrock KB + FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html)
 - [repost.aws: FSx for ONTAP S3 AP as Bedrock Data Source](https://repost.aws/articles/AReKa8-o8XRGeVW2Nicbg1_w)
 - [Amazon S3 Vectors GA](https://aws.amazon.com/blogs/aws/amazon-s3-vectors-now-generally-available-with-increased-scale-and-performance/)

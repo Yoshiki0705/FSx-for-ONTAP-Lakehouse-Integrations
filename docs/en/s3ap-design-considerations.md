@@ -159,7 +159,7 @@ Compared to Amazon S3, the following features are unsupported or constrained.
 | Versioning | ❌ Not supported | ONTAP Snapshot for point-in-time protection |
 | Lifecycle Policies | ❌ Not supported | FabricPool auto-tiering + custom scripts |
 | Object Lock / WORM | ❌ Not supported | SnapLock (ONTAP feature) |
-| S3 Event Notification | ❌ Not supported | FPolicy + EventBridge pipeline |
+| S3 Event Notification | ❌ Not supported | Scheduled polling, or the ONTAP native audit log. **FPolicy + EventBridge is not a substitute** — writes arriving through the access point raise no notification (measured 2026-08-26, ONTAP 9.18.1P3D1) |
 | Conditional writes (If-None-Match) | ❌ 501 Not Implemented | Application-side locking |
 | Cross-Region Replication | ❌ Not supported | SnapMirror ([see considerations](s3ap-flexcache-snapmirror-considerations.md)) |
 | S3 Select | ❌ Not supported | Athena / DuckDB queries |

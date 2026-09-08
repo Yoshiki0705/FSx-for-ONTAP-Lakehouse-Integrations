@@ -28,7 +28,7 @@
 | 属性 | 要件 | 理由 |
 |---|---|---|
 | **リージョン** | FSx for ONTAP ファイルシステムと一致 | S3 Access Point はボリュームと同一リージョンにしか存在できない。コンピュートを同居させればクロスリージョンのレイテンシと egress を避けられ、[リージョン設計ガイド](./region-design-guide.md)とも整合する |
-| **ストレージ / コンピュートモード** | クラシックコンピュートが必要なら **「Use your existing cloud account」** | "Serverless only" のワークスペースはクラシッククラスタを起動できず、Instance Profile が使えない。Instance Profile がなければ Access Point への唯一の経路は UC External Location で、それはまさに [BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しが-s3-ap-の読み取りを認可しない) がブロックしている |
+| **ストレージ / コンピュートモード** | クラシックコンピュートが必要なら **「Use your existing cloud account」** | "Serverless only" のワークスペースはクラシッククラスタを起動できず、Instance Profile が使えない。Instance Profile がなければ Access Point への唯一の経路は UC External Location で、それはまさに [BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り) がブロックしている |
 | プラン階層 | Premium で十分 | Enterprise は DBU 単価が高く、本用途に不要なコンプライアンス機能が付く。特筆すべきは、クレジットで動く Premium でも UC Storage Credential が**作成できた**こと |
 
 > **名前を付けておくべき罠**: 「トライアル」「無償クレジット」を「機能制限あり」と読み替え、有償プランが解決策だと結論しがちである。本件ではプランは既に Premium で、Storage Credential も動いた。制約は**ワークスペース作成時に選んだストレージモード**であり、これは後から変更できない。別のワークスペースを作ることになる。
@@ -101,7 +101,7 @@ NAT Gateway : $0.062/h × 24 × 30 ＝ 月約 $44.6（アイドル時）
 
 ---
 
-## 5. 撤去はスタック削除ではない
+## 5. スタック削除では終わらない撤去
 
 **Evidence tier: Verified** — ワークスペース作成フローで観測、2026-08-12。
 

@@ -261,7 +261,7 @@ user as principal; that is the one that works.
 | No S3 Event Notifications | Real-event auto-ingest and `AUTO_REFRESH` are unavailable; a synthesized notification is required ([BLK-003](../../../../docs/en/blocker-tracker.md)) |
 | No `AUTO_REFRESH` | External Table and Directory Table metadata need an explicit `REFRESH`, typically driven by a Task |
 | No conditional writes | Iceberg / Delta write-back is blocked ([BLK-002](../../../../docs/en/blocker-tracker.md)) |
-| PutObject 5 GB ceiling | Larger objects need multipart upload within that limit |
+| Two different size ceilings | A single `PutObject` (and each `UploadPart`) tops out around 5 GiB; a whole object tops out around 50 GiB. Larger files need multipart upload, and the whole-object overrun is only detected at `CompleteMultipartUpload` — after every byte is transferred. [Details](../../../../docs/en/compatibility-matrix.md#part-sizes-are-not-near-the-ceiling) |
 | `AWS_ACCESS_POINT_ARN` required on stages | Without it reads fail while `LIST` still succeeds — a misleading partial success |
 | `TO_FILE()` unsupported on AP stages | Vision AI needs a `COPY FILES` staging step |
 | Not officially supported by Snowflake | Snowflake does not document FSx for ONTAP S3 Access Points as a supported External Stage backend. Read, ingest and governance paths are verified here, but consult Snowflake Support before production use |

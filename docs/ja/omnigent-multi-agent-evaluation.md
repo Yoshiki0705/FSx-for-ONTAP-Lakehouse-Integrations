@@ -503,7 +503,7 @@ Supervisor Agent (Claude Sonnet)
 | Snapshot | バッチ分析用の一貫した point-in-time データ |
 | FlexClone | 同一データセットでの A/B テスト（ゼロコピー） |
 | SnapMirror | エージェント生成メタデータの DR |
-| FPolicy audit | エージェントアクセスログと ONTAP 監査イベントの突合 |
+| ONTAP 監査ログ | エージェントアクセスログと ONTAP 監査イベントの突合。**FPolicy ではなく `vserver audit` を使う**: エージェントが S3 Access Point 経由でデータに到達する場合、FPolicy には通知が来ないため突合が空になります |
 
 ### セキュリティ設計
 

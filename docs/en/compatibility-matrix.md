@@ -212,7 +212,7 @@ aws athena start-query-execution \
 | FSx for ONTAP S3 AP direct (read-only) | $0 (no additional) | None (existing FSx for ONTAP only) | Athena/Glue/Snowflake read analytics |
 | DataSync → S3 → analytics | ~$27/month (transfer+S3 storage) | DataSync task + S3 bucket | UC Managed Tables / Delta / Iceberg writes |
 | DataSync → S3 → Iceberg Lakehouse | ~$50-80/month (transfer+S3+compute) | DataSync + S3 + EMR/Glue transformation | Full-governance Lakehouse |
-| FPolicy → Lambda → S3 (near-real-time) | ~$15-40/month (Lambda+S3) | Lambda + EventBridge + S3 | Near-real-time change detection needed |
+| FPolicy → Lambda → S3 (near-real-time) | ~$15-40/month (Lambda+S3) | Lambda + EventBridge + S3 | Near-real-time change detection needed **and the writes arrive over NFS / SMB**. Writes through an S3 access point are not detected |
 
 > **Long-term retention tiering**: In automotive manufacturing environments, quality inspection data requires minimum 15-year retention per regulatory requirements (IATF 16949). Combining S3 Lifecycle + Glacier Deep Archive reduces long-term retention cost to ~$1/TB/month. Typical tiering: Standard/IA for short-term analytics (last 90 days), Glacier for long-term retention.
 
@@ -227,11 +227,12 @@ Before reviewing the compatibility matrix, understand these fundamental constrai
 | Constraint | Detail | Source |
 |-----------|--------|--------|
 | No Rename operation | S3 API does not have a native rename. CopyObject is supported only within the same access point. | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
-| Max upload size: 50 GB | Single object upload limited to 50 GB; larger objects can be downloaded but not uploaded. Multipart upload supported | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
+| Rename above the multipart threshold becomes a **multipart** copy | A rename is not always one `CopyObject`. Past `fs.s3a.multipart.threshold` S3A issues `UploadPartCopy` instead, and `UploadPartCopy` within one access point currently returns `NoSuchKey` when the copy-source key needs percent-encoding. **AWS classifies this as a defect with a fix in progress, so treat it as interim.** See [Rename crosses two different S3 calls](#rename-crosses-two-different-s3-calls-interim) | Hadoop [core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml) for the threshold semantics; the `UploadPartCopy` failure is measured in [Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns), not here |
+| Max upload size: 50 GB | Single object upload limited to 50 GB; larger objects can be downloaded but not uploaded. Multipart upload supported. **The part sizes this repository configures are far below the ceiling** — see [Part sizes are not near the ceiling](#part-sizes-are-not-near-the-ceiling) | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | No Object Versioning | S3 Object Versioning is not supported | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | No conditional writes | Conditional writes (`If-None-Match`) are not supported — returns HTTP 501 `NotImplemented`. Observed here 2026-05-22. Whether it is planned is `open` — no published statement was found. Feature request submitted for parity with S3 native conditional writes (available since Aug 2024). Blocks Delta Lake, Iceberg, and Hudi transactional writes. | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | ListObjectsV2 latency | Re-measured 2026-08-05: **1.3-1.4x** native S3 for 10-5,000 objects (0.9x at 5,000), flat and nested layouts alike — inside the original target of <1s for <100 files and <3s for <1000 files. The previously quoted 30-80x did not reproduce and has been withdrawn. Behaviour above 5,000 objects per directory remains unmeasured. | Re-measured 2026-08-05 ([evidence](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml)) |
-| No S3 Event Notifications | S3 Event Notifications (s3:ObjectCreated, etc.) are not supported. Prevents Snowpipe auto-ingest and Auto Loader file notification mode. Feature request submitted (May 2026). Use FPolicy → Lambda or scheduled polling as alternatives. | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
+| No S3 Event Notifications | S3 Event Notifications (s3:ObjectCreated, etc.) are not supported. Prevents Snowpipe auto-ingest and Auto Loader file notification mode. Feature request submitted (May 2026). Use scheduled polling, or the ONTAP native audit log, which records access-point operations as Source=HTTP and Source=S3. **FPolicy → Lambda is not a substitute**: writes arriving through the access point raise no FPolicy notification (measured 2026-08-26, ONTAP 9.18.1P3D1). | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | No SnapMirror S3 | SnapMirror S3 (ONTAP S3 bucket → AWS S3 replication) is not usable on FSx for ONTAP: both the `snapmirror object-store` commands and the `/api/cloud/targets` REST API are refused (measured here 2026-05). Whether that is a deliberate block or simply absent is `open`. Use AWS DataSync (NFS → S3) as the validated sync mechanism. | Validated May 2026 |
 | Presigned URLs: Not officially supported | Presigning is a client-side signature calculation, not a server-side operation. Presigned URLs for supported operations (e.g., GetObject) work in practice because the server sees a standard signed request. However, AWS lists this as "Not supported" and does not guarantee stability. **Do not rely on for production.** | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), observed here 2026-05-22 |
 | ListObjectVersions: Not officially supported | Returns results with VersionId="null" (same as non-versioned S3 bucket behavior). Functionally equivalent to ListObjectsV2 wrapped in versioning schema. AWS lists as "Not supported" — **use ListObjectsV2 instead.** | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), observed here 2026-05-22 |
@@ -240,6 +241,69 @@ Before reviewing the compatibility matrix, understand these fundamental constrai
 | Same region required | Access point must be in same region as FSx for ONTAP volume | [Restrictions](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html) |
 | Same account required | Access point and file system must be in same AWS account | [Restrictions](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html) |
 | ONTAP 9.17.1+ required | Minimum ONTAP version for S3 Access Points | [Restrictions](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html) |
+
+### Rename crosses two different S3 calls (interim)
+
+Everywhere else this page says "rename falls back to CopyObject + DeleteObject". That is
+only half of the mechanism, and the missing half is the half that currently fails.
+
+Hadoop's `fs.s3a.multipart.threshold` is documented as controlling upload **and** copy size,
+and explicitly "also controls the partition size in renamed files, as rename() involves
+copying the source file(s)"
+([core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml)).
+So one config decides which S3 call a rename becomes:
+
+| Renamed file size | Call issued | Status on an FSx for ONTAP S3 AP |
+|---|---|---|
+| ≤ `fs.s3a.multipart.threshold` | `CopyObject` | Supported within the same access point |
+| > `fs.s3a.multipart.threshold` | `UploadPartCopy` | Currently returns `NoSuchKey` when the copy-source key needs percent-encoding |
+
+`integrations/delta-lake-oss/config/spark-defaults.conf` sets that threshold to
+`268435456` (256 MiB), and sets `spark.sql.files.maxPartitionBytes` to the same value, so
+output part sizes are steered to the same order of magnitude as the switch. No output
+committer is configured anywhere in this repository, which means the default
+`FileOutputCommitter` and its rename-based commit are in force for the Spark and Glue write
+paths. Athena CTAS and DuckDB `COPY ... TO` write their final keys directly and never
+rename, so they are out of reach of this regardless of size.
+
+**Treat this as interim, not as a design rule.** AWS classifies the `UploadPartCopy`
+failure as a defect with a fix in progress, so the fix will remove it. Two consequences
+follow from that:
+
+- **Do not design around the copy-source key.** "Avoid `/` in keys" is incompatible with
+  prefix-organized layouts and would outlive its cause. The threshold is the knob, not the
+  key naming.
+- **The in-scope interim measure is to keep output part files below the threshold.**
+  Compare in bytes, because this page uses both prefixes on the same digits: the threshold
+  is `268435456` bytes; the "≥ 128 MB" consolidation target is ~134,000,000 bytes; and the
+  workload sizing table's "target 128-256 MB output files" tops out at ~256,000,000 bytes.
+  All three sit under it. **Read that last one as 256 MiB instead and it lands on
+  268,435,456 — exactly the threshold, i.e. the failing side.** Raising
+  `fs.s3a.multipart.threshold` also works but changes upload behaviour too, because the
+  same value governs both.
+
+**Not reproduced here.** The `UploadPartCopy` failure is measured in
+[Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns);
+what is established in this repository is only that the Spark and Glue write paths can
+reach the call by configuration. No run in this repository has produced the error.
+
+### Part sizes are not near the ceiling
+
+The object size ceiling does not constrain any part size this repository recommends, and
+the margin is large enough that it is worth stating rather than leaving as an open worry:
+
+| Setting | Value | Ceiling it is measured against |
+|---|---|---|
+| `fs.s3a.multipart.size` (`integrations/delta-lake-oss/config/spark-defaults.conf`) | 128 MiB | 5 GiB per part — about 40x of headroom |
+| Hand-rolled `part_size` (`integrations/manufacturing-data-platform/poc/synthetic-data-generator/generate_payloads.py`) | 8 MiB | 5 GiB per part |
+| Target consolidated file size (this page, [Q4](#q4-is-listobjectsv2-slow-on-fsx-for-ontap-s3-access-points)) | ≥ 128 MB | 50 GB per object |
+
+The per-part and whole-object ceilings are measured in binary units in
+[Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
+rather than the decimal "GB" of the public wording; at these part sizes the distinction
+does not change the answer. What does matter operationally is **when** the ceiling is
+enforced: a whole-object overrun is only detected at `CompleteMultipartUpload`, after every
+byte has been transferred. Validate size client-side rather than letting the server decide.
 
 ## Impact on Lakehouse Table Formats
 
@@ -347,8 +411,17 @@ ts_array = pa.array(df['timestamp'].values.astype('datetime64[us]'), type=pa.tim
 | Latency | Tens of milliseconds | Single-digit milliseconds |
 | Throughput | Limited by FSx for ONTAP provisioned throughput | Virtually unlimited (scales with prefixes) |
 | Requests/sec | Limited by FSx for ONTAP provisioned throughput | 5,500 GET/s per prefix, 3,500 PUT/s per prefix |
-| Max object size (upload) | 50 GB | 5 TB |
+| Max object size (upload) | 50 GB | 50 TB |
 | Concurrent readers | Limited by FSx for ONTAP throughput capacity | Highly parallel |
+
+> **On the native S3 figure**: this said 5 TB until 2026-09. Amazon S3 [raised the maximum
+> object size to 50 TB in December 2025](https://aws.amazon.com/about-aws/whats-new/2025/12/amazon-s3-maximum-object-size-50-tb),
+> a 10x increase, so the gap in this row is about 1000x rather than 100x. **Expect to find
+> all three of 5 TB, 50 TB and 53.7 TB in AWS's own documentation** — 5 TB on pages not yet
+> updated, 50 TB as the stated maximum, and 53.7 TB where the arithmetic ceiling
+> (10,000 parts × 5 GiB) is given instead. State which one is being cited and why, rather
+> than picking one silently: when the sources disagree, naming the disagreement is the
+> accurate answer.
 
 Source: [Amazon FSx for NetApp ONTAP performance](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html), [Accessing your data via Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 
@@ -446,9 +519,7 @@ See [Recovery Semantics](recovery-semantics.md) for detailed comparison.
 | Snowflake + BUILD_SCOPED_FILE_URL on S3 AP Stage | **Functional Verified** | Works correctly on FSx for ONTAP S3 AP external stage. |
 | Snowflake + PARSE_DOCUMENT on S3 AP Stage | **Functional Verified** | Works correctly on FSx for ONTAP S3 AP external stage. |
 | Snowflake + Managed Iceberg Table (COPY INTO from S3 AP Stage) | **Functional Verified** | COPY INTO from FSx for ONTAP S3 AP External Stage → Managed Iceberg Table confirmed. 64-day deduplication works. Horizon REST Catalog exposes to external engines with governance enforcement. |
-| Databricks + Unity Catalog | **Blocked** | Session policy blocks all S3 AP operations. Support case filed with Databricks. |
-| Snowflake + Parquet Read | API Verified | External Stage creation and query confirmed |
-| Delta Lake Write (any platform) | Not Supported | Fundamental constraint (no atomic rename) |
+| Databricks + Unity Catalog | **Blocked** | Registration succeeds; the **read** is denied. The down-scoped session policy uses bucket-style ARNs while AWS authorises access-point requests against the access point ARN. Scope corrected 2026-08-12 — see [BLK-001](./blocker-tracker.md#blk-001-uc-credential-vending-does-not-authorise-s3-ap-reads) |
 
 ---
 

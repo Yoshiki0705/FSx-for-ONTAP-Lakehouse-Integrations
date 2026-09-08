@@ -1,28 +1,33 @@
+# 前提条件（重要 — デプロイ前に確認する）
+#
+# このパイプラインが検知できるのは NFS / SMB 経由の書き込みだけである。
+# S3 Access Point 経由で届いた書き込みは FPolicy 通知を発火しないため、このフィードには
+# 1 件も流れない。実測 2026-08-26、ONTAP 9.18.1P3D1。FPolicy の event が受け付ける
+# プロトコルは cifs / nfsv3 / nfsv4 のみで、S3 に相当する値は存在せず、s3 を指定すると
+# HTTP 400 になる。mandatory 指定の同期ポリシーでも AP 経由の操作は遮断されない。
+#
+# 取り込み対象ボリュームが S3 Access Point 経由で書かれる場合、このスタックは使えない。
+# 代わりに EventBridge Scheduler によるポーリング、または ONTAP ネイティブ監査ログを
+# 起点にする。監査ログは AP 経由の操作を Source=HTTP（オブジェクト操作）および
+# Source=S3（LIST）として記録する。ただし要求者の識別情報は記録されない。
+#
+# 詳細: fsxn-observability-integrations の
+#   docs/ja/s3ap-monitoring-coverage-implications.md
+#   docs/ja/verification-results-fpolicy-s3ap-and-session.md
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: |
   FPolicy Ingestion — SQS キュー + Lambda (Bridge) で FPolicy イベントを
   SNS Topic (Snowpipe 互換 S3 Event 形式) に転送するパイプライン。
-  
+
+  前提: 検知できるのは NFS / SMB 経由の書き込みのみ。S3 Access Point 経由の書き込みは
+  FPolicy 通知を発火しないため、このフィードには流れない（ファイル冒頭のコメント参照）。
+
   フロー: FPolicy Server → SQS → Lambda (Bridge) → SNS Topic → Snowflake SQS (Snowpipe)
-  
-  Lambda Bridge は FPolicy イベントを Snowpipe 互換の S3 Event JSON に変換:
-  {
-    "Records": [{
-      "eventVersion": "2.1",
-      "eventSource": "aws:s3",
-      "eventName": "ObjectCreated:Put",
-      "s3": {
-        "bucket": {"name": "<s3-ap-alias>"},
-        "object": {"key": "<file_path>", "size": <size>}
-      }
-    }]
-  }
-  
+
   制約事項:
   - SQS VPC Endpoint 必須: Fargate (Private Subnet) → SQS 通信
   - Snowpipe は特定の S3 Event 形式を期待 → Lambda Bridge で変換
-  
-  参考: https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns
 
 Parameters:
   VpcId:
@@ -44,7 +49,12 @@ Parameters:
   S3AccessPointAlias:
     Type: String
     Default: ''
-    Description: S3 Access Point エイリアス（Snowpipe S3 Event の bucket.name に使用）
+    Description: >-
+      S3 Access Point エイリアス。Snowpipe が期待する S3 Event の bucket.name として
+      合成イベントに埋める**ラベル**であり、この Access Point 経由の書き込みを検知する
+      設定ではない。AP 経由の書き込みは FPolicy 通知を発火しないため、このフィードには
+      流れてこない。ここに指定するのは、NFS / SMB で書かれたファイルを下流の Snowpipe が
+      どの名前で受け取るべきかを合わせるためだけである。
 
   EventBusName:
     Type: String

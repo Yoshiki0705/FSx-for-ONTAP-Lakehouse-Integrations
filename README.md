@@ -84,6 +84,7 @@ Full architecture details: [docs/en/architecture.md](docs/en/architecture.md)
 | Same-region requirement | Analytics engine must co-locate with FSx for ONTAP | [Region Design Guide](docs/en/region-design-guide.md) |
 | ONTAP S3 object-store-server conflicts with S3 AP | Cannot coexist on same SVM | Use separate SVMs |
 | S3 AP on AD-joined SVM requires DC connectivity | Data ops fail if AD unreachable | [AD Integration notes](docs/en/fsx-ontap-s3ap-networking.md) |
+| An access point authorizes every request as **one identity** | The original per-file ACLs do not carry into an analytics or RAG pipeline reading through it | Scope retrieval in the index, not in the storage layer — [Adoption Playbook: Data Utilization hub](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/tree/main/docs/en/domains/data-utilization) |
 
 </details>
 
@@ -107,6 +108,7 @@ Full architecture details: [docs/en/architecture.md](docs/en/architecture.md)
 |---|---|
 | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | 17 serverless patterns for FSx for ONTAP S3 AP |
 | [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) | Edge (Raspberry Pi) → ONTAP → Kafka — feeds [Manufacturing Platform](integrations/manufacturing-data-platform/) |
+| [FSx-for-ONTAP-Adoption-Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) | Adoption design notes organized by lifecycle and domain. Its Data Utilization hub covers the access-point constraints and dataset-versioning decisions that sit upstream of the integrations here |
 
 **Documentation index**: [Reading Path Guide](docs/en/reading-path-guide.md) · [Industry Solution Catalog (26 industries)](docs/en/industry-solution-catalog.md)
 

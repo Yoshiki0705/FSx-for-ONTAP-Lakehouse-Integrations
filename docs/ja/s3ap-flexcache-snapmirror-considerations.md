@@ -75,7 +75,7 @@ FlexCache Cache Volume 上で ListObjectsV2 を実行する場合（ONTAP 9.18.1
 
 ## 3. SnapMirror 利用時の考慮事項
 
-### 3.1 S3 AP メタデータは転送されない
+### 3.1 転送されない S3 AP メタデータ
 
 SnapMirror はボリュームデータ（ファイル/ディレクトリ）のみを転送する。以下は宛先で別途構成が必要。
 
@@ -165,7 +165,7 @@ aws fsx delete-volume --volume-id fsvol-XXXXX --ontap-configuration '{"SkipFinal
 aws fsx delete-storage-virtual-machine --storage-virtual-machine-id svm-XXXXX
 ```
 
-### なぜ FSx API の `delete-volume` ではなく ONTAP REST API を使うのか
+### FSx API の `delete-volume` ではなく ONTAP REST API を使う理由
 
 - FlexCache は ONTAP 内部で特殊な FlexGroup として管理され、Origin との関係メタデータを持つ
 - ONTAP REST API の `DELETE /api/storage/flexcache/flexcaches/{uuid}` はこの関係を正しくクリーンアップする

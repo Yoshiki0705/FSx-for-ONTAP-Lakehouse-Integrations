@@ -54,6 +54,49 @@ Enforced by pre-commit hooks (`.githooks/pre-commit`) and CI workflows:
 - **Neutrality**: No vendor-versus framing. Present trade-offs symmetrically.
 - **Safety**: No PII, account IDs, internal IPs, persona names in public output.
 - **Bilingual**: JA/EN parity (same section structure/count).
+- **JA/EN numeric parity**: unit-bearing quantities (byte sizes, their `/s` rate forms,
+  percentages) must agree between an EN document and its JA twin. **Section-count parity does not
+  imply this** — the same table said "PutObject 5 GB ceiling" in EN and "50 GB 上限" in JA while
+  section counts matched. Usually the mismatch is a signal about the original, not the translation.
+  - `python3 scripts/check-doc-number-parity.py --selftest && python3 scripts/check-doc-number-parity.py`
+  - Scope is every tracked EN/JA pair (`/en/` ↔ `/ja/` swap **and** the `-ja.md` suffix).
+  - One-language-only quantity: `<!-- allow:number-parity -->` on the line. Whole-document
+    divergence: `KNOWN_DIVERGENT_PAIRS`. **Both are shrink-only** — the checker fails on a
+    suppression that no longer suppresses anything, so the list can only get shorter.
+  - `--report-unit-collisions` lists same-number/different-prefix pairs (`128 MB` vs `128 MiB`).
+    Reporting only: where a comparison depends on the prefix, state bytes.
+- **Japanese section headings** (`##`–`######`) are noun phrases (体言止め). Rule body — including
+  the suffix list for keeping an assertion under nominalization (`〜の存在` / `〜の不成立` /
+  `〜の理由` …) and the three narrative sentence types that stay as they are — lives in the global
+  `global-writing-style.md` steering; it is not restated here, so that only one copy can go stale.
+  Repo-side enforcement, both of which run `--selftest` before the real check because a gate that
+  cannot fail is indistinguishable from no gate:
+  - `python3 scripts/check-heading-style.py --selftest && python3 scripts/check-heading-style.py`
+  - `.githooks/pre-commit` step 6 (when `.md` files are staged) and the
+    `.github/workflows/docs-quality.yml` heading-style step.
+  - A heading that is deliberately narrative (a timeline entry, advice whose tone is the content,
+    a stated intention) carries `<!-- allow:heading-style -->` on the heading line, with the reason
+    written in the prose around it. H1 is out of scope: it is the document title.
+- **Detector word boundaries: never `\b`, and the reason is engine-dependent.** In a
+  Japanese-primary tree, `\b` silences a detector on the Japanese side while it keeps matching
+  English, so the run reports clean. `\bFSxN\b` matches neither `FSxNを使う` nor `構成でFSxN`.
+  **Both ends break independently.**
+
+  | Engine | Used by | `\b` semantics | Affected |
+  |---|---|---|:---:|
+  | Python `re` | `scripts/*.py`, `shared/scripts/*.py` | Unicode-aware (CJK is a word char) | **Yes** |
+  | GNU grep `-E` | `.github/workflows/*` | Locale-aware; CJK is a word constituent in UTF-8 | **Yes** |
+  | Go RE2 | `gitleaks` / `.gitleaks.toml` | ASCII-only | No |
+
+  Replacements: Python `(?<![A-Za-z0-9])` / `(?![A-Za-z0-9])`; ERE (no lookaround)
+  `(^|[^A-Za-z0-9_])x([^A-Za-z0-9_]|$)`. **Keep `_` in the class** to match `\b`'s ASCII semantics —
+  dropping it flags `FSxN_OnPre`, a configured SVM name, as a prose violation. Test each boundary
+  with a **Japanese-adjacent case and an ASCII-with-space case as a pair**, plus a negative case:
+  widening a match is invisible to positive cases.
+- **`scripts/check-detector-mutations.py` proves the selftests can fail.** It breaks each detector
+  deliberately and requires that detector's `--selftest` to fail; a surviving mutation means the
+  guard is untested. Run unconditionally in `.githooks/pre-commit` and `docs-quality.yml` (0.26s).
+  Rationale and the specific traps live in the script's own comments, not here.
 - **Pre-commit**: `gitleaks detect --config .gitleaks.toml --no-git --source .`
 
 ## Project-Specific Technical Knowledge

@@ -157,7 +157,7 @@ print(f"Files found: {len(files)}")
 2. VPC 条件が正しいか確認
 3. IAM Role のポリシーに S3 AP ARN が含まれているか確認
 
-### 問題: ListObjects が空を返す
+### 問題: ListObjects の空応答
 
 **原因**: FSx for ONTAP SVM の S3 バケットにデータがない、またはパスが間違っている
 

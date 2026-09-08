@@ -13,7 +13,7 @@
 
 - **FILE 型とは**: 非構造化ファイルの**ガバナンスされた参照**（`uri`, `offset`, `size`, `content_type`, `checksum`）をバイト列の代わりに保持する Delta の列型。文書・画像・音声・動画が構造化列の隣に並び、AI 関数や UDF に列として渡せる。2026-08 にベータ発表。
 - **設計レベルの判定**: FILE 型は、本リポジトリが [Iceberg メタデータカタログ](../../integrations/iceberg-metadata-catalog/README-ja.md)で既に実装しているパターン（ファイル参照 + AI 派生列を持つメタデータテーブル）を製品化したものにほぼ等しい。設計の方向性が正しかったことを示す有用なシグナル。
-- **ただし FSx for ONTAP のブロッカーは依然として解消しない** — ただし従来の記録より狭い理由で。`FILE EXTERNAL` は Unity Catalog Volume 内のファイルしか参照できない。S3 Access Point 上の UC External Volume は**作成できる**。失敗するのは**それ経由の読み取り**であり、Unity Catalog が払い出す down-scoped セッションポリシーがバケット形式 ARN で書かれている一方、AWS はアクセスポイント経由のリクエストをアクセスポイント ARN に対して認可評価するためである（[BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しが-s3-ap-の読み取りを認可しない)、2026-08-12 に影響範囲を訂正）。利用者側の回避策はない。残る経路は `FILE MANAGED` のみで、これはバイト列を UC 管理ストレージへ**コピー**するため、zero-copy と「データがその場に留まること」に依存する ONTAP の効率機能を失う。
+- **ただし FSx for ONTAP のブロッカーは依然として解消しない** — ただし従来の記録より狭い理由で。`FILE EXTERNAL` は Unity Catalog Volume 内のファイルしか参照できない。S3 Access Point 上の UC External Volume は**作成できる**。失敗するのは**それ経由の読み取り**であり、Unity Catalog が払い出す down-scoped セッションポリシーがバケット形式 ARN で書かれている一方、AWS はアクセスポイント経由のリクエストをアクセスポイント ARN に対して認可評価するためである（[BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り)、2026-08-12 に影響範囲を訂正）。利用者側の回避策はない。残る経路は `FILE MANAGED` のみで、これはバイト列を UC 管理ストレージへ**コピー**するため、zero-copy と「データがその場に留まること」に依存する ONTAP の効率機能を失う。
 - **前進した点**: FILE 型とは別機能である [`_object_metadata` 列](https://docs.databricks.com/aws/en/ingestion/object-metadata-column)（DBR 18.2+）が、S3 の**オブジェクトタグ**と**ユーザー定義メタデータ**をクエリ可能な列として公開する。これはオブジェクトストレージ側メタデータとメタデータテーブルを結ぶ公式の橋であり、本リポジトリがこれまで答えを持たなかった箇所。
 - **本検証で確認**: FSx for ONTAP S3 AP はオブジェクトタグと `x-amz-meta-*` を**サポートする**。タグは **file-scoped**（同一ボリューム上の別 Access Point から読める）で、**データと同じ PutObject** で付与できる。重要な制約が 2 つ: この Access Point ではオブジェクトタグは**実質 ASCII 限定**であり、オブジェクトの上書きでタグとユーザーメタデータが**無言で消える**。
 - **2 つの機構は併用できない**: Databricks は、Databricks 管理ストレージではユーザーメタデータ・システムメタデータ・タグが `null` になると明記している。したがって同一のバイト列に対して `FILE MANAGED`（UC ストレージへコピー）と `_object_metadata`（元ストレージからタグを読む）を両立できない。**取り込み時に一度だけ読み、以降はテーブルを真実の源とする。**
@@ -67,7 +67,7 @@
 
 ---
 
-## 2. なぜ FSx for ONTAP のブロッカーが解消しないのか
+## 2. FSx for ONTAP のブロッカーが解消しない理由
 
 **Evidence tier: Verified**（2026-08-12、専用の非トライアルワークスペースでネイティブ S3 のコントロール付きで計測 — [エビデンス](../../verification-pack/databricks/file-type/evidence/2026-08-12/evidence-record-tokyo.yaml)）。自分のアカウントで再現するには [検証ランブック](./databricks-verification-runbook.md) を参照。
 
@@ -99,13 +99,13 @@
             └─ 元オブジェクトのタグが読めなくなる（§4 参照）
 ```
 
-これは FSx for ONTAP データに対する他のあらゆる UC ガバナンス機能と同じ壁であり、推奨される暫定経路も変わらない。標準 S3 バケットへステージングし、そのコピーをガバナンスする。[BLK-001 の回避策](./blocker-tracker.md#blk-001-uc-の資格情報払い出しが-s3-ap-の読み取りを認可しない)と [DataSync → S3 ガイド](./datasync-to-s3-guide.md)を参照。
+これは FSx for ONTAP データに対する他のあらゆる UC ガバナンス機能と同じ壁であり、推奨される暫定経路も変わらない。標準 S3 バケットへステージングし、そのコピーをガバナンスする。[BLK-001 の回避策](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り)と [DataSync → S3 ガイド](./datasync-to-s3-guide.md)を参照。
 
 > **変わったこと**: BLK-001 を解消する価値が上がった。従来は FSx for ONTAP 常駐の表形式データに対する lineage・タグ・マスク・行フィルタを得るだけだった。今は加えて ONTAP 常駐の非構造化データに対する `FILE EXTERNAL` が得られる。これは「NAS 上に留めたままのマルチモーダル AI」そのものである。Databricks に機能ギャップを提起する際に改めて述べる価値がある — [外部に提起した質問](#6-外部に提起した質問)を参照。
 
 ---
 
-## 3. ファイル単位のアクセス制御は実際どこに落ちるか
+## 3. ファイル単位のアクセス制御が実際に効く範囲
 
 **Evidence tier: Public** — [ABAC core concepts](https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/core-concepts)、[Apply tags to Unity Catalog securable objects](https://docs.databricks.com/aws/en/database-objects/tags)より。
 

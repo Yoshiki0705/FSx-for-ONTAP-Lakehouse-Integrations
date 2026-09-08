@@ -12,7 +12,7 @@
 FSx for ONTAP は「**エンタープライズデータ保護 + マルチプロトコル + Lakehouse 統合**」を単一プラットフォームで提供します。標準 S3 + EBS では以下の組み合わせを実現できません:
 
 - 同じデータに NFS / SMB / S3 API で同時アクセス
-- ストレージ効率 100% のゼロコスト FlexClone（検証/開発環境の瞬時作成）
+- ストレージ効率の高いゼロコスト FlexClone（検証/開発環境の瞬時作成）
 - 一貫性のある Point-in-Time Snapshot（DataSync のソース整合性）
 - ファイルレベルイベント検知（FPolicy → リアルタイムパイプライン）
 - SnapMirror によるクロスリージョン DR（RPO 分単位）
@@ -37,7 +37,7 @@ FSx for ONTAP は「**エンタープライズデータ保護 + マルチプロ�
 
 ---
 
-## 機能別詳細: なぜこの機能を使うのか
+## 機能別詳細: この機能を使う理由
 
 ### S3 Access Points
 
@@ -81,7 +81,7 @@ FSx for ONTAP は「**エンタープライズデータ保護 + マルチプロ�
 | **制約** | メタデータイベントのみ（ファイル内容は転送しない）、Lambda 経由の運用複雑性 |
 | **関連ドキュメント** | [Kafka-ClickHouse-UC 接続](./kafka-clickhouse-unity-catalog-connectivity.md), [DataSync ガイド](./datasync-to-s3-guide.md)（FPolicy 代替パターン） |
 
-> **S3 Event Notifications の代替**: FSx for ONTAP S3 AP が Event Notifications をサポートしない（BLK-003）ため、FPolicy がイベント駆動パイプラインの唯一の手段です。FPolicy は NFS/SMB 側のファイル操作を検知するため、S3 AP 経由の操作は検知しません。用途に応じたプロトコル選択が重要です。
+> **S3 Event Notifications の代替**: FSx for ONTAP S3 AP が Event Notifications をサポートしません（BLK-003）。**FPolicy は代替になりません**: FPolicy が検知するのは NFS / SMB のファイル操作で、S3 AP 経由の操作は検知せず、`mandatory` 指定でも遮断しません（実測 2026-08-26 / ONTAP 9.18.1P3D1、[FPolicy と S3 Access Point のカバレッジ実測](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/s3ap-monitoring-coverage-implications.md)）。AP 経由の書き込みを起点にするなら、EventBridge Scheduler によるポーリングか ONTAP ネイティブ監査ログ（AP 経由の操作を `Source=HTTP` / `Source=S3` で記録）を使います。書き込みが NFS / SMB 経由のボリュームでは FPolicy が引き続き使えます。
 
 ### SnapMirror
 
@@ -133,7 +133,7 @@ FSx for ONTAP は「**エンタープライズデータ保護 + マルチプロ�
 
 ---
 
-## ドキュメント横断: どのドキュメントでどの機能が説明されているか
+## ドキュメント横断: 機能とドキュメントの対応
 
 | ドキュメント | S3 AP | Snapshot | FlexClone | FPolicy | SnapMirror | FabricPool | SVM | Multi-AZ |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|

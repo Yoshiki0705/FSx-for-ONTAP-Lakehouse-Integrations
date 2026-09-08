@@ -286,7 +286,7 @@ Zerobus Ingest → Delta direct (Kafka bypass, Databricks-only) 🆕 Under evalu
 
 | This Repo Requirement | fsxn-observability-integrations Counterpart |
 |----------------------|---------------------------------------------|
-| FPolicy audit log × agent access correlation | ✅ Design complete: [`docs/en/agent-fpolicy-correlation-pattern.md`](https://github.com/Yoshiki0705/fsxn-observability-integrations/blob/main/docs/en/agent-fpolicy-correlation-pattern.md) (PR #22) |
+| FPolicy audit log × agent access correlation | ⚠️ **Needs redesign**: [`docs/en/agent-fpolicy-correlation-pattern.md`](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/en/agent-fpolicy-correlation-pattern.md) (PR #22). When an agent reaches the data through an S3 access point, FPolicy receives no notification and the correlation does not hold (measured 2026-08-26). The input has to be replaced with the ONTAP native audit log |
 | Omnigent tool call logging | OpenTelemetry → CloudWatch integration |
 | Unity Catalog audit × ONTAP audit correlation | Time-axis join queries across both audit logs |
 
@@ -313,7 +313,7 @@ Zerobus Ingest → Delta direct (Kafka bypass, Databricks-only) 🆕 Under evalu
 - [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 - [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG)
 - [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai)
-- [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations)
+- [fsxn-observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
 - [AWS: Build a RAG application with Bedrock KB + FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html)
 - [repost.aws: FSx for ONTAP S3 AP as Bedrock Data Source](https://repost.aws/articles/AReKa8-o8XRGeVW2Nicbg1_w)
 - [Amazon S3 Vectors GA](https://aws.amazon.com/blogs/aws/amazon-s3-vectors-now-generally-available-with-increased-scale-and-performance/)

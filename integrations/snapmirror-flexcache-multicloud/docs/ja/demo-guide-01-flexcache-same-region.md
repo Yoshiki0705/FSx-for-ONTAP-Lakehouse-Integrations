@@ -192,7 +192,7 @@ AD DNS IPs: 198.51.100.50,198.51.100.51
 
 ---
 
-## Step 3: SVM を AD ドメインに参加させる
+## Step 3: SVM の AD ドメイン参加
 
 ```bash
 # SVM を AD ドメインに参加
@@ -454,7 +454,7 @@ aws lambda create-function \
 
 ---
 
-## Step 6: Lambda でデータを書き込む
+## Step 6: Lambda によるデータ書き込み
 
 ```bash
 # Lambda を呼び出してテストデータを書き込み

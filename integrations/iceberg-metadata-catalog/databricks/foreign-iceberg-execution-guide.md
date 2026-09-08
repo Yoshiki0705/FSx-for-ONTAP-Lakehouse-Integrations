@@ -30,7 +30,7 @@
 
 ---
 
-## 背景: なぜ 2 つのパスがあるのか
+## 背景: 2 つのパスが存在する理由
 
 ```
 FSx for ONTAP → [DataSync/FPolicy] → S3 → PyIceberg → S3 Tables (Iceberg テーブル)

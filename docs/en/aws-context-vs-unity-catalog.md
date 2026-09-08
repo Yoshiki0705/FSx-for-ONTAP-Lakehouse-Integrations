@@ -113,7 +113,7 @@ Databricks Unity Catalog is a unified governance catalog for data, AI models, ag
 | File data via S3 AP | Metadata auto-registered in knowledge graph (as S3 Tables) | Registered as External Location / Foreign Iceberg |
 | Quality inspection images | S3 AP URIs included as discovery targets | URI referenced from Lakebase records |
 | Design documents (Document Intelligence) | Extraction results discoverable as S3 Tables | Stored as Delta tables in UC |
-| Audit logs (FPolicy) | Correlation analysis via CloudWatch + knowledge graph | Cross-reference with Unity Catalog audit logs |
+| Audit logs (`vserver audit`) | Correlation analysis via CloudWatch + knowledge graph | Cross-reference with Unity Catalog audit logs. **FPolicy raises nothing for operations through an S3 access point, so it is not an input for auditing** |
 
 ### Recommended Architecture
 
@@ -162,7 +162,7 @@ FSx for ONTAP (NFS/SMB/S3 AP)
 | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | S3 AP events could auto-register metadata in AWS Context | — |
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | AWS Context as discovery layer for permission-aware RAG | Bedrock KB + S3 AP could link with UC External Location |
 | [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) | Auto-catalog registration of edge device data in AWS Context | Databricks-side governance of edge data |
-| [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | Correlation analysis of audit logs via knowledge graph | — |
+| [fsxn-observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | Correlation analysis of audit logs via knowledge graph | — |
 
 ---
 

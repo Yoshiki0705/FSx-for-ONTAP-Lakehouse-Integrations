@@ -21,7 +21,7 @@
 | 代表プロトコル | SMB / NFS / S3 API | Kafka（ストリーミング）/ Iceberg REST・Unity REST（カタログ）/ ネイティブ TCP・JDBC（クエリ） |
 | 代表ポート | 445(SMB) / 2049(NFS) / 443(S3) | 9094-9098(Kafka) / 443(REST) / 9000・9440(ClickHouse native) |
 | UC との接点 | External Location（S3 AP は非対応、別doc参照） | **ストリーミング取り込み**（Kafka→UC Delta）/ **カタログ公開**（UC Iceberg REST→外部エンジン） |
-| ガバナンス強制点 | ONTAP ACL/FPolicy + IAM | UC（テーブル/サービス資格情報）+ credential vending |
+| ガバナンス強制点 | ONTAP ACL + IAM（FPolicy は NFS / SMB 経路のみで、S3 Access Point 経由の操作は遮断しない） | UC（テーブル/サービス資格情報）+ credential vending |
 
 > 関連: ストレージ視点は [S3 Annotations 評価](./s3-annotations-governance-evaluation.md)、[zero-copy media governance](./zero-copy-media-governance.md) を参照。
 
@@ -158,7 +158,7 @@ Kafka（共有バス）─┤
 - **TLS 必須**: ClickHouse は 9440 / 8443 を使用（9000 / 8123 平文は内部限定）。
 - **最小権限**: UC 上のテーブル/カタログ権限を最小化。credential vending の付与範囲を限定。
 - **監査**: Kafka 取り込み（UC リネージ）+ 外部エンジンアクセス（UC 監査ログ）を突合。
-- **ストレージ層の補償コントロール**（別視点）: ONTAP ACL/FPolicy は引き続きファイルレベルで有効（[S3 Annotations doc §2](./s3-annotations-governance-evaluation.md) 参照）。
+- **ストレージ層の補償コントロール**（別視点）: ONTAP のファイルレベル ACL は引き続き有効。**ただし FPolicy は S3 Access Point 経由の操作を検知せず、`mandatory` 指定でも遮断しません**（実測 2026-08-26 / ONTAP 9.18.1P3D1）。AP 経由の経路に補償コントロールを置くなら、S3 側（アクセスポイントポリシー、IAM）か、検知のみなら ONTAP 監査ログ / ARP になります（[S3 Annotations doc §2](./s3-annotations-governance-evaluation.md)、[FPolicy と S3 Access Point のカバレッジ実測](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/s3ap-monitoring-coverage-implications.md)）。
 - **ネットワーク制御の具体**: Databricks サーバーレスは **NCC（Network Connectivity Config）** で egress を固定（安定 IP / PrivateLink）し、MSK ブローカー側のセキュリティグループで許可する。ClickHouse → S3 は可能なら **S3 ゲートウェイ/インターフェース VPC エンドポイント**経由。SG の向き: **MSK ブローカー SG は Databricks からの inbound（9094 等）を許可**、**ClickHouse は outbound 443（Databricks workspace / S3）を許可**。
 - **credential vending の運用**: vended credentials は **TTL・スコープ付きの一時資格情報**であり、外部エンジンの読み取りは UC 監査に記録される。**2 つの UC 機構を区別**すること — (a) **UC service credentials** = Databricks 自身が外部へ接続する際の認証（例: Kafka）、(b) **credential vending** = 外部エンジン（ClickHouse 等）が UC 権限を継承してデータを読む仕組み。
 - **前提: 外部データアクセスの有効化**: credential vending / 外部エンジンの UC アクセスは、メタストア/ワークスペースで **「外部データアクセス（external data access）」を有効化**することが前提（[External data access for pipelines](https://docs.databricks.com/aws/en/external-access/external-for-pipelines)）。無効の場合、ClickHouse 等からの接続は拒否される。

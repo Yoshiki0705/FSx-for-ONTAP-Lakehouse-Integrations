@@ -123,7 +123,8 @@ Amazon S3 enforces Block Public Access by default for all access points attached
 | Log Source | What is Captured | Retention | Use |
 |-----------|-----------------|-----------|-----|
 | **AWS CloudTrail** | FSx for ONTAP API calls (CreateAccessPoint, etc.), S3 data events (GetObject, PutObject via AP) | Configurable (recommend 1+ year for compliance) | Who accessed what, when, from where |
-| **FSx for ONTAP audit logs** | NFS/SMB file access events (via ONTAP fpolicy/audit) | Configurable on ONTAP | Direct file system access not through S3 AP |
+| **FSx for ONTAP audit log** (`vserver audit`) | File access events. NFS / SMB appear as `Source=CIFS` / `NFS`, and **operations through an S3 access point are also recorded, as `Source=HTTP` (object operations) and `Source=S3` (LIST)** | Configurable on ONTAP. An audit ACE (SACL) is required | Records operations arriving over NFS, SMB or an S3 access point. **The requester is not retained on the access point path**, however (`SubjectUserName` is `Not Present`, `SubjectIP` is an AWS service-side address), so the calling IAM principal has to be correlated with CloudTrail by timestamp. `HeadObject` is not recorded (measured 2026-08-26, ONTAP 9.18.1P3D1) |
+| **FPolicy** (a mechanism separate from auditing) | NFS / SMB file operations only | Configurable on ONTAP | Detection and blocking on the NFS / SMB path. **Not usable for operations through an S3 access point**: they raise no notification and are not blocked even by a `mandatory` policy (measured 2026-08-26, ONTAP 9.18.1P3D1) |
 | **Lakehouse audit logs** | Query history, table modifications (platform-specific) | Platform-dependent | Analytics activity tracking |
 | **VPC Flow Logs** | Network traffic to/from FSx for ONTAP ENIs | Configurable | Network-level access verification |
 | **S3 Access Point access logs** | S3 data events via CloudTrail | Same as CloudTrail | S3 API-level access audit |

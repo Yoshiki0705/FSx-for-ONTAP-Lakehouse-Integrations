@@ -10,7 +10,7 @@
 
 - **適用場面**: Databricks Unity Catalog / Delta Lake / Iceberg / Snowflake が標準 S3 ストレージを要求するが、FSx for ONTAP S3 AP は conditional writes / S3 Event Notifications を提供しない場合
 - **利用価値**: NAS ファイルデータを AI-ready データプロダクトに変換するマネージドな増分同期メカニズム（「回避策」ではなく、キュレートされたサブセットの移行パターン）
-- **主要制約**: 準リアルタイム（~5分レイテンシ）が限界。真のリアルタイム要件（<1分）には FPolicy → Lambda → S3 パターンが必要
+- **主要制約**: 準リアルタイム（~5分レイテンシ）が限界。真のリアルタイム要件（<1分）には FPolicy → Lambda → S3 パターンが必要だが、**それが使えるのは書き込みが NFS / SMB 経由の場合のみ**。S3 Access Point 経由の書き込みは FPolicy 通知を発火しない（実測 2026-08-26 / ONTAP 9.18.1P3D1）
 - **コスト構造**: 同一リージョン転送 $0.0125/GB + S3 ストレージ $0.023/GB/月。初回同期後は変更バイトのみ請求（1TB 初回 + 10GB/日増分で月額約$27）
 - **実装フェーズ**: PoC（単一ボリューム手動同期） → ステージング（Snapshot/FlexClone 検証） → スケジュール自動化 → モニタリング/コスト最適化 → マルチボリューム/DR
 
@@ -43,6 +43,8 @@
 - **合計: 7-12分**
 
 > 1分未満の要件がある場合は、FPolicy → Lambda → S3 パターンへの切り替えが必要です。DataSync は「準リアルタイム」であり「ストリーミング」ではありません。
+>
+> **ただし書き込みが S3 Access Point 経由で届く場合、FPolicy パターンは選べません。** AP 経由の操作は FPolicy 通知を発火しないため、1 分未満をストレージ層のイベントで満たす手段が現時点でありません（実測 2026-08-26 / ONTAP 9.18.1P3D1）。書き込み側でイベントを発行するか、書き込み経路を NFS / SMB に寄せる判断になります。
 
 ### Q4: DataSync のコストは高くないか？
 
@@ -138,6 +140,9 @@ IT ネットワーク（AWS 接続）:
 
 ### FPolicy 代替パターン
 
+> **前提**: このパターンが成立するのは、書き込みが NFS / SMB 経由で届く場合だけである。
+> S3 Access Point 経由の書き込みは FPolicy 通知を発火しない（実測 2026-08-26 / ONTAP 9.18.1P3D1）。
+
 DataSync はスケジュールベースですが、イベント駆動同期が必要な場合:
 
 ```
@@ -152,7 +157,7 @@ Databricks Auto Loader / Snowpipe
 
 **トレードオフ**: FPolicy → Lambda は準リアルタイムですが、運用複雑性が高い。DataSync はシンプルですが準リアルタイムです。
 
-**FPolicy → Lambda パターンの運用要件**（Data Engineering Lead observation）:
+**FPolicy → Lambda パターンの運用要件**（運用に関する補足）:
 - **Lambda 同時実行制限**: バースト時のスロットリングに備えて Reserved Concurrency を設定（製造データは勤務時間帯にバースト発生）
 - **Dead Letter Queue**: 処理失敗イベントを SQS DLQ に退避し、後続バッチで再処理
 - **冪等性**: 同一ファイルイベントの重複配信に対応（S3 PutObject は冪等だが、変換処理を挟む場合は dedup が必要）
@@ -353,7 +358,7 @@ aws datasync describe-task-execution --task-execution-arn <EXECUTION_ARN>
 | DataSync → S3 → UC External Location | ✅ **検証済み** | 2026-05 | datasync-to-s3-guide + UC 接続ガイド |
 | DataSync → S3 → Auto Loader（通知モード） | ✅ **設計検証済み** | 2026-06 | S3 Event Notifications 有効確認 |
 | DataSync → S3 → Snowflake External Table | ✅ **検証済み** | 2026-06 | AUTO_REFRESH 動作確認 |
-| FPolicy → Lambda → S3（準リアルタイム代替） | ⚠️ **設計のみ** | 2026-06 | アーキテクチャ設計完了、live 検証未実施 |
+| FPolicy → Lambda → S3（準リアルタイム代替） | ⚠️ **NFS / SMB 経由の書き込みに限り有効** | 2026-08-26 | S3 Access Point 経由の書き込みでは通知が発火しないことを実測。NFS / SMB 経路の live 検証は未実施 |
 | SnapMirror S3（FSx for ONTAP） | ❌ **利用不可確認** | 2026-05 | [検証エビデンス](../../verification-pack/snapmirror-s3/evidence/2026-05-26/evidence-record.yaml) |
 | クロスリージョン DataSync | 🔲 **未検証** | — | 技術的に可能（公式サポート）、本環境未実施 |
 | マルチボリューム並列同期 | 🔲 **未検証** | — | Phase 5 で検証予定 |
@@ -391,9 +396,9 @@ aws datasync describe-task-execution --task-execution-arn <EXECUTION_ARN>
 | 1時間ごと | 約1-2分 | 設定可能（デフォルト60秒） | **約62分** |
 | FPolicy → Lambda → S3 | 秒単位 | 設定可能（デフォルト60秒） | **約1-2分** |
 
-> ClickHouse S3Queue エンジンは標準 S3 バケットからの自動取り込みに最適です（DataSync 宛先）。FSx for ONTAP S3 AP からの直接 S3Queue は S3 Event Notifications 非サポートのため不可能です。製造分析で最も低レイテンシを実現するには、FPolicy → Lambda → S3 → ClickHouse S3Queue パターン（合計 1-2 分）を使用し、DataSync は日次/時次のバッチ enrichment に限定してください。
+> ClickHouse S3Queue エンジンは標準 S3 バケットからの自動取り込みに最適です（DataSync 宛先）。FSx for ONTAP S3 AP からの直接 S3Queue は S3 Event Notifications 非サポートのため不可能です。製造分析で最も低レイテンシを実現するには、FPolicy → Lambda → S3 → ClickHouse S3Queue パターン（合計 1-2 分）を使用し、DataSync は日次/時次のバッチ enrichment に限定してください。**ただしこれは書き込みが NFS / SMB 経由で届く場合に限る**（上記「FPolicy 代替パターン」の前提）。
 
-> 準リアルタイム要件（<1分）には、DataSync の代わりに FPolicy → Lambda → S3 を使用してください。
+> 準リアルタイム要件（<1分）には、DataSync の代わりに FPolicy → Lambda → S3 を使用してください。書き込みが S3 Access Point 経由の場合はこの経路が使えないため、書き込み側でイベントを発行するか、書き込み経路を NFS / SMB に寄せる判断になります。
 
 ## ベストプラクティス
 

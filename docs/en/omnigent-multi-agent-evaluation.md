@@ -503,7 +503,7 @@ Classifier Orchestrator
 | Snapshot | Consistent point-in-time data for batch analysis |
 | FlexClone | A/B testing with identical datasets (zero-copy) |
 | SnapMirror | DR for agent-generated metadata |
-| FPolicy audit | Correlate agent access logs with ONTAP audit events |
+| ONTAP audit log | Correlate agent access logs with ONTAP audit events. **Use `vserver audit`, not FPolicy**: when an agent reaches the data through an S3 access point, FPolicy receives no notification and the correlation comes back empty |
 
 ### Security Design
 
