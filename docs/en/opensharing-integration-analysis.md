@@ -107,7 +107,7 @@ The OpenSharing protocol's `dir` access mode (where the server vends temporary A
 |-----------|---------|-----|
 | **Delta/Iceberg transactional writes to FSx for ONTAP S3 AP** | ❌ Still blocked | Conditional writes (`If-None-Match`) return 501; atomic rename not supported. This is a product-level FSx for ONTAP S3 AP limitation, unrelated to OpenSharing. |
 | **Foreign Iceberg reading S3 Tables from Databricks** | ❌ Still blocked | External Location validation rejects S3 Tables internal buckets (HeadBucket fails). Unrelated to this credential vending test. |
-| **Databricks UC read from FSx for ONTAP S3 AP** | ❌ Still blocked | The `access_point` field on a UC External Location produced partial reads in a 2026-05-24 test, but Databricks Support confirmed on 2026-05-26 that the field is not GA and S3 AP is not a supported UC target — the partial success is "a side effect of incomplete internal handling, not a supported code path" ([details](../../integrations/databricks/README.md#where-the-denial-originates)). Today's STS test validates the *OpenSharing recipient* path, which is a separate route. |
+| **Databricks UC read from FSx for ONTAP S3 AP** | ❌ Still blocked | The `access_point` field on a UC External Location produced partial reads in a 2026-05-24 test; re-measured 2026-08-12, the field is not in current documentation and S3 AP is not a supported UC target — the partial success is "a side effect of incomplete internal handling, not a supported code path" ([details](../../integrations/databricks/README.md#where-the-denial-originates)). Today's STS test validates the *OpenSharing recipient* path, which is a separate route. |
 
 ### Architectural clarity
 
@@ -119,7 +119,7 @@ FSx for ONTAP (source of truth for raw data: images, CSV, sensor logs, documents
     │   • Direct IAM (Athena, Glue, EMR — existing)
     │
     │ READ path (NOT supported ❌):
-    │   • UC External Location on S3 AP (not GA; Databricks Support, 2026-05-26)
+    │   • UC External Location on S3 AP (reads denied; measured 2026-08-12)
     │
     │ WRITE path (NOT on FSx for ONTAP S3 AP):
     │   • Delta/Iceberg managed tables live on standard S3 or S3 Tables

@@ -50,7 +50,7 @@ Applications or platforms that validate or restrict S3 ARN patterns may not reco
 The two platforms then diverged:
 
 - **Snowflake — resolved.** Setting `AWS_ACCESS_POINT_ARN` on `CREATE STAGE` makes the session policy include the access point ARN. Verified 2026-05-24 ([evidence](../snowflake/evidence/2026-05-24/evidence-record.yaml)).
-- **Databricks Unity Catalog — not resolved.** An equivalent `access_point` field exists but was never released as GA, and Databricks Support confirmed on 2026-05-26 that S3 AP is not a supported UC External Location target ([details](../../integrations/databricks/README.md#where-the-denial-originates)).
+- **Databricks Unity Catalog — not resolved.** An equivalent `access_point` field exists but is not in current documentation, and the read through it is denied — registration succeeds ([details](../../integrations/databricks/README.md#where-the-denial-originates)).
 
 The lesson for ISVs is that exposing a way to declare the access point ARN explicitly is what makes the difference — the SDK-level compatibility is identical in both cases.
 

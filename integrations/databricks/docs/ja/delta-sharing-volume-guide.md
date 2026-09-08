@@ -244,7 +244,7 @@ Databricks 受信者
 
 > これは「Databricks プラットフォームの全機能」（ACID、Time Travel、Mosaic AI、ガバナンス）のコストです。ゼロコピーパス（Athena、Snowflake External Table）はストレージ追加コスト $0 ですが、これらの機能は利用できません。
 
-> **Databricks 顧客への重要な洞察**: DataSync → S3 → UC パスは回避策ではなく、Databricks サポートが確認した**推奨本番アーキテクチャ**（2026年5月）です。ゼロコピーパスでは得られない機能を提供します: ACID トランザクション、Time Travel、MERGE、OPTIMIZE、完全な Mosaic AI、エンタープライズガバナンス。トレードオフはデータ重複と同期レイテンシです。
+> **Databricks 顧客への重要な洞察**: DataSync → S3 → UC パスは回避策ではなく、下記の実測にもとづく**本リポジトリの推奨本番アーキテクチャ**です。ゼロコピーパスでは得られない機能を提供します: ACID トランザクション、Time Travel、MERGE、OPTIMIZE、完全な Mosaic AI、エンタープライズガバナンス。トレードオフはデータ重複と同期レイテンシです。
 
 > **このパターンでの ONTAP の価値**: FabricPool により FSx for ONTAP 上のコールドデータは自動的に S3 に階層化（NFS/SMB ユーザーには透過的）、ストレージコストを削減。Snapshot により DataSync 転送のポイントインタイム整合性を確保 — Snapshot から同期することでデータの一貫したビューを保証。
 
@@ -751,7 +751,7 @@ OpenSharing（Databricks-to-Databricks プロトコル）は **Unity Catalog に
 - **UC Managed Storage** ロケーション（Databricks 管理の S3 バケット）、または
 - **UC External Location**（Storage Credential で登録された顧客 S3 バケット）
 
-FSx for ONTAP S3 AP は UC External Location として登録できません（Databricks サポートにより 2026 年 5 月確認済み）。したがって、仮に FSx for ONTAP S3 AP 上に Delta Table を作成できたとしても、共有のために UC に登録することはできません。
+FSx for ONTAP S3 AP は UC External Location 経由で読み取れません。登録は成功し、通らないのは読み取りです（Unity Catalog が払い出す down-scoped セッションポリシーがバケット形式 ARN のため。2026-08-12 実測）。したがって、仮に FSx for ONTAP S3 AP 上に Delta Table を作成できたとしても、共有のために UC に登録することはできません。
 
 参照: [Create and manage shares for OpenSharing](https://docs.databricks.com/en/delta-sharing/create-share.html) — Share は "only one Unity Catalog metastore" のアセットのみ含むことができる。
 

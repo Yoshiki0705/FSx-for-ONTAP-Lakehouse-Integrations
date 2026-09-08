@@ -3,7 +3,7 @@
 🌐 **English** | [日本語](docs/ja/README.md)
 
 > **Validation Status: Experimental — S3 AP Not Supported by UC (Confirmed)**
-> - Unity Catalog External Locations do not currently support S3 Access Points as storage targets (confirmed by Databricks Support, May 2026). The `access_point` field was never released as GA and has been removed from documentation.
+> - Unity Catalog External Locations do not currently read S3 Access Point paths: registration succeeds and the read is what fails, because the down-scoped session policy Unity Catalog issues carries a bucket-form ARN (measured here 2026-08-12). The `access_point` field is not in current documentation and has been removed from documentation.
 > - The partial success observed (root-level listing, explicit file read) is "a side effect of incomplete internal handling, not a supported code path."
 > - Instance Profile + boto3 succeeded only as a controlled driver-node PoC.
 > - Kernel NFS mount from Databricks Dedicated cluster was blocked by a local runtime boundary in the tested environment.
@@ -437,7 +437,7 @@ so retained for ONTAP REST API access and future re-verification.
 | Approach | Result | Notes |
 |----------|--------|-------|
 | S3 AP + Unity Catalog | ❌ | Session policy does not support S3 AP ARN |
-| S3 AP + Unity Catalog (`access_point` field) | ⚠️ Not GA | `access_point` field never released as GA; partial success is side effect of incomplete internal handling (confirmed by Databricks Support, May 2026) |
+| S3 AP + Unity Catalog (`access_point` field) | ⚠️ Not GA | `access_point` field never released as GA; partial success is side effect of not traversing the denied path (measured here 2026-08-12) |
 | S3 AP + boto3 (Managed VPC) | ❌ | IMDS blocked |
 | NFS mount (Managed VPC) | ❌ | Egress restriction + seccomp |
 | NFS mount (Customer VPC) | ❌ | seccomp filter blocks NFS mount |

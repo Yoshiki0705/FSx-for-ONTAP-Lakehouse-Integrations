@@ -5,7 +5,7 @@
 🌐 [English](../../README.md) | **日本語**
 
 > **検証ステータス: 実験的 — S3 AP は UC で非サポート（確認済み）**
-> - Unity Catalog External Location は現在 S3 Access Points をストレージターゲットとしてサポートしていません（Databricks サポートにより 2026 年 5 月確認）。`access_point` フィールドは GA としてリリースされたことはなく、ドキュメントから削除されています。
+> - Unity Catalog External Location は S3 Access Point のパスを読み取れません。登録は成功し、通らないのは読み取りです（Unity Catalog が払い出す down-scoped セッションポリシーがバケット形式 ARN のため。2026-08-12 実測）。`access_point` フィールドは現行ドキュメントに存在せず、削除されています。
 > - 観測された部分的成功（ルートレベルの一覧取得、明示的ファイル読み取り）は「不完全な内部処理の副作用であり、サポートされたコードパスではない」とのことです。
 > - Instance Profile + boto3 は、制御されたドライバーノード PoC としてのみ成功しました。
 > - 本リポジトリは Databricks + FSx S3 Access Points の本番サポートを主張するものではありません。
@@ -52,7 +52,7 @@ s3://<s3ap-alias>/gold/      # ビジネスレディ集計
 | アプローチ | 結果 | 備考 |
 |----------|------|------|
 | S3 AP + Unity Catalog | ❌ | セッションポリシーが S3 AP ARN をサポートしない |
-| S3 AP + Unity Catalog（`access_point` フィールド） | ⚠️ GA ではない | `access_point` フィールドは GA としてリリースされていない。部分的成功は不完全な内部処理の副作用（Databricks サポート 2026 年 5 月確認） |
+| S3 AP + Unity Catalog（`access_point` フィールド） | ⚠️ GA ではない | `access_point` フィールドは現行ドキュメントに存在しない。部分的成功は拒否される経路を通っていないため（2026-08-12 実測） |
 | S3 AP + boto3 (Managed VPC) | ❌ | IMDS ブロック |
 | NFS マウント (Managed VPC) | ❌ | Egress 制限 + seccomp |
 | NFS マウント (Customer VPC) | ❌ | seccomp フィルターが NFS マウントをブロック |

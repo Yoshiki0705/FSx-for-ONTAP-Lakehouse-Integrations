@@ -193,7 +193,7 @@ annotation パイプラインは以下へのアクセスが必要:
 
 本リポジトリには、Databricks Unity Catalog（UC）と FSx for ONTAP の S3 Access Point（S3 AP）連携に関する制約が記録済みです（出典: [`integrations/databricks/README.md`](../../integrations/databricks/README.md) の "Support Confirmation, 2026-05"。**ロールベース表記**で、ケース番号・担当者名はステアリング方針どおり伏せています）。
 
-- **UC External Location は S3 AP に対して登録できるが、それ経由の読み取りが認可されない**（根本原因は Databricks Support 2026-05 確認、機構は 2026-08-12 に実測。evidence tier: **Verified**）。払い出される down-scoped セッションポリシーがバケット形式 ARN で書かれているため、アクセスポイント ARN に対する認可評価と一致しない
+- **UC External Location は S3 AP に対して登録できるが、それ経由の読み取りが認可されない**（機構は 2026-08-12 にネイティブ S3 のコントロール付きで実測。evidence tier: **Verified**）。払い出される down-scoped セッションポリシーがバケット形式 ARN で書かれているため、アクセスポイント ARN に対する認可評価と一致しない
 - **根本原因**: 資格情報払い出し時に Databricks が生成する **session policy が S3 AP ARN を持たない** → 作成は成功し、そのロケーション経由の読み取りがすべて拒否される
 - `access_point` フィールドは **GA リリースされず**、ドキュメントから削除。部分的成功は「サポートされたコードパスではない」
 - Instance Profile + boto3 で読めるが **UC ガバナンスを完全にバイパス**（PoC のみ）

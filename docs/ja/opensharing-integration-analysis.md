@@ -119,7 +119,7 @@ FSx for ONTAP（raw data の source of truth: 画像、CSV、センサーログ�
     │   • Direct IAM（Athena, Glue, EMR — 既存）
     │
     │ READ パス（非サポート ❌）:
-    │   • S3 AP に対する UC External Location（GA ではない。Databricks Support 2026-05-26）
+    │   • S3 AP に対する UC External Location（読み取りは拒否。2026-08-12 実測）
     │
     │ WRITE パス（FSx for ONTAP S3 AP 上ではない）:
     │   • Delta/Iceberg managed tables は標準 S3 または S3 Tables に配置
