@@ -97,9 +97,9 @@ Alternatively, an independent OpenSharing provider server (such as the reference
 
 **A: As of May 2026, Databricks does not officially support S3 Access Points for UC External Locations.**
 
-Verification results (this repository, Databricks Support confirmed 2026-05-26):
+Verification results (this repository, re-measured 2026-08-12):
 - The `access_point` field was never GA-released and has been removed from documentation
-- Partial operations (top-level listing, explicit file reads) are "a side effect of incomplete internal handling, not a supported code path" (Databricks Support response)
+- Partial operations (top-level listing, explicit file reads) are "a side effect of incomplete internal handling: the listing that succeeds does not go through the denied path (measured here 2026-08-12)
 - CREATE TABLE, subdirectory listing return `AccessDenied` / `UC_CLOUD_STORAGE_ACCESS_FAILURE`
 
 ### Q5: Can't ONTAP S3 (S3-compatible endpoint) be registered with UC?
@@ -571,7 +571,7 @@ SELECT * FROM uc_delta.catalog.schema.sensor_data LIMIT 10;
 
 | Path | Status | Date | Evidence |
 |------|--------|------|----------|
-| S3 AP → UC External Location | ❌ **Not supported confirmed** | 2026-05-26 | Databricks Support response |
+| S3 AP → UC External Location | ⚠️ **Registers; reads denied** | 2026-08-12 | measured here, native-S3 control |
 | ONTAP S3 → UC External Location | ❌ **Not supported confirmed** | 2026-05 | 02_research_findings.md |
 | NFS mount from Databricks | ❌ **Blocked** | 2026-05 | seccomp restriction |
 | DataSync → S3 → UC | ✅ **Verified** | 2026-05 | datasync-to-s3-guide.md |
@@ -596,7 +596,7 @@ SELECT * FROM uc_delta.catalog.schema.sensor_data LIMIT 10;
 | **Lakeflow Zerobus Ingest** | ⚠️ Indirectly usable | Kafka alternative. ap-northeast-1 available. Input is Databricks-side |
 | **Unity AI Gateway** | ❌ Not related | Agent/model governance. Not a storage connector |
 | **Agent Bricks** | ❌ Not related | Agent execution platform. Not a storage connector |
-| **UC Foreign Iceberg GA** | ❌ **Blocked confirmed (2026-06-21)** | `iceberg_rest` type not available in ap-northeast-1. S3 Tables managed bucket cannot be registered as UC External Location. Databricks Support confirmation needed |
+| **UC Foreign Iceberg GA** | ❌ **Blocked confirmed (2026-06-21)** | `iceberg_rest` type not available in ap-northeast-1. S3 Tables managed bucket cannot be registered as UC External Location. Not established publicly; asked Databricks |
 | **OpenSharing SecureConnect** | ⚠️ Indirectly usable | Secures external sharing of UC tables. No per-recipient FW changes needed (one-time provider setup). Strengthens security for FSx for ONTAP data → S3 → UC → external organization sharing path |
 
 ---

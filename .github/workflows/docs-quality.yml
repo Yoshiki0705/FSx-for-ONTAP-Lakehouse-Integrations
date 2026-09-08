@@ -150,7 +150,7 @@ jobs:
             xargs grep -nE "(responder|support_engineer|case_owner|escalation_contact)[\"' ]*[:：] *[\"'][A-Z][a-z]{2,}( [A-Z]\.| [A-Z] [A-Z]| [A-Z][a-z]+)[\"']" 2>/dev/null | \
             grep -v '\.github/workflows/' || true)
           if [[ -n "$HITS" ]]; then
-            echo "::error::Possible engineer/personal name found in a support-record field. Use a generic value (e.g. \"AWS Support\")."
+            echo "::error::Possible engineer/personal name found in a support-record field. Use a generic value (e.g. \"AWS Support\")."  # <!-- allow:support-attribution -->
             echo "$HITS"
             exit 1
           fi
