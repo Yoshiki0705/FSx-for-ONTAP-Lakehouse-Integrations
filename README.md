@@ -7,12 +7,15 @@
 
 > Validation framework for querying enterprise file data (NFS/SMB) from analytics and lakehouse engines via **FSx for ONTAP S3 Access Points** — without data movement. For data engineers, solutions architects, and implementation partners evaluating zero-copy analytics on existing file storage.
 
+**Scope**: this repository covers the analytics and lakehouse slice — which engines work against an access point, and what each result was measured on. It is **not** a general FSx for ONTAP guide. For adoption, design, migration and operations, start with the [Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook); for ransomware and immutability, audit log shipping, edge ingestion or access-aware RAG, see **[which repository answers your question](docs/en/repository-map.md)**.
+
 ---
 
 ## Get Started
 
 | What you want to do | Guide | Time |
 |---|---|:---:|
+| Find out whether this is even the right repository | [Which repository answers your question](docs/en/repository-map.md) | 3 min |
 | Understand what this is for, without jargon | [Business Guide](docs/en/quickstart-business-guide.md) | 5 min |
 | Choose the right engine for your use case | [Engine Selection Guide](docs/en/engine-selection-guide.md) | 10 min |
 | Compare architecture options & trade-offs | [Architecture Comparison](docs/adoption-guide/architecture-comparison.md) | 15 min |
