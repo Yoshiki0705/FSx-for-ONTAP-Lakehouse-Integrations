@@ -112,6 +112,8 @@ Full architecture details: [docs/en/architecture.md](docs/en/architecture.md)
 
 **Documentation index**: [Reading Path Guide](docs/en/reading-path-guide.md) · [Industry Solution Catalog (26 industries)](docs/en/industry-solution-catalog.md)
 
+**For AI agents and LLM tooling**: [llms.txt](llms.txt) — what this repository is, how to read its confidence markers, the entry points, and the eight assumptions that cost the most time when wrong.
+
 </details>
 
 <details>
