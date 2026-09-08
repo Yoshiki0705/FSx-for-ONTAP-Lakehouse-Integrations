@@ -112,7 +112,7 @@ As of this validation, **that direct path does not work**. When Unity Catalog as
 the storage-credential IAM role, it generates a **session policy** that recognizes
 standard S3 bucket ARNs but not **S3 Access Point ARNs**. Top-level listing and
 explicit-path reads may appear to work, but subdirectory listing, `CREATE TABLE`, and
-writes fail. Databricks Support confirmed S3 Access Points are not a supported storage
+writes fail: registration succeeds and the read is what fails, because the down-scoped session policy Unity Catalog issues carries a bucket-form ARN (measured here 2026-08-12). Whether Databricks documents S3 Access Points as a supported storage
 target for UC External Locations. This repository documents the observed behavior in
 detail; see [integrations/databricks](../../integrations/databricks/).
 

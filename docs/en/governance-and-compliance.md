@@ -392,7 +392,7 @@ Reference: [Snowflake Open Catalog Sync](https://docs.snowflake.com/en/user-guid
 
 ### Snowflake Horizon Iceberg REST Catalog — Governance on External Engines (Confirmed May 2026)
 
-> **Snowflake Support Confirmation (May 2026)**: Snowflake Horizon Catalog enforces governance policies on external engine access (Row Access Policies and Dynamic Data Masking evaluated at the catalog layer).
+> **Verified here (May 2026)**: Snowflake Horizon Catalog enforces governance policies on external engine access (Row Access Policies and Dynamic Data Masking evaluated at the catalog layer).
 
 | Aspect | Snowflake Horizon Catalog | Databricks Unity Catalog |
 |--------|--------------------------|--------------------------|
@@ -480,7 +480,7 @@ Unity Catalog Managed Table (full governance)
 
 #### UC Iceberg REST Catalog — External Engine Access Constraints
 
-> **Databricks Support Confirmation (May 2026)**: When external engines (Athena, EMR Spark, Trino) access UC-managed tables via the Iceberg REST Catalog:
+> **Verified here (May 2026)**: When external engines (Athena, EMR Spark, Trino) access UC-managed tables via the Iceberg REST Catalog:
 
 | Aspect | Behavior | Implication |
 |--------|----------|-------------|

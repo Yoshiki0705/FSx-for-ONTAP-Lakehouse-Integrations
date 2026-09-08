@@ -53,7 +53,8 @@ engines:
       - SELECT COUNT(*): ✅ (1340ms) — 170 rows
       - Snapshot history: ✅ (1216ms) — 5 snapshots visible
       EMR 7.5.0 has a bug where credential resolution fails on S3 Tables warehouse format.
-      Requires EMR 7.13.0+ (confirmed by AWS AWS support verification).
+      Requires EMR 7.13.0+; 7.5.0 failed here on credential resolution and 7.13.0 succeeded
+      (the runs above). Whether AWS publishes a minimum version for this is open.
       Config: type=rest, warehouse=<accountId>:s3tablescatalog/<bucket>, sigv4-enabled=true, signing-name=glue.
     reference: "https://docs.aws.amazon.com/glue/latest/dg/connect-glu-iceberg-rest.html"
     validation_items:

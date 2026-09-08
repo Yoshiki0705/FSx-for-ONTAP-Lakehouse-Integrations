@@ -82,12 +82,11 @@ tests:
     command: "aws s3 presign s3://...; curl <presigned-url>"
     expected_result: "Not supported (per AWS docs)"
     actual_result: "URL generated successfully; HTTP 200 on access"
-    passed: true  # Updated: AWS Support confirmed this is expected behavior
+    passed: true  # presigning is client-side, so the server sees a supported GetObject
     denial_layer: "N/A - presigning is client-side; GetObject is supported"
     cloudtrail_event_id: ""
     notes: |
-      AWS Support AWS Support engagement clarified:
-      Presigning is NOT an S3 API operation - it is a client-side SigV4 calculation.
+      Presigning is not an S3 API operation - it is a client-side SigV4 calculation.
       The presigned URL results in a standard GetObject request (which IS supported).
       It is structurally impossible to block presigning without breaking GetObject.
       However, AWS lists as "Not supported" meaning: not officially tested, no guarantees,
@@ -100,11 +99,10 @@ tests:
     command: "aws s3api list-object-versions --bucket verification-tes-...-ext-s3alias"
     expected_result: "Not supported (per AWS docs)"
     actual_result: "Returns results with VersionId=null"
-    passed: true  # Updated: AWS Support confirmed this is expected for non-versioned storage
+    passed: true  # never-versioned storage answers this from the same enumeration as ListObjectsV2
     denial_layer: "N/A - trivially answerable from filesystem enumeration"
     cloudtrail_event_id: ""
     notes: |
-      AWS Support AWS Support engagement clarified:
       For non-versioned storage, ListObjectVersions returns objects with VersionId="null".
       This is standard S3 behavior for never-versioned buckets.
       No versioning-specific logic is required - same underlying enumeration as ListObjectsV2.
@@ -146,7 +144,7 @@ tests:
     cloudtrail_event_id: ""
     notes: "Conditional writes correctly rejected with NotImplemented error."
 
-# Summary (updated after AWS Support clarification)
+# Summary
 total_tests: 10
 critical_tests: 5
 critical_passed: 1  # NEG-001
@@ -156,39 +154,35 @@ high_medium_passed: 4  # NEG-005, NEG-006 (clarified), NEG-007 (clarified), NEG-
 high_medium_failed: 0
 not_tested: 3
 
-# Key Findings (updated with AWS Support clarification - AWS Support engagement)
+# Key Findings
 key_findings:
   - finding: "DeleteObject succeeds for nobody user via file system permission model"
     severity: "High"
     impact: "Read-only AP user designation alone does not prevent deletion"
     mitigation: "Restrict DeleteObject in AP policy for read-only use cases"
-  - finding: "Presigned URLs work - confirmed expected by AWS Support"
+  - finding: "Presigned URLs work, while the compatibility table classifies Presign as unsupported"
     severity: "Low (clarified)"
     impact: "Presigning is client-side SigV4; server sees standard GetObject. Works for any supported operation."
     mitigation: "Do not rely on for production (not officially tested/guaranteed). Use direct authenticated requests."
-    aws_support_reference: "AWS Support engagement (2026-05-22)"
-  - finding: "ListObjectVersions returns results - confirmed expected by AWS Support"
+    why_the_table_says_otherwise: "open - asked AWS 2026-05-22; no published page states the reason"
+  - finding: "ListObjectVersions returns results, while the compatibility table classifies it as unsupported"
     severity: "Low (clarified)"
     impact: "Standard S3 behavior for non-versioned storage. Returns same data as ListObjectsV2 in versioning schema."
     mitigation: "Use ListObjectsV2 instead. Do not rely on ListObjectVersions for production."
-    aws_support_reference: "AWS Support engagement (2026-05-22)"
+    why_the_table_says_otherwise: "open - asked AWS 2026-05-22; no published page states the reason"
 
-# AWS Support Clarification Summary (AWS Support engagement)
-aws_support_clarification:
-  case_id: "REDACTED"
-  responder: "AWS Support"
-  date: "2026-05-22"
-  key_points:
-    - "Presigning is client-side signature calculation, not a server-side operation"
-    - "Presigned URLs work because they result in standard GetObject (which IS supported)"
-    - "ListObjectVersions on non-versioned storage is trivially answerable (same as ListObjectsV2)"
-    - "Conditional writes require extra server logic, hence explicitly blocked with NotImplemented"
-    - "Customers should NOT rely on 'Not supported' operations that incidentally work"
-    - "Documentation improvement escalated to FSx for ONTAP service team"
-  documentation_changes_requested:
-    - "Remove or reframe Presign row (not an API operation)"
-    - "Clarify ListObjectVersions behavior"
-    - "Distinguish 'Not supported + hard-blocked' vs 'Not supported + may incidentally work'"
+# What was asked, and what is still open. The reply itself is the vendor's confidential
+# information and is not reproduced here - it is kept in .private/support-correspondence/.
+inquiries:
+  - asked: "2026-05-22"
+    topic: |
+      Why the compatibility table classifies Presign and ListObjectVersions as
+      not supported, when both work through the access point here.
+    status: "open - no published page states the reason"
+documentation_changes_requested:
+  - "Remove or reframe Presign row (not an API operation)"
+  - "Clarify ListObjectVersions behavior"
+  - "Distinguish 'Not supported + hard-blocked' vs 'Not supported + may incidentally work'"
 
 # Promotion Decision
 security_verified_candidate: false

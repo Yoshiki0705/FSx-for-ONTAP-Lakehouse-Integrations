@@ -221,7 +221,7 @@ Reference: [Dynamic Tables](https://docs.snowflake.com/en/user-guide/dynamic-tab
 > ```
 > The Dynamic Table will then pick up new data on its next refresh cycle (based on TARGET_LAG).
 
-> **TARGET_LAG sizing guidance (confirmed by Snowflake Support)**:
+> **TARGET_LAG sizing, from the runs in this repository**:
 > - **60 seconds** (minimum): Only for small datasets or critical alerting. Each refresh re-reads the entire External Table.
 > - **5 minutes**: Near-real-time monitoring. Acceptable cost for medium datasets (GB-level).
 > - **1 hour** (recommended starting point): Batch analytics, daily reporting. Cost-efficient for large datasets.
