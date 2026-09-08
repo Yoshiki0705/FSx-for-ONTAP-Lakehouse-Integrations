@@ -158,7 +158,7 @@ cutoff 05:08:33Z の 05:09:33Z 実行から不可視（`new_files_found=0`）で
 
 ---
 
-## Pattern A の Snowflake 側: 合成通知で COPY は発火するか
+## Pattern A の Snowflake 側: 合成通知による COPY 発火の成立
 
 AWS 側の記録が残していた決定的な問いです。実際の Snowflake アカウントに対して検証し、
 **答えは「発火する」**でした。ただし4つの条件が全て成立する場合に限ります。
@@ -250,7 +250,7 @@ alias ではなく Access Point の ARN にして publish した結果、
 | S3 Event Notifications なし | 実イベントによる auto-ingest と `AUTO_REFRESH` が利用不可。合成通知が必要（[BLK-003](../../../../docs/ja/blocker-tracker.md)） |
 | `AUTO_REFRESH` なし | External Table / Directory Table のメタデータは明示的な `REFRESH` が必要（通常 Task で駆動） |
 | 条件付き書き込みなし | Iceberg / Delta の書き戻しがブロックされる（[BLK-002](../../../../docs/ja/blocker-tracker.md)） |
-| PutObject 50 GB 上限 | それを超えるオブジェクトは上限内でのマルチパートアップロードが必要 |
+| サイズ上限は 2 つある | 単一の `PutObject`（および 1 つの `UploadPart`）は 5 GiB 水準、オブジェクト全体は 50 GiB 水準。これを超えるファイルはマルチパートアップロードが必要で、オブジェクト全体の超過は `CompleteMultipartUpload` の時点で初めて検出される（**全バイトを転送し終えた後**）。[詳細](../../../../docs/ja/compatibility-matrix.md#上限に対するパートサイズの余裕) |
 | ステージに `AWS_ACCESS_POINT_ARN` が必須 | 設定しないと `LIST` は成功したまま読み取りが失敗する。誤解を招く部分的成功 |
 | AP ステージで `TO_FILE()` 非対応 | Vision AI には `COPY FILES` によるステージング手順が必要 |
 | Snowflake の公式サポート対象外 | Snowflake は FSx for ONTAP S3 Access Point を External Stage のバックエンドとして文書化していません。読み取り・取り込み・ガバナンス経路は本書で検証済みですが、本番利用前に Snowflake サポートへ確認してください |

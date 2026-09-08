@@ -164,12 +164,12 @@ looks like from the storage side.
 | **Workaround verification** | Lambda polling → SNS verified on the AWS side (6 defects found). The Snowflake leg (acceptance of a synthesized notification) is unverified. [Snowpipe Verification Results](../../integrations/snowflake/docs/en/snowpipe-verification-results.md) |
 
 **Workarounds**:
-1. **FPolicy → Lambda → S3** — FSx for ONTAP native file event detection as alternative. [Details](./datasync-to-s3-guide.md) (FPolicy section)
+1. ~~**FPolicy → Lambda → S3**~~ — **Not valid.** A write through an access point raises no FPolicy notification, so nothing flows down this path (measured 2026-08-26, ONTAP 9.18.1P3D1). It is valid only on volumes whose writes arrive over NFS or SMB. [Details](./datasync-to-s3-guide.md) (FPolicy section)
 2. **DataSync → standard S3** — Sync to standard S3, then use Event Notifications
 3. **Auto Loader listing mode** — Directory scan detection (affected by ListObjectsV2 latency)
 4. **Schedule polling** — EventBridge schedule for periodic crawl
 
-> **FPolicy operational complexity**: FPolicy → Lambda is technically valid but operationally complex (Lambda concurrency limits, DLQ, backpressure). If DataSync schedule (rate(5 minutes)) is acceptable, prefer it.
+> **FPolicy does not see writes through an S3 access point**: measured 2026-08-26, ONTAP 9.18.1P3D1. An FPolicy event accepts only the protocols cifs / nfsv3 / nfsv4, and operations on the access point path are not blocked even under a `mandatory` policy. Only where writes arrive over NFS or SMB is FPolicy → Lambda technically valid, and it is operationally complex there (Lambda concurrency limits, DLQ, backpressure). If a DataSync schedule (rate(5 minutes)) is acceptable, prefer it.
 
 ---
 

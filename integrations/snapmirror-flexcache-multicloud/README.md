@@ -187,7 +187,7 @@ S3 AP アタッチ済みボリュームを FlexCache Origin として使用可�
 | **現行 FSx for ONTAP (9.17.1)** | ❌ 不可 |
 | **将来の FSx for ONTAP (9.18.1+)** | ✅ サポート予定 |
 
-### 何ができるようになるか
+### 可能になること
 
 ONTAP 9.18.1 以降では、FlexCache Cache Volume に独立した S3 AP をアタッチできるようになる。これにより:
 

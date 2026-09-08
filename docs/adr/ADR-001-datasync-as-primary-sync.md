@@ -72,6 +72,7 @@ FSx for ONTAP 上のデータを Databricks Unity Catalog、Delta Lake、Iceberg
 - **理由**: イベント駆動で準リアルタイム（秒単位）だが、運用複雑性が高い
 - Lambda 同時実行制限、DLQ 管理、バックプレッシャー対策が必要
 - 1 分未満のレイテンシ要件がある場合にのみ採用 → DataSync との併用パターンとして設計
+- **2026-08-26 追記（この選択肢の適用範囲）**: S3 Access Point 経由で届いた書き込みは FPolicy 通知を発火しないことを実測（ONTAP 9.18.1P3D1）。この選択肢が成立するのは書き込みが NFS / SMB 経由の場合に限られる。S3 API で書く構成では比較対象にならない
 
 ## References
 

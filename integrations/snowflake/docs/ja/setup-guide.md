@@ -174,7 +174,7 @@ SQL スクリプトを順番に実行:
 2. サブディレクトリパスを使用してファイル数を削減
 3. NFS マウント経由でデータの存在を確認
 
-### 問題: GET_PRESIGNED_URL がエラーを返す
+### 問題: GET_PRESIGNED_URL のエラー応答
 
 **原因**: FSx for ONTAP S3 Access Point は Pre-signed URL を**サポートしていない**
 
@@ -188,7 +188,7 @@ SQL スクリプトを順番に実行:
 
 **解決**: `scripts/update_trust_policy.sh` を DESCRIBE INTEGRATION の値で実行
 
-### 問題: Snowpipe がファイルを検出しない
+### 問題: Snowpipe でのファイル未検出
 
 **原因**: FSx for ONTAP は S3 Event Notification を直接サポートしない
 

@@ -1,5 +1,21 @@
 # Event-Driven Architecture (FPolicy Integration)
 
+## Applicability (check this first)
+
+**This architecture only holds when writes arrive over NFS or SMB.**
+A write that arrives through an S3 access point raises no FPolicy notification, so none of the
+pipelines below is triggered at all. Measured 2026-08-26, ONTAP 9.18.1P3D1. An FPolicy event
+accepts only the protocols `cifs`, `nfsv3` and `nfsv4`; there is no value corresponding to S3.
+
+| Write path | This architecture |
+|---|---|
+| NFS / SMB | Holds |
+| S3 access point | **Does not hold.** Drive it from EventBridge Scheduler polling, or from the ONTAP native audit log (which records access point operations as `Source=HTTP` / `Source=S3`) |
+
+How to decide: if the ingest volume has an S3 access point attached and writes arrive that way,
+the design in this document cannot be used. Whatever is also written over NFS or SMB to the same
+volume is still detected.
+
 ## Overview
 
 Leveraging ONTAP FPolicy to detect NFS/SMB file operations in real-time and

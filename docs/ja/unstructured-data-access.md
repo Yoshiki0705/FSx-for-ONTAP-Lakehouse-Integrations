@@ -375,7 +375,7 @@ SELECT SNOWFLAKE.CORTEX.COMPLETE('pixtral-large',
 | S3 Select 非対応 | ファイル内の部分読み取り不可 | 全ファイルダウンロード後に処理 |
 | Event Notification 非対応 | 新ファイル検出が即時でない | Lambda ポーリング（1-5分間隔） |
 | Object Lock 非対応 | S3 レベルの WORM 不可 | ONTAP SnapLock で代替 |
-| 最大オブジェクトサイズ | 5TB（S3 API 制限） | 通常のメディアファイルは問題なし |
+| 最大オブジェクトサイズ | **アクセスポイント経由では 1 オブジェクト 50 GB** — ネイティブ S3 の上限ではありません（そちらは 2025 年 12 月以降 50 TB） | 通常のメディアファイルは問題なし。オブジェクト全体の超過は `CompleteMultipartUpload` の時点で初めて検出されるため（全バイト転送後）、クライアント側でサイズを検証すること |
 
 ### パフォーマンス考慮
 
@@ -391,7 +391,7 @@ SELECT SNOWFLAKE.CORTEX.COMPLETE('pixtral-large',
 - **UNIX パーミッション**: FSx for ONTAP のファイルパーミッションが S3 AP 経由でも適用
 - **AD 統合**: Active Directory ユーザーマッピングによるアクセス制御
 - **暗号化**: FSx for ONTAP の保存時暗号化 + S3 AP の転送時暗号化（TLS）
-- **監査**: ONTAP FPolicy + CloudTrail で全アクセスを記録
+- **監査**: ONTAP ネイティブ監査ログ（`vserver audit`）+ CloudTrail。**FPolicy は NFS / SMB のみで、S3 Access Point 経由の操作は記録しません。** 監査ログは AP 経由の操作も記録しますが要求者は残らないため、要求元 IAM プリンシパルは CloudTrail データイベント側と時刻で突き合わせます。[FPolicy と S3 Access Point のカバレッジ実測](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/s3ap-monitoring-coverage-implications.md)
 
 ### ONTAP 固有の価値（非構造化データ）
 

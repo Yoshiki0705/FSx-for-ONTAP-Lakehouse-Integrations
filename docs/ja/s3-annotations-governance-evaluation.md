@@ -22,7 +22,7 @@
 
 ### Q1: S3 Annotations でアクセス制御を強制できるか？
 
-**A**: **できません**。Annotations はオブジェクトに付随する記述メタデータであり、読み取り認可を強制しません。強制境界は引き続き ONTAP ファイルレベル ACL + FPolicy + S3 AP access point policy + IAM が担います。
+**A**: **できません**。Annotations はオブジェクトに付随する記述メタデータであり、読み取り認可を強制しません。強制境界は引き続き ONTAP ファイルレベル ACL + S3 AP access point policy + IAM が担います。**FPolicy はこの境界に数えられません**: S3 Access Point 経由の操作は通知されず、`mandatory` 指定でも遮断されないためです（実測 2026-08-26 / ONTAP 9.18.1P3D1、[FPolicy と S3 Access Point のカバレッジ実測](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/ja/s3ap-monitoring-coverage-implications.md)）。
 
 > **発見 vs 強制の区別**: annotation を ACL 代替と誤解すると重大なセキュリティギャップが発生します。annotation はミュータブルなため、`s3:PutObjectAnnotation` 権限を持つ主体が改ざん可能です。発見シグナルとしてのみ使用し、認可判定には必ず ONTAP/IAM の実 ACL を参照してください。
 
@@ -114,6 +114,11 @@ annotation はミュータブルなため、書き込み権限の統制が必須
 > **書き込み権限の統制**: annotation 書き込み権限が未統制の場合、ACL ヒント（案2）の改ざんやなりすましが可能になり、発見シグナルの信頼性が損なわれます。S3 バケットポリシーで `s3:PutObjectAnnotation` を特定 IAM ロール（annotation パイプライン）にのみ許可し、他の全プリンシパルには Deny してください。
 
 ### FPolicy → annotation パイプラインのセキュリティ
+
+> **前提**: このパイプラインが起動するのは、ソースの変更が NFS / SMB 経由で届く場合だけである。
+> S3 Access Point 経由で書かれた変更は FPolicy 通知を発火しないため、annotation の生成・再同期は
+> 1 件もトリガーされない（実測 2026-08-26 / ONTAP 9.18.1P3D1）。AP 経由で書かれるボリュームでは、
+> トリガーを EventBridge Scheduler のポーリングか ONTAP ネイティブ監査ログに置き換える。
 
 ```
 FSx for ONTAP FPolicy (ファイル変更検知)
@@ -286,7 +291,7 @@ S3 Metadata (annotation テーブル, Iceberg, S3 Tables 上)
 > - ベクトル検索/メタデータフィルタの後、**LLM へ渡す直前に認可を再チェック**
 > - 引用元リンク表示時にユーザーが実際にアクセス可能か再確認
 > - **権限不明は deny by default**
-> - 強制境界は引き続き **ONTAP ファイルレベル ACL + FPolicy + S3 AP access point policy + IAM**（補償コントロール）
+> - 強制境界は引き続き **ONTAP ファイルレベル ACL + S3 AP access point policy + IAM**（補償コントロール）。FPolicy はここに含めない（S3 Access Point 経由の操作を遮断しないため）
 
 > **ACL ヒントの導出**: ONTAP はマルチプロトコルのため、ヒントには **security style** を必須に含める:
 > - `security_style`: `ntfs` / `unix` / `mixed`
@@ -395,7 +400,7 @@ staged S3 ──▶ S3 Metadata (Iceberg) / 業務 Iceberg テーブル
 | FSx for ONTAP データの**発見性・AI コンテキスト**を AWS ネイティブで付与 | 案1（staged S3 + Annotations） | ゼロコピーは犠牲。スケールクエリは Athena/Trino/Spark/ClickHouse（`s3tablescatalog`）で可能・backfill/LF 設定要（§6） |
 | permission-aware RAG の**発見補助** | 案2（ACL ヒント annotation） | 強制は ONTAP/IAM、二重チェック必須 |
 | Databricks で**ガバナンス付き分析** | 案3（Iceberg 層へ寄せる） | `iceberg_rest` 解消が前提、クロスエンジン非強制に注意 |
-| FSx for ONTAP 直アクセス + 強制ガバナンス（現時点） | Snowflake External Table / Athena + ONTAP ACL/FPolicy | S3 Annotations とは独立 |
+| FSx for ONTAP 直アクセス + 強制ガバナンス（現時点） | Snowflake External Table / Athena + ONTAP ACL（FPolicy は NFS / SMB 経路のみ） | S3 Annotations とは独立 |
 
 ---
 

@@ -22,7 +22,7 @@
 
 ### Q1: Can S3 Annotations enforce access control?
 
-**A**: **No.** Annotations are descriptive metadata attached to objects and do not enforce read authorization. Enforcement boundaries remain ONTAP file-level ACL + FPolicy + S3 AP access point policy + IAM.
+**A**: **No.** Annotations are descriptive metadata attached to objects and do not enforce read authorization. Enforcement boundaries remain the ONTAP file-level ACL + S3 AP access point policy + IAM. **FPolicy does not count towards that boundary**: operations through an S3 access point raise no notification and are not blocked even under a `mandatory` policy (measured 2026-08-26, ONTAP 9.18.1P3D1, [the measured FPolicy / S3 access point coverage](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/en/s3ap-monitoring-coverage-implications.md)).
 
 > **Discovery vs enforcement**: Misinterpreting annotations as ACL substitutes creates a critical security gap. Annotations are mutable, so any principal with `s3:PutObjectAnnotation` permission can tamper with them. Use annotations only as discovery signals and always reference actual ONTAP/IAM ACLs for authorization decisions.
 
@@ -114,6 +114,12 @@ Annotations are mutable, making write permission control mandatory:
 > **Write-permission control**: If annotation write permissions are uncontrolled, ACL-hints (Case 2) can be tampered with or spoofed, undermining discovery signal reliability. In the S3 bucket policy, allow `s3:PutObjectAnnotation` only for specific IAM roles (annotation pipeline) and explicitly Deny for all other principals.
 
 ### FPolicy → Annotation Pipeline Security
+
+> **Precondition**: this pipeline only fires when the source change arrives over NFS or SMB.
+> A change written through an S3 access point raises no FPolicy notification, so neither annotation
+> generation nor re-sync is triggered at all (measured 2026-08-26, ONTAP 9.18.1P3D1). On a volume
+> written through an access point, replace the trigger with EventBridge Scheduler polling or the
+> ONTAP native audit log.
 
 ```
 FSx for ONTAP FPolicy (file change detection)
@@ -286,7 +292,7 @@ Attach `owner` / `group` / `acl_hash` / `classification` / `snapshot_id` / `allo
 > - **Re-check authorization immediately before passing context to the LLM**, after vector/metadata filtering
 > - Re-verify the user can actually access a cited source before showing its link
 > - **Deny by default when permissions are unknown**
-> - Keep the enforcement boundary at **ONTAP file-level ACL + FPolicy + S3 AP access point policy + IAM** (compensating controls)
+> - Keep the enforcement boundary at **the ONTAP file-level ACL + S3 AP access point policy + IAM** (compensating controls). FPolicy does not belong there, as it does not block operations through an S3 access point
 
 > **ACL-hint derivation**: ONTAP is multi-protocol, so the hint must include the **security style**:
 > - `security_style`: `ntfs` / `unix` / `mixed`
@@ -395,7 +401,7 @@ Public repository content **excludes case numbers and engineer names** (role-bas
 | Add **discoverability / AI context** to FSx for ONTAP data, AWS-native | Case 1 (staged S3 + Annotations) | Zero-copy sacrificed; scale-query works via Athena/Trino/Spark/ClickHouse (`s3tablescatalog`), backfill/LF setup required (§6) |
 | **Discovery aid** for permission-aware RAG | Case 2 (ACL-hint annotations) | Enforcement stays on ONTAP/IAM; double-check mandatory |
 | **Governed analytics in Databricks** | Case 3 (move to Iceberg layer) | Requires `iceberg_rest` resolution; mind cross-engine non-enforcement |
-| Direct FSx for ONTAP access + enforced governance (today) | Snowflake External Table / Athena + ONTAP ACL/FPolicy | Independent of S3 Annotations |
+| Direct FSx for ONTAP access + enforced governance (today) | Snowflake External Table / Athena + the ONTAP ACL (FPolicy covers only the NFS / SMB path) | Independent of S3 Annotations |
 
 ---
 

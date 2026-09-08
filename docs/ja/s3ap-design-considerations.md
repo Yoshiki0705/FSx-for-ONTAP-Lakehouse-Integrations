@@ -159,7 +159,7 @@ Amazon S3 と比較して、以下の機能が非対応または制約付き。
 | バージョニング | ❌ 非対応 | ONTAP Snapshot によるポイントインタイム保護 |
 | ライフサイクルポリシー | ❌ 非対応 | FabricPool 自動階層化 + カスタムスクリプト |
 | Object Lock / WORM | ❌ 非対応 | SnapLock（ONTAP 機能） |
-| S3 Event Notification | ❌ 非対応 | FPolicy + EventBridge パイプライン |
+| S3 Event Notification | ❌ 非対応 | スケジュールポーリング、または ONTAP ネイティブ監査ログ。**FPolicy + EventBridge は代替になりません**（AP 経由の書き込みは通知されません。実測 2026-08-26 / ONTAP 9.18.1P3D1） |
 | 条件付き書き込み (If-None-Match) | ❌ 501 Not Implemented | アプリ側で排他制御 |
 | Cross-Region Replication | ❌ 非対応 | SnapMirror（[参照](s3ap-flexcache-snapmirror-considerations.md)） |
 | S3 Select | ❌ 非対応 | Athena / DuckDB でクエリ |

@@ -337,7 +337,7 @@ FSx for ONTAP ──S3 AP──▶ Athena（SQL 分析、コピー不要）
 - Snowflake の Directory Table や GET_PRESIGNED_URL に相当する機能なし
 - Executor スケール処理は未検証
 
-### FILE 型（β、2026-08）— 評価済み。ブロッカーは解消しない
+### FILE 型（β、2026-08）— 評価済み。ブロッカーの未解消
 
 Databricks は [FILE 型](https://www.databricks.com/blog/introducing-file-type-native-column-type-multimodal-data)を導入した。非構造化ファイルへのガバナンスされた参照を Delta の列として持ち、構造化列と並べてクエリでき、AI 関数に渡せる。Unity Catalog における「ガバナンス付き非構造化データカタログ」に最も近いものである。
 

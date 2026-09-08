@@ -46,7 +46,7 @@ AWS Glue Iceberg REST エンドポイント経由で S3 Tables メタデータ�
 
 ## 設定
 
-### 重要な発見: Glue REST は Credential Vending をサポートしていない
+### 重要な発見: Glue REST の Credential Vending 非対応
 
 **2026-06-01 検証済み**: AWS Glue Iceberg REST エンドポイントは Iceberg REST `/credentials` エンドポイントを実装していません（`UnknownOperationException` を返す）。`loadTable` の `X-Iceberg-Access-Delegation: vended-credentials` ヘッダーもストレージ credentials を返しません。
 

@@ -45,7 +45,7 @@ Access Point の実装と Amazon S3 の実装との差分です。エンジン�
 |---|---|---|---|---|
 | 1.1 | 条件付き書き込み（`If-None-Match`） | HTTP 501 `NotImplemented`。製品レベルの制約として確認（2026-05-22） | Delta Lake と Hudi のコミットが不可能。カタログがポインタを保持する場合の Iceberg は影響を受けない | Athena + Glue 経由の Iceberg、または標準 S3 への書き込み |
 | 1.2 | アップロードのチェックサムがレスポンスに返らない | AWS が明記している挙動。汎用バケットと異なり、チェックサム値は「オブジェクトメタデータおよびオブジェクト自体として FSx for NetApp ONTAP ボリュームに保存されない」ため「チェックサム値はレスポンスに返らない」。ETag も MD5 ダイジェスト**ではない**と明記されている。計算したチェックサムをレスポンスと照合するクライアントはこの手順を完了できず、**書き込みが完了した後に**失敗する | Snowflake `COPY INTO @stage` が、完全なオブジェクトを残したまま失敗する（[BLK-009](./blocker-tracker.md)）。エラー文は暗号化タイプ（`aws:fsx` は `AWS_SSE_S3` でも `AWS_SSE_KMS` でもない）を指すが、これは機構ではなく対処のヒント | Access Point へアンロードしない |
-| 1.3 | S3 Event Notifications | 発行されない | Snowpipe 自動取り込み不可、Auto Loader 通知モード不可、EventBridge トリガー不可 | FPolicy → Lambda、または DataSync → 標準 S3、またはスケジュールポーリング |
+| 1.3 | S3 Event Notifications | 発行されない | Snowpipe 自動取り込み不可、Auto Loader 通知モード不可、EventBridge トリガー不可 | DataSync → 標準 S3、スケジュールポーリング、または ONTAP ネイティブ監査ログ。**FPolicy は代替になりません**（AP 経由の書き込みは通知されません。実測 2026-08-26 / ONTAP 9.18.1P3D1） |
 | 1.4 | オブジェクトバージョニング | 非対応。`ListObjectVersions` は `VersionId="null"` を返す | S3 ネイティブのバージョン履歴がない | ポイントインタイム復旧には ONTAP Snapshot |
 | 1.5 | 単一アップロード上限 50 GB | これを超えるオブジェクトはダウンロードは可能だがアップロードは不可。マルチパートは対応 | 大容量オブジェクトの書き込みにはマルチパートが必要 | 出力ファイルを分割。スキャン効率の観点でも 128〜256 MB を目標にする |
 | 1.6 | Lifecycle ポリシー、Object Lock、S3 Select、クロスリージョンレプリケーションなし | 非対応 | 保持期間や階層化を S3 の語彙で表現できない | FabricPool 階層化、SnapLock、S3 Select の代わりにクエリエンジン |
@@ -87,7 +87,7 @@ ONTAP は実装しています。FSx for ONTAP が公開していません。機
 > アトミックリネーム要件、同じ欠落プリミティブという論理は妥当ですが、推論です。
 > 推論として明記しています。
 
-### Delta Lake: 要件は put-if-absent であり、外部化できる
+### Delta Lake: put-if-absent という要件と外部化の成立
 
 「Delta はここに書き込めない」は過大に読まれやすいため、節を分けて記載します。
 

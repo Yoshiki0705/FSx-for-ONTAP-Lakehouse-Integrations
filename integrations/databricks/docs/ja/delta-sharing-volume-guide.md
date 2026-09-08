@@ -761,7 +761,7 @@ FSx for ONTAP S3 AP は UC External Location 経由で読み取れません。�
 
 [OSS OpenSharing サーバー](https://github.com/delta-io/delta-sharing)を使用する場合（UC をバイパス）でも、サーバーは一貫した `_delta_log` を持つ有効な Delta Table を指す必要があります。同じストレージ要件が適用されます — Delta コミットプロトコルをサポートするストレージバックエンドが必要です。
 
-### 「EC2 で Delta Table を作成する」とは実際に何を意味するか
+### 「EC2 で Delta Table を作成する」の実際の意味
 
 EC2 上で Spark ジョブを実行し、FSx for ONTAP S3 AP からファイルを読み取って Delta Table を書き込む場合、それは ETL を実行しています：
 
@@ -783,7 +783,7 @@ OpenSharing
 
 これは定義上 ETL です。"E" (Extract) は FSx for ONTAP からの読み取り。"T" (Transform) は Delta フォーマットへの変換。"L" (Load) は S3 への書き込みです。
 
-### まとめ: なぜ S3 バケットが必要か
+### まとめ: S3 バケットが必要な理由
 
 | ステップ | FSx for ONTAP S3 AP 単独では不十分な理由 |
 |---------|---|

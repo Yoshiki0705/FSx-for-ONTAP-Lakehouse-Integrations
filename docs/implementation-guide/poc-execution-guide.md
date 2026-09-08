@@ -69,7 +69,7 @@
 
 ### Phase 2: Pipeline (Day 3–5)
 
-- [ ] FPolicy configured and events flowing
+- [ ] FPolicy configured and events flowing — **only if the PoC writes over NFS or SMB.** Writes that arrive through an S3 access point raise no FPolicy notification (measured 2026-08-26, ONTAP 9.18.1P3D1), so this criterion is unreachable for an S3-write PoC and the polling or audit-log path should be used instead
 - [ ] AI classification running on sample files
 - [ ] Classification accuracy reviewed (target: >85%)
 - [ ] OpenSearch index populated
@@ -109,7 +109,7 @@
 | Issue | Likely Cause | Resolution |
 |-------|-------------|------------|
 | S3 AP returns AccessDenied | IAM policy or S3 AP policy misconfigured | Verify Lambda role has `s3:GetObject` on AP ARN |
-| FPolicy events not flowing | FPolicy engine not connected or scope too narrow | Check `vserver fpolicy show` and event scope |
+| FPolicy events not flowing | **First check how the data is being written.** Writes through an S3 access point produce no FPolicy notification at all, and that is expected — not a misconfiguration. Otherwise: engine not connected, or scope too narrow | Confirm the write path first, then `vserver fpolicy show` and the event scope |
 | Bedrock timeout | File too large or prompt too complex | Reduce file size limit or simplify prompt |
 | OpenSearch index empty | Embedding pipeline failed silently | Check Lambda CloudWatch logs for errors |
 | Athena query returns 0 rows | S3 Tables namespace or table not registered | Verify `SHOW TABLES` in Athena workgroup |

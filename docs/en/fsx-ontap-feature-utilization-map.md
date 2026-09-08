@@ -81,7 +81,7 @@ FSx for ONTAP provides **enterprise data protection + multiprotocol access + Lak
 | **Constraints** | Metadata events only (file content not transferred), operational complexity via Lambda |
 | **Related docs** | [Kafka-ClickHouse-UC Connectivity](./kafka-clickhouse-unity-catalog-connectivity.md), [DataSync Guide](./datasync-to-s3-guide.md) (FPolicy alternative pattern) |
 
-> **S3 Event Notifications alternative**: Because FSx for ONTAP S3 AP does not support Event Notifications (BLK-003), FPolicy is the only means for event-driven pipelines. FPolicy detects NFS/SMB-side file operations, so operations via S3 AP are not detected. Protocol selection per use case is important.
+> **S3 Event Notifications alternative**: FSx for ONTAP S3 AP does not support Event Notifications (BLK-003). **FPolicy is not a substitute**: what FPolicy detects is NFS / SMB file operations, and operations through the S3 access point are neither detected nor blocked, even under a `mandatory` policy (measured 2026-08-26, ONTAP 9.18.1P3D1, [the measured FPolicy / S3 access point coverage](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/en/s3ap-monitoring-coverage-implications.md)). To drive something from a write through the access point, use EventBridge Scheduler polling or the ONTAP native audit log (which records access point operations as `Source=HTTP` / `Source=S3`). On volumes written over NFS or SMB, FPolicy remains usable.
 
 ### SnapMirror
 

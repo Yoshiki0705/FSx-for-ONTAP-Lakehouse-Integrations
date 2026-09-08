@@ -7,7 +7,7 @@
 
 ---
 
-## なぜ本リポジトリに重要か
+## 本リポジトリにとっての重要性
 
 本リポジトリは FSx for ONTAP 上のデータを Databricks（Unity Catalog）と AWS 分析サービスの両方に接続するパターンを検証しています。AWS Context は AWS 側のデータカタログ/ディスカバリ層として、Unity Catalog と**補完的または競合的**に位置づけられます。
 
@@ -66,7 +66,7 @@ Databricks Unity Catalog は、データ、AI モデル、エージェント、M
 
 ---
 
-## 位置づけ: 補完か競合か
+## 位置づけ: 補完と競合の切り分け
 
 ### 補完的に使えるシナリオ（推奨）
 
@@ -113,7 +113,7 @@ Databricks Unity Catalog は、データ、AI モデル、エージェント、M
 | S3 AP 経由のファイルデータ | ナレッジグラフにメタデータ自動登録（S3 Tables として） | External Location / Foreign Iceberg として登録 |
 | 品質検査画像 | S3 AP URI をディスカバリ対象に含む | Lakebase レコードから URI 参照 |
 | 設計文書 (Document Intelligence) | 抽出結果を S3 Tables として発見可能に | Delta テーブルとして UC に格納 |
-| 監査ログ (FPolicy) | CloudWatch + ナレッジグラフで相関分析 | Unity Catalog 監査ログとの突合 |
+| 監査ログ (`vserver audit`) | CloudWatch + ナレッジグラフで相関分析 | Unity Catalog 監査ログとの突合。**FPolicy は S3 Access Point 経由の操作を出さないため監査の入力にしない** |
 
 ### 推奨アーキテクチャ
 
@@ -162,7 +162,7 @@ FSx for ONTAP (NFS/SMB/S3 AP)
 | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | S3 AP イベントで AWS Context にメタデータ自動登録するパターンが候補 | — |
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | Permission-aware RAG のディスカバリ層として活用 | Bedrock KB + S3 AP が UC External Location と連携する可能性 |
 | [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) | エッジデバイスデータの AWS Context 自動カタログ登録 | エッジデータの Databricks 側ガバナンス |
-| [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | 監査ログをナレッジグラフで相関分析 | — |
+| [fsxn-observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | 監査ログをナレッジグラフで相関分析 | — |
 
 ---
 

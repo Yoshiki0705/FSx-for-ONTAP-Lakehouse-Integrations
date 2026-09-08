@@ -10,7 +10,7 @@
 
 - **Use case**: When Databricks Unity Catalog / Delta Lake / Iceberg / Snowflake require standard S3 storage, but FSx for ONTAP S3 AP does not provide conditional writes / S3 Event Notifications
 - **Value**: A managed incremental sync mechanism transforming NAS file data into AI-ready data products (not a "workaround" but a curated subset migration pattern)
-- **Key constraint**: Near-real-time (~5 min latency) is the limit. True real-time requirements (<1 min) require FPolicy → Lambda → S3 pattern
+- **Key constraint**: Near-real-time (~5 min latency) is the limit. Sub-minute requirements (<1 min) require the FPolicy → Lambda → S3 pattern, and **that is only available when writes arrive over NFS or SMB**. A write through an S3 access point raises no FPolicy notification (measured 2026-08-26, ONTAP 9.18.1P3D1)
 - **Cost structure**: Same-region transfer $0.0125/GB + S3 storage $0.023/GB/month. After initial sync, only changed bytes are billed (1 TB initial + 10 GB/day incremental ≈ $27/month)
 - **Implementation phases**: PoC (single volume manual sync) → Staging (Snapshot/FlexClone validation) → Scheduled automation → Monitoring/cost optimization → Multi-volume/DR
 
@@ -43,6 +43,8 @@
 - **Total: 7-12 min**
 
 > If sub-minute requirements exist, switch to FPolicy → Lambda → S3 pattern. DataSync is "near-real-time," not "streaming."
+>
+> **If the writes arrive through an S3 access point, however, the FPolicy pattern is not an option.** Operations on that path raise no FPolicy notification, so there is currently no way to meet a sub-minute target from a storage-layer event (measured 2026-08-26, ONTAP 9.18.1P3D1). The choice is to emit the event on the writing side, or to move the write path onto NFS / SMB.
 
 ### Q4: Is DataSync expensive?
 
@@ -135,6 +137,9 @@ IT Network (AWS-connected):
 
 ### FPolicy Alternative Pattern
 
+> **Precondition**: this pattern only holds when writes arrive over NFS or SMB.
+> A write through an S3 access point raises no FPolicy notification (measured 2026-08-26, ONTAP 9.18.1P3D1).
+
 DataSync is schedule-based, but for event-driven sync:
 
 ```
@@ -149,7 +154,7 @@ Databricks Auto Loader / Snowpipe
 
 **Trade-off**: FPolicy → Lambda is near-real-time but operationally complex. DataSync is simpler but schedule-bound.
 
-**FPolicy → Lambda pattern operational requirements** (Data Engineering Lead observation):
+**FPolicy → Lambda pattern operational requirements** (operational note):
 - **Lambda concurrency limits**: Set Reserved Concurrency for burst protection (manufacturing data bursts during shift hours)
 - **Dead Letter Queue**: Route failed events to SQS DLQ for batch reprocessing
 - **Idempotency**: Handle duplicate event delivery (S3 PutObject is idempotent, but transformations in between require dedup)
@@ -350,7 +355,7 @@ aws datasync describe-task-execution --task-execution-arn <EXECUTION_ARN>
 | DataSync → S3 → UC External Location | ✅ **Verified** | 2026-05 | datasync-to-s3-guide + UC Connection Guide |
 | DataSync → S3 → Auto Loader (notification mode) | ✅ **Design verified** | 2026-06 | S3 Event Notifications enabled confirmed |
 | DataSync → S3 → Snowflake External Table | ✅ **Verified** | 2026-06 | AUTO_REFRESH operation confirmed |
-| FPolicy → Lambda → S3 (near-real-time alternative) | ⚠️ **Design only** | 2026-06 | Architecture design complete, live verification pending |
+| FPolicy → Lambda → S3 (near-real-time alternative) | ⚠️ **Valid only for writes over NFS / SMB** | 2026-08-26 | Measured: a write through an S3 access point raises no notification. Live verification of the NFS / SMB path is still pending |
 | SnapMirror S3 (FSx for ONTAP) | ❌ **Confirmed unavailable** | 2026-05 | [Verification evidence](../../verification-pack/snapmirror-s3/evidence/2026-05-26/evidence-record.yaml) |
 | Cross-region DataSync | 🔲 **Not verified** | — | Technically possible (officially supported), not tested in this environment |
 | Multi-volume parallel sync | 🔲 **Not verified** | — | Scheduled for Phase 5 verification |
@@ -388,9 +393,9 @@ aws datasync describe-task-execution --task-execution-arn <EXECUTION_ARN>
 | Every 1 hour | ~1-2 min | Configurable (default 60s) | **~62 min** |
 | FPolicy → Lambda → S3 | Seconds | Configurable (default 60s) | **~1-2 min** |
 
-> ClickHouse S3Queue engine is optimal for automated ingestion from standard S3 buckets (DataSync destination). Direct S3Queue from FSx for ONTAP S3 AP is not possible due to lack of S3 Event Notifications. For lowest latency in manufacturing analytics, use the FPolicy → Lambda → S3 → ClickHouse S3Queue pattern (total 1-2 min), and limit DataSync to daily/hourly batch enrichment.
+> ClickHouse S3Queue engine is optimal for automated ingestion from standard S3 buckets (DataSync destination). Direct S3Queue from FSx for ONTAP S3 AP is not possible due to lack of S3 Event Notifications. For lowest latency in manufacturing analytics, use the FPolicy → Lambda → S3 → ClickHouse S3Queue pattern (total 1-2 min), and limit DataSync to daily/hourly batch enrichment. **This holds only where writes arrive over NFS or SMB** (see the precondition under "FPolicy Alternative Pattern" above).
 
-> For near-real-time requirements (<1 min), use FPolicy → Lambda → S3 instead of DataSync.
+> For near-real-time requirements (<1 min), use FPolicy → Lambda → S3 instead of DataSync. Where the writes arrive through an S3 access point that path is unavailable, so the choice is to emit the event on the writing side or to move the write path onto NFS / SMB.
 
 ## Best Practices
 
