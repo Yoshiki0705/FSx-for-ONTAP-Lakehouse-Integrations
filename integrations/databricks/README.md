@@ -81,7 +81,7 @@ Storage Credential (IAM Role ARN + External ID)
 | Concept | Description | FSx for ONTAP S3 AP Status | Reference |
 |---|---|:---:|---|
 | **[Storage Credential](https://docs.databricks.com/aws/en/connect/unity-catalog/storage-credentials)** | IAM Role that Databricks assumes to access cloud storage. During AssumeRole, Databricks generates a session policy that restricts what the assumed session can do — even if the IAM role itself has broader permissions. | ✅ Created | [Docs](https://docs.databricks.com/aws/en/connect/unity-catalog/storage-credentials) |
-| **[External Location](https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/s3/s3-external-location-manual)** | Maps S3 path to a Storage Credential; defines access boundary | ⚠️ Created (with `access_point` field — not GA; see [Support Confirmation](#support-confirmation-2026-05-26)) | [Docs](https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/s3/s3-external-location-manual) |
+| **[External Location](https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/s3/s3-external-location-manual)** | Maps S3 path to a Storage Credential; defines access boundary | ⚠️ Created (with `access_point` field — not GA; see [Where the denial originates](#where-the-denial-originates)) | [Docs](https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/s3/s3-external-location-manual) |
 | **[External Table](https://docs.databricks.com/aws/en/tables/external)** | UC-governed table whose data resides in External Location | ❌ CREATE TABLE blocked | [Docs](https://docs.databricks.com/aws/en/tables/external) |
 | **[External Volume](https://docs.databricks.com/aws/en/volumes/managed-vs-external)** | UC-governed volume for unstructured files in External Location | ❌ Blocked (same session policy issue) | [Docs](https://docs.databricks.com/aws/en/volumes/managed-vs-external) |
 | **[Managed Table](https://docs.databricks.com/aws/en/data-governance/unity-catalog/managed-versus-external)** | UC-managed table (data lifecycle controlled by Databricks) | ✅ Works (on standard S3) | [Docs](https://docs.databricks.com/aws/en/data-governance/unity-catalog/managed-versus-external) |
@@ -445,15 +445,25 @@ so retained for ONTAP REST API access and future re-verification.
 | ONTAP REST API (Customer VPC) | ✅ | Authentication and config changes possible |
 | Instance Profile + boto3 (Customer VPC, Dedicated) | ✅ | S3 AP read from driver-node succeeded. Bypasses UC governance — PoC only |
 
-## Support Confirmation (2026-05-26)
+## Where the denial originates
 
-Databricks Support (May 2026) confirmed:
+Demonstrated here on 2026-08-12, with a native-S3 control in the same session — same role, same
+network, credentials issued by Unity Catalog itself
+(`POST /api/2.0/unity-catalog/temporary-path-credentials`):
 
-1. **Unity Catalog External Locations do not currently support S3 Access Points** as storage targets
-2. The `access_point` field was never released as a generally available feature and has been removed from documentation
-3. The partial success observed (root-level listing) is "a side effect of incomplete internal handling, not a supported code path"
-4. CREATE TABLE and write operations on S3 AP paths are not supported — this is a platform limitation in the session policy generator
-5. Feature gap reported to UC engineering team — engineering timeline pending
+1. **Registering an S3 access point path as an External Location succeeds.** The read is what
+   fails. An earlier reading of this, that registration itself was unsupported, was wrong and is
+   corrected in [BLK-001](../../docs/en/blocker-tracker.md).
+2. The down-scoped session policy Unity Catalog issues is written with a **bucket-form ARN**
+   (`arn:aws:s3:::<alias>`), while AWS authorises an access point request against the
+   **access point ARN** (`arn:aws:s3:<region>:<account>:accesspoint/<name>`). The two do not
+   match, and a session policy intersects with the role policy — so the role permitting it is not
+   enough.
+3. Credentials issued for the native S3 path, in the same session, are accepted. That control is
+   what makes the session policy the mechanism rather than an inference from a failure.
+4. The `access_point` field is not in current Unity Catalog documentation. Whether it was ever
+   released and why it was removed is **open**.
+5. Asked Databricks 2026-05-26. Filed as a feature gap; no published timeline.
 
 **Recommended interim path**: Sync data from FSx for ONTAP into a standard S3 bucket (DataSync), then register that S3 bucket as a UC External Location.
 

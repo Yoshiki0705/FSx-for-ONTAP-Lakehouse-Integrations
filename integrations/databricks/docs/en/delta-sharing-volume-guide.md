@@ -4,7 +4,7 @@
 
 > **Status**: Architecture Reference — Pattern A/B ready for PoC, Pattern C blocked (awaiting Databricks UC feature development)
 >
-> **Context**: This guide documents how to expose FSx for ONTAP data to Databricks Unity Catalog governance using OpenSharing (formerly Delta Sharing), given that direct UC External Location integration with FSx S3 Access Points is [not currently supported](../../README.md#support-confirmation-2026-05-26).
+> **Context**: This guide documents how to expose FSx for ONTAP data to Databricks Unity Catalog governance using OpenSharing (formerly Delta Sharing), given that direct UC External Location integration with FSx S3 Access Points is [not currently supported](../../README.md#where-the-denial-originates).
 
 ## Executive Summary
 
@@ -20,7 +20,7 @@ For FSx for ONTAP integration with Databricks, OpenSharing provides a practical 
 1. **OpenSharing = sharing protocol** (not a transformation engine)
 2. **FSx for ONTAP S3 Access Points provide object access** — OpenSharing requires table semantics
 3. **For unstructured data**: The shareable asset is the derived structured representation (metadata, extracted text, captions, embeddings)
-4. **For true zero-copy raw file access**: Unity Catalog must support FSx for ONTAP S3 AP as first-class storage locations (feature gap — [reported to Databricks engineering](../../README.md#support-confirmation-2026-05-26))
+4. **For true zero-copy raw file access**: Unity Catalog must support FSx for ONTAP S3 AP as first-class storage locations (feature gap — [reported to Databricks engineering](../../README.md#where-the-denial-originates))
 
 ### Quick Start: What Should I Do Today?
 
@@ -33,7 +33,7 @@ For FSx for ONTAP integration with Databricks, OpenSharing provides a practical 
 | **Want zero-copy direct access (no S3 bucket)** | Not available today — awaiting Databricks UC feature development | Pattern C (blocked) |
 2. **FSx for ONTAP S3 Access Points provide object access** — OpenSharing requires table semantics
 3. **For unstructured data**: The shareable asset is the derived structured representation (metadata, extracted text, captions, embeddings)
-4. **For true zero-copy raw file access**: Unity Catalog must support FSx for ONTAP S3 AP as first-class storage locations (feature gap — [reported to Databricks engineering](../../README.md#support-confirmation-2026-05-26))
+4. **For true zero-copy raw file access**: Unity Catalog must support FSx for ONTAP S3 AP as first-class storage locations (feature gap — [reported to Databricks engineering](../../README.md#where-the-denial-originates))
 
 ---
 

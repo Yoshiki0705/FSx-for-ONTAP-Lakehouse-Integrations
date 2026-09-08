@@ -60,15 +60,25 @@ s3://<s3ap-alias>/gold/      # ビジネスレディ集計
 | ONTAP REST API (Customer VPC) | ✅ | 認証・設定変更可能 |
 | Instance Profile + boto3 (Customer VPC, Dedicated) | ✅ | S3 AP 読み取り成功。UC ガバナンスをバイパス — PoC のみ |
 
-## サポート確認 (2026-05-26)
+## 拒否の由来
 
-Databricks サポート（2026 年 5 月）により以下が確認されました:
+2026-08-12 に、ネイティブ S3 のコントロールを同一セッションで併走させて実証しました。ロール・
+ネットワークは同一で、資格情報は Unity Catalog 自身が払い出したもの
+（`POST /api/2.0/unity-catalog/temporary-path-credentials`）です。
 
-1. **Unity Catalog External Location は現在 S3 Access Points をストレージターゲットとしてサポートしていない**
-2. `access_point` フィールドは一般提供（GA）機能としてリリースされたことはなく、ドキュメントから削除された
-3. 観測された部分的成功（ルートレベルの一覧取得）は「不完全な内部処理の副作用であり、サポートされたコードパスではない」
-4. CREATE TABLE および書き込み操作は S3 AP パスでサポートされていない — セッションポリシージェネレーターのプラットフォーム制限
-5. 機能ギャップとして UC エンジニアリングチームに報告済み — エンジニアリングタイムラインは未定
+1. **S3 Access Point のパスを External Location として登録することは成功します。** 通らないのは
+   読み取りです。登録自体が非対応という以前の記述は誤りで、[BLK-001](../../../../docs/ja/blocker-tracker.md)
+   で訂正しています。
+2. Unity Catalog が払い出す down-scoped セッションポリシーは**バケット形式 ARN**
+   （`arn:aws:s3:::<alias>`）で書かれている一方、AWS はアクセスポイント経由のリクエストを
+   **アクセスポイント ARN**（`arn:aws:s3:<region>:<account>:accesspoint/<name>`）に対して認可
+   評価します。両者は一致せず、セッションポリシーはロールポリシーと積集合を取るため、ロール本体
+   が許可していても拒否されます。
+3. 同一セッションでネイティブ S3 パスに払い出した資格情報は通ります。このコントロールがあること
+   で、失敗からの推測ではなくセッションポリシーが機構であると言えます。
+4. `access_point` フィールドは現行の Unity Catalog ドキュメントに存在しません。かつて提供されて
+   いたのか、なぜ削除されたのかは **`open`** です。
+5. 2026-05-26 に Databricks へ照会。機能ギャップとして起票済みで、公開された時期の情報はありません。
 
 **推奨される暫定パス**: FSx for ONTAP から標準 S3 バケットにデータを同期（DataSync）し、その S3 バケットを UC External Location として登録。
 
@@ -100,7 +110,7 @@ Storage Credential（IAM ロール ARN + External ID）
 | 概念 | 説明 | FSx for ONTAP S3 AP ステータス | リファレンス |
 |---|---|:---:|---|
 | **[Storage Credential](https://docs.databricks.com/aws/en/connect/unity-catalog/storage-credentials)** | Databricks がクラウドストレージにアクセスするために引き受ける IAM ロール。AssumeRole 時に Databricks がセッションポリシーを生成し、IAM ロール自体がより広い権限を持っていても、引き受けたセッションの操作を制限する。 | ✅ 作成済み | [ドキュメント](https://docs.databricks.com/aws/en/connect/unity-catalog/storage-credentials) |
-| **[External Location](https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/s3/s3-external-location-manual)** | S3 パスを Storage Credential にマッピング。アクセス境界を定義 | ⚠️ 作成済み（`access_point` フィールド付き — GA ではない; [サポート確認](#サポート確認-2026-05-26)参照） | [ドキュメント](https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/s3/s3-external-location-manual) |
+| **[External Location](https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/s3/s3-external-location-manual)** | S3 パスを Storage Credential にマッピング。アクセス境界を定義 | ⚠️ 作成済み（`access_point` フィールド付き — GA ではない; [拒否の由来](#拒否の由来)参照） | [ドキュメント](https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/s3/s3-external-location-manual) |
 | **[External Table](https://docs.databricks.com/aws/en/tables/external)** | External Location にデータが存在する UC ガバナンス付きテーブル | ❌ CREATE TABLE ブロック | [ドキュメント](https://docs.databricks.com/aws/en/tables/external) |
 | **[External Volume](https://docs.databricks.com/aws/en/volumes/managed-vs-external)** | External Location の非構造化ファイルに対する UC ガバナンス付きボリューム | ❌ ブロック（同じセッションポリシー問題） | [ドキュメント](https://docs.databricks.com/aws/en/volumes/managed-vs-external) |
 | **[Managed Table](https://docs.databricks.com/aws/en/data-governance/unity-catalog/managed-versus-external)** | UC マネージドテーブル（データライフサイクルを Databricks が制御） | ✅ 動作（標準 S3 上） | [ドキュメント](https://docs.databricks.com/aws/en/data-governance/unity-catalog/managed-versus-external) |
