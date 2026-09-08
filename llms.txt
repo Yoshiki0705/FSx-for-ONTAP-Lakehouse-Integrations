@@ -1,0 +1,124 @@
+# FSx for ONTAP Lakehouse Integrations
+
+> Reference architectures, deployable templates, and measured results for reaching data on
+> Amazon FSx for NetApp ONTAP from AWS analytics and lakehouse engines through S3 Access
+> Points, without copying the data. 15 integrations, 32 CloudFormation templates, and 23
+> verification packs holding 45 evidence records. Primary verification region is
+> ap-northeast-1. The point of the repository is not that this can be made to work — it is
+> which parts work, which do not, and what each claim rests on.
+
+## How to read this repository
+
+**Confidence is explicit everywhere, and it is the most important thing to read first.** Do
+not flatten it. A reader who treats an `⚠️` row as working will design an architecture that
+cannot ship.
+
+Status markers used in every matrix and table:
+
+- `✅ Verified` — tested in a real environment, with an evidence record.
+- `⚠️ Experimental` — partially working, with a named limitation. Not a green light.
+- `❌ Not Supported` — a structural constraint, not a configuration mistake.
+- `🔲 Planned` — not yet tested. No claim is being made.
+
+Verification is a four-stage progression, and `✅` alone does not say which stage was
+reached. Most integrations sit at the second stage. Defined in
+[compatibility-matrix](docs/en/compatibility-matrix.md):
+
+1. **API verified** — the S3 API calls succeed. Minimum viability only.
+2. **Functionally verified** — end-to-end workflow produces correct results.
+3. **Security verified** — IAM, access point policy, file system permissions and CloudTrail
+   all confirmed, including negative tests.
+4. **Production verified** — concurrency, disaster recovery, cost and SLA confirmed.
+
+Three documents exist specifically so that gaps stay countable, and they are the fastest way
+to avoid re-deriving a known dead end:
+
+- [blocker-tracker](docs/en/blocker-tracker.md) — 9 tracked blockers, what is known **not**
+  to work, each with root cause, confirmation date, resolution criteria and workaround.
+- [unverified-inventory](docs/en/unverified-inventory.md) — 24 claims that are **untested**
+  rather than broken, each with what it would take to test.
+- [known-challenges](docs/en/known-challenges.md) — the same constraints grouped by the
+  layer they originate in, which is the useful view when deciding who can fix a problem.
+
+Numbers are only meaningful with their environment. A throughput or latency figure in this
+repository is accompanied by the region, ONTAP version and configuration it was measured
+on; raw records are under `verification-pack/<topic>/evidence/<date>/`. Do not carry a
+number to another context without carrying its conditions.
+
+## Entry points
+
+- [README](README.md) — the hub. A task-to-guide table with time estimates, then the
+  integration status table. Start here if the question is "what is this".
+- [Business Guide](docs/en/quickstart-business-guide.md) — the no-jargon framing of the
+  problem being solved. 5 minutes.
+- [Engine Selection Guide](docs/en/engine-selection-guide.md) — which analytics engine suits
+  which use case. Read before picking an integration directory.
+- [Compatibility Matrix](docs/en/compatibility-matrix.md) — the platform × format × mode
+  grid, the S3 Access Point constraint table, and the commit-protocol sequence diagrams that
+  explain *why* Delta Lake writes fail where Iceberg writes succeed.
+- [Deployment Guide](docs/en/deployment-guide.md) — the build and operate path in one
+  document: prerequisites, stack inventory with deploy order and timings, VPC endpoint
+  conflict matrix, verified deployment paths, cost reference, preflight check, **rollback
+  procedures**, Day 2 operations, troubleshooting.
+- [Architecture](docs/en/architecture.md) and
+  [Architecture Comparison](docs/adoption-guide/architecture-comparison.md) — options and
+  trade-offs, including when *not* to use this pattern.
+- [S3 AP Design Considerations](docs/en/s3ap-design-considerations.md) — directory layout,
+  file size and listing behaviour. Read before generating data, not after.
+- [PoC Execution Guide](docs/implementation-guide/poc-execution-guide.md) — a scoped
+  end-to-end run.
+- [AGENTS.md](AGENTS.md) — conventions, prohibitions and quality gates for coding agents
+  working in this repository.
+
+## What not to assume
+
+These are the mistakes that cost the most time, each already established here:
+
+- **An FSx for ONTAP S3 Access Point is not an Amazon S3 bucket.** The supported operation
+  set, storage class (`FSX_ONTAP`), encryption (`aws:fsx`) and object size ceilings all
+  differ. Code that branches on `StorageClass` will not behave as written.
+- **Conditional writes (`If-None-Match`) return HTTP 501.** Delta Lake and Hudi
+  transactional writes are therefore impossible on the access point. Iceberg writes through
+  Athena with the Glue Catalog **do** work, because the current-metadata pointer lives in
+  the catalog rather than on the object store. This distinction decides table format choice.
+- **A failed write can leave data behind.** Delta writes the Parquet first and commits
+  second, so a 501 on the commit leaves orphan files, one set per retry. A Snowflake unload
+  leaves a complete object after reporting failure. Sweep with
+  `shared/scripts/check_orphaned_unload_objects.py`.
+- **An S3 Gateway Endpoint can silently block access point traffic.** Access point aliases
+  resolve to a hostname that may not be in the prefix list a Gateway endpoint uses, so a
+  VPC-attached client times out with no useful error. See
+  [networking](docs/en/fsx-ontap-s3ap-networking.md).
+- **S3 Event Notifications are unavailable, and FPolicy is not a substitute.** Writes
+  arriving through the access point raise no FPolicy notification and are not blocked even
+  under a `mandatory` policy. Use scheduled polling or the ONTAP native audit log.
+- **An access point authorizes every request as one identity.** Original per-file ACLs do
+  not carry into an analytics or RAG pipeline reading through it; retrieval scoping has to be
+  designed in the index, not assumed from the file system.
+- **An S3 Access Point cannot coexist with an ONTAP object-store server on the same SVM**,
+  and `WINDOWS` user type requires the SVM to be AD-joined. Both fail at creation time.
+- **The FSx console and `describe-file-systems` do not expose the ONTAP version.** Query the
+  ONTAP REST API. Minimum versions differ per feature.
+
+## Deployable artifacts
+
+Order and parameters are in [Deployment Guide](docs/en/deployment-guide.md); it is the source
+of truth and this file does not duplicate it. In outline: shared infrastructure first
+(`shared/cloudformation/` — VPC, FSx for ONTAP base, IAM, sample data), then any independent
+integration under `integrations/<name>/template.yaml`. Overlay deployments against an
+existing file system skip the base stacks and pass existing IDs as parameters.
+
+Run `./scripts/preflight-check.sh --integration <name>` before deploying. Parameter files use
+the CloudFormation `[{"ParameterKey":"X","ParameterValue":"Y"}]` form; those under
+`cfn-params/` and `shared/params/` are example data only.
+
+## Conventions
+
+- **Naming**: "Amazon FSx for NetApp ONTAP" on first mention, "FSx for ONTAP" thereafter, and
+  "FSx for ONTAP S3 AP" for access points. `FSxN`, bare `FSx` and `FSx ONTAP` are not used
+  and are rejected by CI.
+- **Languages**: `docs/en/` and `docs/ja/` hold 40 documents each and are kept at parity in
+  section structure and in unit-bearing quantities. Integration docs follow the same
+  `docs/en/` and `docs/ja/` split.
+- **Example data**: IP addresses come from the RFC 5737 range (`198.51.100.x`); AWS account
+  IDs are the reserved documentation IDs. No real identifiers appear in this repository.
