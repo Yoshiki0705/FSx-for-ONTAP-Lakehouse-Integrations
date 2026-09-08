@@ -51,7 +51,7 @@
 
 ## 技術リスク
 
-### RSK-001: Unity Catalog は S3 互換外部ロケーションをサポートしない
+### RSK-001: Unity Catalog における S3 互換外部ロケーションの非対応
 
 - **説明:** Unity Catalog 外部ロケーションはネイティブ Amazon S3、Azure ADLS、GCS、Cloudflare R2 のみサポート。S3 互換エンドポイント（ONTAP S3、MinIO）は非サポート。
 - **影響:** 高 — Delta Lake テーブルを ONTAP S3 経由で FSx for ONTAP に格納不可

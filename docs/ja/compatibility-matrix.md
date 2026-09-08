@@ -24,7 +24,7 @@
 
 **A**: 技術的には動作します（クライアント側の署名計算であり、サーバーは通常のリクエストとして処理）。ただし AWS は公式に「非サポート」としており、安定性を保証していません。**本番環境では依存しないでください。**
 
-### Q3: SnapMirror S3 について教えてください
+### Q3: SnapMirror S3 の扱い
 
 **A**: SnapMirror S3（ONTAP S3 バケット → AWS S3 レプリケーション）は FSx for ONTAP で**意図的に無効化**されています（2026年5月 AWS サポート確認）。FSx for ONTAP から標準 S3 への同期には AWS DataSync を使用してください。詳細: [DataSync ガイド](./datasync-to-s3-guide.md)
 
@@ -86,7 +86,7 @@ graph TD
     style J fill:#ccffcc
 ```
 
-> **UC ガバナンスパス**: Databricks を選択する場合、S3 AP に対する UC External Location は**登録できます**が、それ経由の読み取りは Unity Catalog が払い出す down-scoped セッションポリシーに拒否されます（2026-08-12 計測 — [BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しが-s3-ap-の読み取りを認可しない)）。Instance Profile 経由で読み取りは可能ですが UC ガバナンスをバイパスします。UC ガバナンス付きの分析には DataSync → 標準 S3 → UC External Location パスを使用してください。
+> **UC ガバナンスパス**: Databricks を選択する場合、S3 AP に対する UC External Location は**登録できます**が、それ経由の読み取りは Unity Catalog が払い出す down-scoped セッションポリシーに拒否されます（2026-08-12 計測 — [BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り)）。Instance Profile 経由で読み取りは可能ですが UC ガバナンスをバイパスします。UC ガバナンス付きの分析には DataSync → 標準 S3 → UC External Location パスを使用してください。
 
 ## OT/IT セキュリティ考慮事項
 
@@ -219,7 +219,8 @@ aws athena start-query-execution \
 | 制約 | 詳細 | ソース |
 |------|------|--------|
 | Rename 操作なし | S3 API にはネイティブの rename がない。CopyObject は同一アクセスポイント内のみサポート。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
-| 最大アップロードサイズ: 50 GB | 単一オブジェクトのアップロードは 50 GB まで。それを超えるオブジェクトはダウンロードは可能だがアップロードは不可。マルチパートアップロードはサポート | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
+| マルチパート閾値を超える rename は**マルチパート**コピーになる | rename は常に 1 回の `CopyObject` ではない。`fs.s3a.multipart.threshold` を超えると S3A は `UploadPartCopy` を発行し、同一アクセスポイント内の `UploadPartCopy` は copy-source のキーがパーセントエンコードを要する場合に現時点で `NoSuchKey` を返す。**AWS は不具合として区分し修正が進行中のため、暫定として扱う。**[rename が分岐する 2 つの S3 呼び出し](#rename-が分岐する-2-つの-s3-呼び出し)を参照 | 閾値の意味は Hadoop [core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml)。`UploadPartCopy` の失敗は[Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)での実測で、本リポジトリでは未再現 |
+| 最大アップロードサイズ: 50 GB | 単一オブジェクトのアップロードは 50 GB まで。それを超えるオブジェクトはダウンロードは可能だがアップロードは不可。マルチパートアップロードはサポート。**本リポジトリが設定しているパートサイズは上限を大きく下回る** — [上限に対するパートサイズの余裕](#上限に対するパートサイズの余裕)を参照 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | Object Versioning なし | S3 Object Versioning は非サポート | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | 条件付き書き込みなし | Conditional writes（`If-None-Match`）は非サポート — HTTP 501 `NotImplemented` を返す。これは**プロダクトレベルの制限**（AWS サポート確認、2026年5月）。S3 ネイティブ conditional writes（2024年8月提供開始）との parity を求める機能要望を提出済み。Delta Lake、Iceberg、Hudi のトランザクショナル書き込みをブロック。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | ListObjectsV2 レイテンシ | 2026-08-05 再測定: 10〜5,000 オブジェクトでネイティブ S3 比 **1.3〜1.4 倍**（5,000 件では 0.9 倍）。フラット構造・ネスト構造とも同様で、当初の目標（100 ファイル未満で 1 秒未満、1,000 ファイル未満で 3 秒未満）の範囲内。従来引用していた 30-80 倍は再現せず、撤回しました。1 ディレクトリ 5,000 オブジェクトを超える場合の挙動は未測定。 | 2026-08-05 再測定（[エビデンス](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml)） |
@@ -232,6 +233,67 @@ aws athena start-query-execution \
 | 同一リージョン必須 | アクセスポイントは FSx for ONTAP ボリュームと同じリージョンに作成必須 | [制限事項](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html) |
 | 同一アカウント必須 | アクセスポイントとファイルシステムは同じ AWS アカウント内に必要 | [制限事項](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html) |
 | ONTAP 9.17.1 以降必須 | S3 Access Points の最小 ONTAP バージョン | [制限事項](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html) |
+
+### rename が分岐する 2 つの S3 呼び出し
+
+本ページの他の箇所では「rename は CopyObject + DeleteObject にフォールバックする」と書いて
+います。**これは機構の半分で、現時点で失敗するのは書かれていない側です。**
+
+Hadoop の `fs.s3a.multipart.threshold` はアップロードとコピーの両方の分割サイズを制御し、
+「rename() はソースファイルのコピーを伴うため、rename されるファイルのパーティションサイズも
+制御する」と明記されています
+([core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml))。
+**つまり 1 つの設定値が、rename がどの S3 呼び出しになるかを決めます。**
+
+| rename 対象のファイルサイズ | 発行される呼び出し | FSx for ONTAP S3 AP での状態 |
+|---|---|---|
+| `fs.s3a.multipart.threshold` 以下 | `CopyObject` | 同一アクセスポイント内でサポート |
+| `fs.s3a.multipart.threshold` を超える | `UploadPartCopy` | copy-source のキーがパーセントエンコードを要する場合、現時点で `NoSuchKey` を返す |
+
+`integrations/delta-lake-oss/config/spark-defaults.conf` はこの閾値を `268435456`（256 MiB）に
+設定し、`spark.sql.files.maxPartitionBytes` にも同じ値を設定しています。**出力パートサイズが
+切り替え点と同じ桁に誘導されます。** また本リポジトリにはどこにも output committer の設定が
+なく、Spark / Glue の書き込み経路では既定の `FileOutputCommitter` と rename ベースのコミットが
+効いています。Athena CTAS と DuckDB の `COPY ... TO` は最終キーへ直接書き込み rename を行わない
+ため、サイズに関係なくこの経路に触れません。
+
+**これは設計ルールではなく暫定として扱ってください。** AWS は `UploadPartCopy` の失敗を修正が
+進行中の不具合として区分しており、修正されれば解除されます。ここから 2 点が導かれます。
+
+- **copy-source のキーを前提に設計しないこと。** 「キーに `/` を含めない」はプレフィックスで
+  整理するレイアウトと両立せず、原因より長く残ります。**ノブは閾値であってキーの命名では
+  ありません。**
+- **範囲内の暫定措置は、出力パートファイルを閾値未満に保つことです。** 既存の
+  **バイト値で比較してください。本ページは同じ数字に 2 つの接頭辞を使っています。** 閾値は
+  `268435456` バイト、「128 MB 以上」の統合目標は約 134,000,000 バイト、ワークロード
+  サイジング表の「出力ファイル 128-256 MB を目標」は上限で約 256,000,000 バイトです。
+  **3 つとも閾値を下回ります。** ただし最後の 1 つを 256 MiB と読むと 268,435,456 に
+  なり、**閾値そのもの、つまり失敗する側に乗ります。**
+  `fs.s3a.multipart.threshold` を上げる手もありますが、同じ値がアップロード側も支配するため
+  アップロードの挙動も変わります。
+
+**本リポジトリでは未再現です。** `UploadPartCopy` の失敗は
+[Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
+での実測です。本リポジトリで確立したのは、**Spark / Glue の書き込み経路が設定上この呼び出しに
+到達しうる**という点のみで、この誤りを再現した実行はありません。
+
+### 上限に対するパートサイズの余裕
+
+**オブジェクトサイズの上限は、本リポジトリが推奨するどのパートサイズも制約しません。** 余裕は
+懸念として残す必要がない程度に大きいため、明示しておきます。
+
+| 設定 | 値 | 比較対象の上限 |
+|---|---|---|
+| `fs.s3a.multipart.size`（`integrations/delta-lake-oss/config/spark-defaults.conf`） | 128 MiB | 1 パート 5 GiB — 約 40 倍の余裕 |
+| 手書きの `part_size`（`integrations/manufacturing-data-platform/poc/synthetic-data-generator/generate_payloads.py`） | 8 MiB | 1 パート 5 GiB |
+| 統合後の目標ファイルサイズ（本ページ [Q4](#q4-fsx-for-ontap-s3-access-point-の-listobjectsv2-は遅いのか)） | 128 MB 以上 | 1 オブジェクト 50 GB |
+
+1 パートおよびオブジェクト全体の上限は、公開ドキュメントの十進 "GB" 表記ではなく
+[Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
+でバイナリ単位として実測されています。**このパートサイズでは、その差は答えを変えません。**
+運用に効くのは上限が**いつ**判定されるかです。オブジェクト全体の超過は
+`CompleteMultipartUpload` の時点で初めて検出されます。**全バイトを転送し終えた後です。**
+サーバー側の判定を待たず、クライアント側でサイズを検証してください。
 
 ## Lakehouse テーブルフォーマットへの影響
 
@@ -339,8 +401,15 @@ ts_array = pa.array(df['timestamp'].values.astype('datetime64[us]'), type=pa.tim
 | レイテンシ | 数十ミリ秒 | 一桁ミリ秒 |
 | スループット | FSx for ONTAP プロビジョンドスループットに制限 | 事実上無制限（プレフィックスでスケール） |
 | リクエスト/秒 | FSx for ONTAP プロビジョンドスループットに制限 | プレフィックスあたり GET 5,500/s、PUT 3,500/s |
-| 最大オブジェクトサイズ（アップロード） | 50 GB | 5 TB |
+| 最大オブジェクトサイズ（アップロード） | 50 GB | 50 TB |
 | 同時リーダー | FSx for ONTAP スループット容量に制限 | 高度に並列化可能 |
+
+> **ネイティブ S3 側の数値について**: 2026-09 まで 5 TB と記載していました。Amazon S3 は
+> [2025 年 12 月に最大オブジェクトサイズを 50 TB へ引き上げ](https://aws.amazon.com/jp/about-aws/whats-new/2025/12/amazon-s3-maximum-object-size-50-tb/)
+> ており（10 倍）、この行の差は 100 倍ではなく約 1000 倍です。**AWS の公式ドキュメント自体に
+> 5 TB・50 TB・53.7 TB の 3 通りが存在します** — 未更新のページが 5 TB、上限値として 50 TB、
+> 算術上の天井（10,000 パート × 5 GiB）として 53.7 TB。**どれを引いたかと理由を書いてください。**
+> 出典側が食い違っている場合、食い違いを明示することが正確な回答になります。
 
 ソース: [Amazon FSx for NetApp ONTAP のパフォーマンス](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html)、[Amazon S3 アクセスポイント経由でのデータアクセス](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 
@@ -425,23 +494,26 @@ FSx for ONTAP S3 Access Points 上の分析ワークロードを計画する際�
 
 | プラットフォーム + モード | 検証レベル | 備考 |
 |------------------------|-----------|------|
-| Athena + Parquet 読み取り | セキュリティ検証済み | AWS 公式チュートリアルが IAM を含む完全なワークフローを検証 |
-| Glue ETL + Parquet 読み取り/書き込み | 機能検証済み | AWS 公式チュートリアルが読み取りと書き戻しを検証 |
-| EMR Serverless + Parquet 読み取り/書き込み | 機能検証済み | AWS 公式チュートリアルが Spark ワークフローを検証 |
-| Bedrock Knowledge Base + ドキュメント読み取り | 機能検証済み | AWS 公式チュートリアルが RAG インジェストを検証 |
-| Databricks + Parquet 読み取り | API 検証済み | External Location の登録と読み取りを確認 |
-| Snowflake + Parquet 読み取り | API 検証済み | External Stage の作成とクエリを確認 |
+| Athena + Parquet 読み取り | **セキュリティ検証済み** | 完全なワークフロー + ネガティブテスト 9/9 合格 + CloudTrail 確認。ベンチマーク: ピーク 54.8 MB/s（プロビジョンド 128 MB/s）。 |
+| Glue ETL + Parquet 読み取り/書き込み | **機能検証済み** | 1 万行の読み取り → 変換 → 書き戻しを 64 秒で完了。2026-05-23 検証。 |
+| Glue Crawler | **機能検証済み** | FSx for ONTAP S3 AP 上のデータでスキーマ自動検出。2026-05-23 検証。 |
+| Delta Lake OSS (delta-rs) 読み取り | **機能検証済み** | `DeltaTable.open` + `to_pyarrow_table` + メタデータ / 履歴。2026-05-23 検証。 |
+| Delta Lake OSS 書き込み | **非サポート** | 501 Not Implemented を返す（delta-rs のコミットプロトコルが条件付き書き込みを要求）。 |
+| EMR Serverless + Parquet 読み取り/書き込み | 機能検証済み | AWS 公式チュートリアルに準拠。 |
+| Bedrock Knowledge Base + ドキュメント読み取り | 機能検証済み | AWS 公式チュートリアルに準拠。 |
+| Snowflake + External Stage (LIST) | **API 検証済み** | `LIST @stage` が成功（ファイルが見える）。 |
+| Snowflake + External Stage (GetObject) | **検証済み** | 解決済み (2026-06-02)。セッションポリシーの問題は構文エラーが原因。S3 AP External Stage で GetObject が正常動作。 |
 | Snowflake + TO_FILE（S3 AP ステージ） | **検証済み** | 解決済み (2026-06-02)。文字列リテラル構文 + 正しいファイルパスで `TO_FILE` が正常動作。元の失敗は (a) 識別子構文エラー (b) 存在しないファイルパスが原因。Cortex COMPLETE マルチモーダルで FSx for ONTAP 上のファイルを S3 AP 経由で読み取り可能。 |
 | Snowflake + BUILD_SCOPED_FILE_URL（S3 AP ステージ） | **機能検証済み** | FSx for ONTAP S3 AP External Stage で正常動作。 |
 | Snowflake + PARSE_DOCUMENT（S3 AP ステージ） | **機能検証済み** | FSx for ONTAP S3 AP External Stage で正常動作。 |
 | Snowflake + Managed Iceberg Table（S3 AP Stage から COPY INTO） | **機能検証済み** | FSx for ONTAP S3 AP External Stage → Managed Iceberg Table への COPY INTO 確認。64日間重複排除動作。Horizon REST Catalog が外部エンジンにガバナンス強制付きで公開。 |
-| Delta Lake 書き込み（全プラットフォーム） | 非サポート | 基本的な制約（アトミック rename なし） |
+| Databricks + Unity Catalog | **ブロック** | 登録は成功し、**読み取り**が拒否される。vend されるダウンスコープのセッションポリシーがバケット形式の ARN を使う一方、AWS はアクセスポイントへの要求をアクセスポイント ARN で認可する。2026-08-12 に区分を訂正 — [BLK-001](./blocker-tracker.md#blk-001-uc-credential-vending-does-not-authorise-s3-ap-reads) を参照 |
 
 ---
 
 ## Lakehouse コミットプロトコルシーケンス
 
-### なぜこれが重要か
+### これが重要な理由
 
 Lakehouse テーブルフォーマットはトランザクション保証のために特定の S3 動作を必要とします。コミットプロトコルを理解することで、FSx for ONTAP S3 AP 上で一部の操作が動作し、他が動作しない理由が説明できます。
 

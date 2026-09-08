@@ -28,7 +28,7 @@
 
 > FSx for ONTAP は、マルチプロトコルアクセス（NFS/SMB/iSCSI/S3）とデータ保護機能（Snapshot、FlexClone、SnapMirror、FabricPool）を持つ AWS マネージドのエンタープライズストレージサービスである。以下では、OpenSharing パターンが本リポジトリの既存 S3 Access Point 統合パターンをどう補完しうるかを評価する。
 
-## なぜ本リポジトリに重要か
+## 本リポジトリにとっての重要性
 
 現在の互換性マトリクスでは、Databricks + FSx for ONTAP S3 Access Point のパスは **blocked**（プラットフォームのセッションポリシーが S3 AP ARN 形式を認識しない）と記載している。OpenSharing が重要なのは、その共有モデルが短命の presigned URL に基づき、共有サーバーは**メタデータとアクセス制御のみ**を担い、データ転送は client↔storage 直結だからである。
 

@@ -4,7 +4,7 @@
 
 2026-08-12 の検証を自分のアカウントで再現する手順。実時間で約 45 分、費用 2 USD 未満で、当日中に撤去できる。
 
-## 何が分かり、何は分からないか
+## 分かることと分からないこと
 
 始める前に期待される結果を明確にしておく。「失敗した」がこの検証の結果であり、あなたの手違いではない。
 
@@ -46,7 +46,7 @@ host  = https://<your-workspace-host>
 token = <personal access token>
 ```
 
-## どのワークスペースを使うか
+## 使用するワークスペースの選択
 
 Unity Catalog の Storage Credential はそのアカウントに手を伸ばすため、ワークスペースはファイルシステムと同一アカウント・同一リージョンに置く必要がある。
 
@@ -58,7 +58,7 @@ Unity Catalog の Storage Credential はそのアカウントに手を伸ばす�
 
 「Use your existing cloud account」は自アカウント内に NAT Gateway 付きの VPC を作る。さらに一時的な IAM 委任を求めてくるので、そのポリシーは承認前に読むこと。共有アカウントでは特に。費用と判断軸の詳細: [Databricks 検証環境とコスト](./databricks-verification-environment-cost.md)。
 
-## 手順 1 — ベースラインを記録する
+## 手順 1 — ベースラインの記録
 
 何かを作る**前**に実行する。これが無いと「撤去は綺麗に見える」は検証可能な主張にならないし、共有アカウントでは見えているものの大半が他人のものである。
 
@@ -67,7 +67,7 @@ python3 shared/scripts/audit_databricks_workspace_footprint.py \
   --region <region> --save /tmp/fsxn-baseline.json
 ```
 
-## 手順 2 — IAM ロールとコントロールバケットをデプロイする
+## 手順 2 — IAM ロールとコントロールバケットのデプロイ
 
 ```bash
 cp cfn-params/databricks-uc-storage-credential.example.json \
@@ -97,7 +97,7 @@ aws cloudformation describe-stacks --region <region> \
 
 出力が再度述べる非対称に注意。External Location の **URL** はエイリアス形式（`s3://<alias>/`）でなければならない（ARN スタイルの URL は `url does not specify a valid bucket name` で拒否される）一方、IAM **ポリシー**は ARN 形式を要求する。
 
-## 手順 3 — 比較を実行する
+## 手順 3 — 比較の実行
 
 スタックの `NextStep` 出力が、ARN まで埋まったコマンドそのものである。
 
@@ -113,14 +113,14 @@ aws cloudformation describe-stacks --region <region> \
 
 `--control-bucket` は意図的に必須である。手順 4 で説明する決定的テストには `--vend-check` を、Unity Catalog オブジェクトを同じ実行で片付けるには `--teardown-after` を足す。
 
-## 手順 4 — 判定を読む
+## 手順 4 — 判定の読み方
 
 スクリプトは 3 つの結論のいずれかを出す。合否ではない。
 
 | 判定 | 意味 | 対応 |
 |---|---|---|
 | **判定不能** — コントロールが読めなかった | プラットフォームではなく自分の環境の問題 | スクリプトが表示した External ID をロールの信頼ポリシーと突き合わせ、ロールがコントロールバケットを許可しているか確認する |
-| **登録は成功、読み取りは拒否** | 2026-08-12 の結果 | 自分側に直すものはない。[BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しが-s3-ap-の読み取りを認可しない) である |
+| **登録は成功、読み取りは拒否** | 2026-08-12 の結果 | 自分側に直すものはない。[BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り) である |
 | **登録も読み取りも成功** | プラットフォームが変わった | Databricks のリリースを記録し、本リポジトリに issue を立てる |
 | **登録自体が失敗** | ほぼ確実に IAM ポリシーの Access Point ARN 欠落 | 自分のポリシーをテンプレートと比較する |
 
@@ -137,7 +137,7 @@ GRANT EXTERNAL USE LOCATION ON EXTERNAL LOCATION <name>  TO `you@example.com`;
 
 これらは実際のガバナンス統制である。共有メタストアなら終わったら戻すこと。
 
-## 手順 5 — この順序で撤去する
+## 手順 5 — この順序での撤去
 
 順序が重要である。直接手をつけると失敗する箇所が 2 つある。
 
@@ -217,6 +217,6 @@ ap-northeast-1 で 2026-08-12 に当日実行したときの実測。価格は�
 
 - [Databricks FILE 型評価](./databricks-file-type-evaluation.md) — 本ランブックの元になった分析
 - [Databricks 検証環境とコスト](./databricks-verification-environment-cost.md) — トライアルと非トライアル、実行費用
-- [ブロッカートラッカー BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しが-s3-ap-の読み取りを認可しない) — 訂正後のブロッカー
+- [ブロッカートラッカー BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り) — 訂正後のブロッカー
 - [互換性マトリクス](./compatibility-matrix.md) — 他エンジンとの位置関係
 - エビデンス: [2026-08-12 の実行](../../verification-pack/databricks/file-type/evidence/2026-08-12/evidence-record-tokyo.yaml)

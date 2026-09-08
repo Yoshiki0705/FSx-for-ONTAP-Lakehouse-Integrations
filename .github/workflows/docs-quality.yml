@@ -39,6 +39,39 @@ jobs:
           echo "🔍 Checking Markdown tables and code fences for rendering breakage..."
           git ls-files -- '*.md' | xargs python3 scripts/check-markdown-tables.py
 
+      - name: Check Japanese section headings are noun phrases
+        run: |
+          # The selftest runs first, on purpose. A checker that cannot fail is
+          # indistinguishable from no checker at all, so prove it flags a violation
+          # before trusting a clean run of the real check.
+          echo "🔍 Proving the heading checker can fail..."
+          python3 scripts/check-heading-style.py --selftest
+          echo "🔍 Checking Japanese section headings (体言止め)..."
+          python3 scripts/check-heading-style.py
+      - name: Prove the detectors' selftests can tell a broken detector from a working one
+        run: |
+          # A passing selftest is not evidence that the selftest guards anything.
+          # Reverting a boundary to \b and reverting it to nothing are different
+          # failures: the first narrows matching (positive cases catch it), the second
+          # widens it (only negative cases catch it). This step breaks each detector
+          # deliberately and requires its selftest to fail. On its first run it found
+          # that removing the leading guard survived — .5 GB/s would have been read as
+          # 5 GB/s with nothing to stop it.
+          python3 scripts/check-detector-mutations.py
+
+      - name: Check EN/JA agree on unit-bearing quantities
+        run: |
+          # The section-count parity step below counts headings. Section counts matched
+          # while the same table said "PutObject 5 GB ceiling" in EN and "50 GB 上限" in
+          # JA, and that pair lives under integrations/snowflake/docs/, which the
+          # section-count step does not even scan. Two holes, one miss: the pattern
+          # ignored table contents, and the scope ignored most of the repository.
+          # This step scans every tracked EN/JA pair (164, via /en/ ↔ /ja/ and -ja.md).
+          echo "🔍 Proving the number-parity checker can fail..."
+          python3 scripts/check-doc-number-parity.py --selftest
+          echo "🔍 Checking EN/JA unit-bearing quantities..."
+          python3 scripts/check-doc-number-parity.py
+
       - name: Check for real AWS Account IDs in tracked files
         run: |
           echo "🔍 Scanning for real AWS Account IDs..."
@@ -126,7 +159,12 @@ jobs:
           #   - "support case" / "case id|no|number|#" / "サポートケース" adjacent to 6+ digits
           #     (covers Snowflake/Databricks 8-digit IDs, case_id fields, support-case-* paths)
           GLOBS=(--  '*.md' '*.yaml' '*.yml' '*.py' '*.sql' '*.json')
-          AWS_HITS=$(git ls-files "${GLOBS[@]}" | xargs grep -nE '\b17[0-9]{13}\b' 2>/dev/null | grep -v '\.github/workflows/' || true)
+          # Explicit character-class boundaries, not \b: GNU grep's \b is locale-aware,
+          # so `\b17[0-9]{13}\b` misses `サポートケース177000000000001` and
+          # `起票したのは177000000000001` while matching the English form. The keyword
+          # rule below happens to cover the first (it keys off サポートケース), but not
+          # the second, which had no keyword and no working boundary.
+          AWS_HITS=$(git ls-files "${GLOBS[@]}" | xargs grep -nE '(^|[^0-9A-Za-z_])17[0-9]{13}([^0-9A-Za-z_]|$)' 2>/dev/null | grep -v '\.github/workflows/' || true)
           KW_HITS=$(git ls-files "${GLOBS[@]}" | xargs grep -niE '(support[ _-]?case|case[ _-]?(id|no|number|#)|サポートケース)[^0-9]{0,30}[0-9]{6,}' 2>/dev/null | grep -v '\.github/workflows/' || true)
           HITS=$(printf '%s\n%s\n' "$AWS_HITS" "$KW_HITS" | grep -vE '^[[:space:]]*$' | sort -u || true)
           if [[ -n "$HITS" ]]; then

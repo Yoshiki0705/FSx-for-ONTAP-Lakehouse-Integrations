@@ -5,7 +5,7 @@
 > 2026-08-06 にエンドツーエンドで検証済み（[エビデンス](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml)）。
 > 本ページのコマンドはすべて実アカウント・実 FSx for ONTAP に対して実行したものです。
 
-## 何ができるか
+## できること
 
 FSx for ONTAP ボリューム上に既にあるファイルを、どこにもコピーせず Snowflake から
 クエリできます。ガバナンス対象のテーブルは標準 S3 バケットへ書き込みます。
@@ -132,7 +132,7 @@ Snowflake のセッションポリシーがオブジェクトレベル操作を�
 
 `SELECT` で AccessDenied が出て `LIST` は通る場合、まずこのパラメータを確認してください。
 
-## ステップ4 — ファイルを読む
+## ステップ4 — ファイルの読み取り
 
 ```sql
 LIST @my_stage;
@@ -151,7 +151,7 @@ FROM @my_stage/events.json (FILE_FORMAT => ff_json);
 Directory Table、ガバナンスタグ、`BUILD_SCOPED_FILE_URL`、および SQL で解析できない
 ファイル向けの Snowpark `SnowflakeFile.open` も検証済みです。
 
-## ステップ5 — Iceberg テーブルを書く
+## ステップ5 — Iceberg テーブルの書き込み
 
 ```bash
 ./integrations/snowflake/scripts/setup_external_volume.sh \
