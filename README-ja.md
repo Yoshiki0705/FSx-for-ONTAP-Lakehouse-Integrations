@@ -7,12 +7,15 @@
 
 > エンタープライズファイルデータ（NFS/SMB）を **FSx for ONTAP S3 Access Points** 経由で各種分析・Lakehouse エンジンからクエリする検証フレームワーク。データ移動不要。データエンジニア、ソリューションアーキテクト、実装パートナー向け。
 
+**扱う範囲**: 本リポジトリは分析・Lakehouse の断面、つまりどのエンジンがアクセスポイントに対して動き、各結果が何を測った上での結論かを扱います。**FSx for ONTAP 全般のガイドではありません。** 採用判断・設計・移行・運用は [Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) から。ランサムウェア対策と不変性、監査ログ搬送、エッジ収集、アクセス制御付き RAG は **[問いごとの参照先リポジトリ](docs/ja/repository-map.md)** を参照してください。
+
 ---
 
 ## 目的別の出発点
 
 | やりたいこと | ガイド | 所要時間 |
 |---|---|:---:|
+| そもそも参照先がこのリポジトリで正しいかを確かめる | [問いごとの参照先リポジトリ](docs/ja/repository-map.md) | 3 分 |
 | 何のための構成かを専門用語なしで把握する | [ビジネスガイド](docs/ja/quickstart-business-guide.md) | 5分 |
 | ユースケースに合うエンジンを選ぶ | [エンジン選定ガイド](docs/ja/engine-selection-guide.md) | 10分 |
 | アーキテクチャの選択肢とトレードオフを比較する | [アーキテクチャ比較](docs/adoption-guide/architecture-comparison-ja.md) | 15分 |
