@@ -50,7 +50,7 @@ Enforced by pre-commit hooks (`.githooks/pre-commit`) and CI workflows:
 
 > Full rules in global Kiro steering. Summary enforced by `.github/workflows/agent-output-audit.yml`.
 
-- **Naming**: "FSx for ONTAP" (never FSx for ONTAP/bare FSx). "FSx for ONTAP S3 AP" for access points.
+- **Naming**: "Amazon FSx for NetApp ONTAP" first, then "FSx for ONTAP" (never `FSxN`, bare `FSx`, `FSx ONTAP`). Access points: "S3 Access Points" in full; `S3 AP` is not a form AWS sanctions.
 - **Neutrality**: No vendor-versus framing. Present trade-offs symmetrically.
 - **Safety**: No PII, account IDs, internal IPs, persona names in public output.
 - **Bilingual**: JA/EN parity (same section structure/count).
@@ -135,9 +135,9 @@ Required IAM policies for domain-joined instances:
 
 ### S3 Access Point Networking — Critical Gotcha
 
-**S3 Gateway Endpoint may block FSx for ONTAP S3 AP traffic** for internet-origin APs.
+**S3 Gateway Endpoint may block FSx for ONTAP S3 Access Points traffic** for internet-origin APs.
 
-- FSx for ONTAP S3 AP aliases resolve to `s3-r-w.<region>.amazonaws.com`
+- FSx for ONTAP S3 Access Points aliases resolve to `s3-r-w.<region>.amazonaws.com`
 - This hostname may NOT be in the S3 prefix list used by Gateway endpoints
 - Impact: VPC-attached Lambda/EC2 → S3 Gateway EP → timeout for internet-origin APs
 
