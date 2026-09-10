@@ -1,6 +1,6 @@
 # NOTE: For MSK IAM auth, you also need aws-msk-iam-sasl-signer-python
-confluent-kafka==2.15.0
+confluent-kafka==2.15.1
 aws-msk-iam-sasl-signer-python==1.0.2
-boto3==1.43.66
+boto3==1.43.92
 Pillow==12.3.0
 reportlab==4.5.1
