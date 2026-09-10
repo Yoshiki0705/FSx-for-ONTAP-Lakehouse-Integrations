@@ -50,7 +50,7 @@ Enforced by pre-commit hooks (`.githooks/pre-commit`) and CI workflows:
 
 > Full rules in global Kiro steering. Summary enforced by `.github/workflows/agent-output-audit.yml`.
 
-- **Naming**: "Amazon FSx for NetApp ONTAP" first, then "FSx for ONTAP" (never `FSxN`, bare `FSx`, `FSx ONTAP`). Access points: "S3 Access Points" in full; `S3 AP` is not a form AWS sanctions.
+- **Naming**: "Amazon FSx for NetApp ONTAP" first, then "FSx for ONTAP" (never `FSxN`, bare `FSx`, `FSx ONTAP`). Access points: "S3 Access Points" in full; `S3 AP` is not a form AWS sanctions. Existing uses are grandfathered.
 - **Neutrality**: No vendor-versus framing. Present trade-offs symmetrically.
 - **Safety**: No PII, account IDs, internal IPs, persona names in public output.
 - **Bilingual**: JA/EN parity (same section structure/count).
