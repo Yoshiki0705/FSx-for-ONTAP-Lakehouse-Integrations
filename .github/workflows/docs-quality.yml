@@ -141,14 +141,43 @@ jobs:
         run: |
           echo "🔍 Validating YAML files..."
           pip install -q pyyaml
-          ERRORS=0
-          git ls-files -- '*.yaml' '*.yml' | while read -r yamlfile; do
-            python3 -c "import yaml; yaml.safe_load(open('$yamlfile'))" 2>&1 || {
-              echo "::error file=$yamlfile::Invalid YAML syntax"
-              ERRORS=$((ERRORS+1))
-            }
-          done
-          echo "✓ YAML validation complete"
+          # This step used to increment a counter inside a `while read` pipeline and
+          # then echo success unconditionally. The counter lived in a subshell and the
+          # step could not fail, so every parse error passed for as long as it existed
+          # — including one that made a CloudFormation template undeployable.
+          #
+          # It also could not have been fixed by adding `exit 1` alone: plain
+          # safe_load rejects CloudFormation short tags (!Ref, !GetAtt, !Equals), so
+          # a working gate would have failed on ~30 valid templates. Unknown tags are
+          # therefore accepted structurally, which is what leaves real syntax errors
+          # — an unquoted "JSON: {" in a description, a mapping key at sequence
+          # level — as the only thing that fails.
+          python3 - <<'PY'
+          import subprocess, sys, yaml
+
+          class Tolerant(yaml.SafeLoader):
+              """Accept unknown tags so CloudFormation intrinsics parse structurally."""
+
+          Tolerant.add_multi_constructor("!", lambda loader, suffix, node: None)
+
+          files = subprocess.run(
+              ["git", "ls-files", "--", "*.yaml", "*.yml"],
+              capture_output=True, text=True, check=True,
+          ).stdout.split()
+
+          bad = []
+          for path in files:
+              try:
+                  with open(path, encoding="utf-8") as handle:
+                      yaml.load(handle, Loader=Tolerant)
+              except Exception as exc:  # noqa: BLE001 - report every parse failure
+                  first = str(exc).splitlines()[0]
+                  print(f"::error file={path}::Invalid YAML syntax: {first}")
+                  bad.append(path)
+
+          print(f"✓ {len(files)} YAML file(s) parsed, {len(bad)} invalid")
+          sys.exit(1 if bad else 0)
+          PY
 
       - name: Check for support case numbers in tracked files
         run: |
