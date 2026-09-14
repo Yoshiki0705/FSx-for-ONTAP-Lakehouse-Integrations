@@ -55,7 +55,7 @@ That path is rejected: `Object ref ... of type EXTERNAL_TABLE not supported in D
 | **Severity** | High |
 | **Applied to the article** | ⬜ Not yet |
 
-The article lists "PutObject (via COPY INTO unload)" as **⚠️ TBD** with the note "FSx S3 AP supports PutObject ≤5GB", and later says unload "was not validated".
+The article lists "PutObject (via COPY INTO unload)" as **⚠️ TBD** with the note "FSx S3 AP supports PutObject ≤5GB", and later says unload "was not validated". <!-- allow:naming: verbatim quotation of the published article, which is the string being corrected -->
 
 **Correct statement.** It was validated and it fails, in the worst way: `COPY INTO @stage` is not refused. The object is written and is intact, and then the statement fails with `Remote upload failed checksum validation` because FSx for ONTAP reports server-side encryption as `aws:fsx`. **A complete object is left behind while the caller is told the write failed.** Setting `ENCRYPTION = (TYPE = 'AWS_SSE_S3')` does not fix it; the statement hangs instead. Anyone who has tried unload against an access-point-backed stage should list the target prefix and remove orphans.
 

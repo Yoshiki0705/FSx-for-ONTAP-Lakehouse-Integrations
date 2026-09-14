@@ -55,7 +55,7 @@
 | **深刻度** | 高 |
 | **記事への反映** | ⬜ 未反映 |
 
-記事は「PutObject (via COPY INTO unload)」を **⚠️ TBD** とし「FSx S3 AP supports PutObject ≤5GB」と注記し、後段でアンロードは「未検証」としている。
+記事は「PutObject (via COPY INTO unload)」を **⚠️ TBD** とし「FSx S3 AP supports PutObject ≤5GB」と注記し、後段でアンロードは「未検証」としている。 <!-- allow:naming: 訂正対象である公開記事からの逐語引用 -->
 
 **正しい記述。** 検証済みであり、最悪の形で失敗する。`COPY INTO @stage` は拒否されない。オブジェクトは正常な状態で書き込まれ、その後 FSx for ONTAP が暗号化を `aws:fsx` と報告するため `Remote upload failed checksum validation` で文が失敗する。**呼び出し側には失敗が返るのに、完全なオブジェクトが残る。** `ENCRYPTION = (TYPE = 'AWS_SSE_S3')` を設定しても解決せず、代わりに文がハングする。アクセスポイント経由のステージにアンロードを試したことがあるなら、対象プレフィックスを列挙して孤立オブジェクトを削除すること。
 
