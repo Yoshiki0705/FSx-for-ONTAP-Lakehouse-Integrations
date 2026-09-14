@@ -32,7 +32,7 @@
 
 **A**: 測定した規模では遅くありません。2026-08-05 の再測定では、10〜5,000 オブジェクトでネイティブ S3 比 1.3〜1.4 倍（5,000 件では 0.9 倍、つまり有意差なし）で、フラット構造・ネスト構造の両方で同様でした。本リポジトリでは従来 30-80 倍と記載していましたが、この数値は**再現せず**、撤回しました。[BLK-006](./blocker-tracker.md) と[エビデンス記録](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml)を参照してください。
 
-単一ディレクトリに 5,000 オブジェクトを超える場合のリスティングは未測定であり、ONTAP はディレクトリエントリをインメモリでソートする必要があるため、大規模データセットではファイルを ≥ 128 MB に統合しパーティション構造で整理することは引き続き妥当な設計実践です。ただしそれは、小規模で実測されたペナルティを根拠とするものではありません。
+単一ディレクトリに 20,000 オブジェクトを超える場合のリスティングは未測定であり、ONTAP はディレクトリエントリをインメモリでソートする必要があるため、大規模データセットではファイルを ≥ 128 MB に統合しパーティション構造で整理することは引き続き妥当な設計実践です。ただしそれは、小規模で実測されたペナルティを根拠とするものではありません。
 
 > **小ファイル統合**: 製造データは小ファイル（センサーログ等）が大量に生成される傾向があります。FSx for ONTAP S3 AP 経由での分析前に、Glue ETL または EMR で Parquet ≥ 128 MB に統合する前処理を推奨します。
 
@@ -223,7 +223,7 @@ aws athena start-query-execution \
 | 最大アップロードサイズ: 50 GB | 単一オブジェクトのアップロードは 50 GB まで。それを超えるオブジェクトはダウンロードは可能だがアップロードは不可。マルチパートアップロードはサポート。**本リポジトリが設定しているパートサイズは上限を大きく下回る** — [上限に対するパートサイズの余裕](#上限に対するパートサイズの余裕)を参照 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | Object Versioning なし | S3 Object Versioning は非サポート | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | 条件付き書き込みなし | Conditional writes（`If-None-Match`）は非サポート — HTTP 501 `NotImplemented` を返す。2026-05-22 に自環境で 501 を確認。実装予定を述べた公開情報は見つけられておらず `open` です。S3 ネイティブ conditional writes（2024年8月提供開始）との parity を求める機能要望を提出済み。Delta Lake、Iceberg、Hudi のトランザクショナル書き込みをブロック。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
-| ListObjectsV2 レイテンシ | 2026-08-05 再測定: 10〜5,000 オブジェクトでネイティブ S3 比 **1.3〜1.4 倍**（5,000 件では 0.9 倍）。フラット構造・ネスト構造とも同様で、当初の目標（100 ファイル未満で 1 秒未満、1,000 ファイル未満で 3 秒未満）の範囲内。従来引用していた 30-80 倍は再現せず、撤回しました。1 ディレクトリ 5,000 オブジェクトを超える場合の挙動は未測定。 | 2026-08-05 再測定（[エビデンス](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml)） |
+| ListObjectsV2 レイテンシ | 2026-08-05 再測定: 10〜5,000 オブジェクトでネイティブ S3 比 **1.3〜1.4 倍**（5,000 件では 0.9 倍）。2026-09-14 に 10,000 件と 20,000 件へ拡張し、いずれも **0.7 倍**。フラット構造・ネスト構造とも同様で、当初の目標（100 ファイル未満で 1 秒未満、1,000 ファイル未満で 3 秒未満）の範囲内。従来引用していた 30-80 倍は再現せず、撤回しました。1 ディレクトリ 20,000 オブジェクトを超える場合の挙動は未測定。 | 2026-08-05 再測定（[エビデンス](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml)） |
 | S3 Event Notifications なし | S3 Event Notifications（s3:ObjectCreated 等）は非サポート。Snowpipe auto-ingest と Auto Loader ファイル通知モードを阻害。機能要望提出済み（2026年5月）。代替: スケジュールポーリング、または ONTAP ネイティブ監査ログ（AP 経由の操作を Source=HTTP / Source=S3 で記録）。**FPolicy → Lambda は代替になりません**: AP 経由の書き込みは FPolicy 通知を発火しません（実測 2026-08-26 / ONTAP 9.18.1P3D1）。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | SnapMirror S3 なし | SnapMirror S3（ONTAP S3 バケット → AWS S3 レプリケーション）は FSx for ONTAP では使えません。`snapmirror object-store` コマンドと `/api/cloud/targets` REST API がいずれも拒否されます（2026-05 自環境で確認）。意図的な無効化か未実装かは `open`。検証済み同期メカニズムとして AWS DataSync（NFS → S3）を使用。 | 2026年5月検証 |
 | Presigned URLs: 公式には非サポート | Presigning はクライアント側の署名計算であり、サーバー側の操作ではない。サポートされている操作（例: GetObject）の Presigned URLs は、サーバーが標準の署名付きリクエストとして認識するため実際には動作する。ただし、AWS はこれを「非サポート」としており、安定性を保証していない。**本番環境では依存しないこと。** | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、2026-05-22 自環境で確認 |
@@ -1135,7 +1135,7 @@ clickhouse-client --query "
 "
 ```
 
-> **ListObjectsV2 レイテンシに関する補足**: ListObjectsV2 は 5,000 オブジェクトまでネイティブ S3 比 1.3〜1.4 倍と実測されており（[BLK-006](./blocker-tracker.md)）、その規模でのワイルドカードスキャンは問題になりません。1 ディレクトリ 5,000 オブジェクトを超える範囲は未測定です。CH-001/CH-002 がそれより大きなデータセットを対象とする場合は、事前にファイルパスリストを取得し `s3()` に個別パスを渡すパターンか、DataSync → 標準 S3 → S3Queue の間接パスを推奨します。ClickHouse Cloud 環境では IAM 認証メカニズムが self-managed と異なる（SharedRole ベース）ため、CH-005 は両環境でテストしてください。
+> **ListObjectsV2 レイテンシに関する補足**: ListObjectsV2 は 5,000 オブジェクトまでネイティブ S3 比 1.3〜1.4 倍、10,000 件と 20,000 件では 0.7 倍と実測されており（[BLK-006](./blocker-tracker.md)）、その規模でのワイルドカードスキャンは問題になりません。1 ディレクトリ 5,000 オブジェクトを超える範囲は未測定です。CH-001/CH-002 がそれより大きなデータセットを対象とする場合は、事前にファイルパスリストを取得し `s3()` に個別パスを渡すパターンか、DataSync → 標準 S3 → S3Queue の間接パスを推奨します。ClickHouse Cloud 環境では IAM 認証メカニズムが self-managed と異なる（SharedRole ベース）ため、CH-005 は両環境でテストしてください。
 
 ## 参考資料
 

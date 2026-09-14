@@ -477,7 +477,7 @@ cp params.example.json params.json  # Edit: set S3AccessPointArn
 
 The following limitations are observed when using FSx for ONTAP S3 AP as a Snowflake External Stage:
 
-1. **FSx for ONTAP S3 AP listing latency**: measured at 1.3-1.4x native S3 for up to 5,000 objects (2026-08-05), so listing is not a practical constraint at that scale. Behaviour above 5,000 objects per directory is unmeasured — consolidate files and partition the key space for large datasets. The earlier "tens of seconds to minutes" and "30-80x" claims did not reproduce ([evidence](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml))
+1. **FSx for ONTAP S3 AP listing latency**: measured at 1.3-1.4x native S3 for up to 5,000 objects (2026-08-05) and 0.7x at 10,000 and 20,000 objects (2026-09-14), so listing is not a practical constraint at that scale. Behaviour above 20,000 objects per directory is unmeasured — consolidate files and partition the key space for large datasets. The earlier "tens of seconds to minutes" and "30-80x" claims did not reproduce ([evidence](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml))
 2. **Pre-signed URL (FSx for ONTAP S3 AP limitation)**: AWS FSx for ONTAP S3 AP documentation states Pre-signed URLs are "Not supported," but Snowflake's `GET_PRESIGNED_URL()` function generates working download URLs in practice. Use at own risk as this is outside official FSx for ONTAP S3 AP support
 3. **S3 Event Notifications not supported (FSx for ONTAP S3 AP limitation)**: FSx for ONTAP S3 AP does not support S3 Event Notifications, so Snowpipe auto-ingest trigger is not possible (use FPolicy + Lambda as alternative)
 4. **Max upload size**: 50 GB (Multipart Upload supported)

@@ -42,7 +42,7 @@ Only AWS services this project already uses. These are the realistic next candid
 | UNV-021 | Athena | Iceberg at realistic table size — manifest growth, compaction cost, partition evolution | A larger dataset. The 2026-08-06 run used a single-digit row count. |
 | UNV-022 | Athena | Concurrency above 25, and working sets larger than the ONTAP cache | A dataset well beyond cache size and a higher concurrency sweep. The 2026-08-06 run was cache-resident. |
 | UNV-023 | Hudi | Any operation on an FSx for ONTAP S3 AP | A Hudi-capable engine. Listed under BLK-002 but never tested. |
-| UNV-025 | FSx for ONTAP | ListObjectsV2 latency above 5,000 objects | A larger object population. The 2026-08-05 measurement covered 10 to 5,000 objects. |
+| UNV-025 | FSx for ONTAP | ListObjectsV2 latency above 20,000 objects | A larger object population. Measured 10 to 5,000 objects on 2026-08-05 and 10,000 to 20,000 on 2026-09-14, with no degradation found. |
 | UNV-026 | Bedrock | Whether the Managed Knowledge Base S3 connector accepts an S3 AP URI (the traditional Knowledge Base path is verified) | A Managed Knowledge Base run. |
 | UNV-027 | Tooling | PyIceberg wheel on macOS Apple Silicon | A run on that platform. A wheel exists; this project has not exercised it. |
 | ~~UNV-031~~ | FSx for ONTAP | ~~Whether an S3 access point can serve a SnapMirror destination while replication continues~~ | **Closed 2026-09-13: both routes work.** Mounting the DP destination through ONTAP gives a read-only access point that stays current — a later transfer was readable through it in 15 s, relationship still `snapmirrored`. A clone of the destination Snapshot gives a **writable** access point frozen at that Snapshot. The FSx API's refusal measured earlier was an FSx control-plane restriction only. [Evidence](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml), SM-VAL-013 |
@@ -112,7 +112,7 @@ Items that were on this list and have since been measured.
 | Athena | Iceberg read **and write** on an FSx for ONTAP S3 AP | Verified — full lifecycle including UPDATE, DELETE, time travel, OPTIMIZE, VACUUM and two concurrent commits | [2026-08-06](../../verification-pack/athena-iceberg/evidence/2026-08-06/evidence-record.yaml) |
 | Athena | High-concurrency scans (10-50 analysts) | Verified to 25 concurrent; 25/25 succeeded, full scans degraded ~2x, queue time under 200 ms. Dataset was cache-resident | [2026-08-06](../../verification-pack/athena-concurrency/evidence/2026-08-06/evidence-record.yaml) |
 | Snowflake | Whether a synthesized S3 notification triggers a Snowpipe COPY | Verified — ingested ~0.5 s after publish | [2026-08-06](../../verification-pack/snowpipe-pattern-a/evidence/2026-08-06/snowflake-side-verification.yaml) |
-| FSx for ONTAP | ListObjectsV2 latency versus native S3 | Re-measured at 1.3-1.4x for 10 to 5,000 objects; the earlier 30-80x figure did not reproduce and is withdrawn | [2026-08-05](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml) |
+| FSx for ONTAP | ListObjectsV2 latency versus native S3 | Re-measured at 0.7x-1.4x for 10 to 20,000 objects; the earlier 30-80x figure did not reproduce and is withdrawn | [2026-08-05](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml) |
 
 ## How to use this page
 
