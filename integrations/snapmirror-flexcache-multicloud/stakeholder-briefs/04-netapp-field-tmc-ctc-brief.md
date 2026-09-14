@@ -31,6 +31,8 @@ FSx for ONTAP S3 AP-attached volumes support SnapMirror Async and FlexCache (val
 | "Can I replicate to GCNV?" | Yes — External Replication (SnapMirror) or FlexCache Cache | XC-006 |
 | "Is SnapMirror Sync supported?" | No — Async only for S3 NAS bucket volumes | SM-001 |
 | "What about failover to the destination?" | Break → wait 60s (FSx API) → create new S3 AP | SM-005 |
+| "Can analytics read the replica without failing over?" | Yes, reads only. Mount the DP destination through ONTAP, then attach an S3 AP. No break, relationship keeps running. Allow tens of minutes for the junction path to reach the FSx API | SM-VAL-013 |
+| "What if the consumer needs to write?" | Clone the destination Snapshot and attach to the clone. Writable, but fixed at the cloned point in time | SM-VAL-013 |
 
 ---
 

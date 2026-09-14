@@ -193,7 +193,7 @@ Cache Volume (Region B)
 S3 API access (directly from Region B)
 ```
 
-Currently (9.17.1), Cache Volume access is NFS/SMB only. For S3 API access, use SnapMirror break + S3 AP re-attach (Guide 07).
+Cache Volume access is NFS/SMB only: the FSx API refuses attachment outright with `the volume is a FlexCache`, independently of ONTAP version. For S3 API access to remote data, replicate with SnapMirror instead and serve the destination — **no break required**, see [§3.2 of the design considerations](../../../../docs/en/s3ap-flexcache-snapmirror-considerations.md#32-s3-ap-attachment-at-the-destination).
 
 ### Source
 
@@ -205,7 +205,9 @@ NetApp official documentation: [Supported and unsupported features for FlexCache
 
 | Goal | Pattern | Guide |
 |------|---------|-------|
-| S3 API access to Cache Volume data | SnapMirror + break + S3 AP re-attach | [Guide 07](demo-guide-07-snapmirror-cross-region.md) |
+| S3 API read access to remote data | SnapMirror, then mount the destination through ONTAP and attach an S3 AP to it — no break ([§3.2](../../../../docs/en/s3ap-flexcache-snapmirror-considerations.md#32-s3-ap-attachment-at-the-destination)) | — |
+| S3 API **write** access to a remote copy | SnapMirror, then clone the destination Snapshot and attach to the clone | — |
+| Failover to the destination | break → mount → attach | [Guide 07](demo-guide-07-snapmirror-cross-region.md) |
 | Remote read acceleration (NFS/SMB) | FlexCache (works today) | [Guide 01](demo-guide-01-flexcache-same-region.md)–[06](demo-guide-06-flexcache-gcnv.md) |
 | S3 API access to Origin data | Use S3 AP on Origin Volume directly | Works today |
 
