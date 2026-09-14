@@ -70,7 +70,9 @@ The size note is also wrong in a way that matters: there are **two** ceilings. A
 
 The article's "Support Update (May 2026...)" line includes a vendor support case number. This project's own standard is that support case numbers do not appear in public output; reference the topic, not the ticket.
 
-**Correct statement.** Remove the identifier and keep the substance: "Confirmed with Snowflake Support, May 2026."
+**Correct statement.** Remove the identifier — and do not replace it with "confirmed by vendor support", which has the same defect in a shorter form. A vendor's reply is not a publishable basis for a claim: cite the public page, state your own observation, or mark it open. Recording that you asked, and when, is fine.
+
+Here the substance is available first-hand and should replace the attribution outright. The Managed Iceberg half of that line is independently measured in this repository, and the Dynamic Table half of the same line is **wrong** (C-02). So the line becomes an observation with an evidence link, not a ticket reference.
 
 ### C-05 — Formats and features that have since moved from Expected to Verified
 
