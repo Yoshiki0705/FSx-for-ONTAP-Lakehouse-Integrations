@@ -1,0 +1,274 @@
+# =============================================================================
+# Is FPolicy usable as the event source for lakehouse ingestion?
+# =============================================================================
+# This repository published, in docs and in a live article, that "FPolicy has
+# never been run live as an event source". That was wrong, and this record
+# corrects it.
+#
+# FPolicy has been run live, on this same AWS account and file system family,
+# in the sibling fsxn-observability-integrations project: an external FPolicy
+# server on ECS Fargate, protocol version 1.2, a 72-hour session, and
+# notifications measured for NFSv3 and SMB operations. What that project also
+# established is far more consequential for this one, and this repository was
+# not carrying it: FPolicy does not see operations arriving through
+# an FSx for ONTAP S3 Access Point at all.
+#
+# So the honest statement is not "unverified". It is "verified, and bounded" —
+# and the boundary runs straight through the middle of this repository's
+# subject matter, because every integration here reads through an access point.
+#
+# What this run adds is the one thing the sibling measurement listed as open:
+# it was taken on ONTAP 9.18.1P3D1, and recorded "does the same hold on other
+# ONTAP versions? Not measured." The cluster now runs 9.18.1P5. The structural
+# half of that finding is re-checked here against the running version.
+#
+# Identifiers masked: <ACCOUNT_ID>, <FS_ID>, <SVM_UUID>, <ENGINE_IP>.
+# =============================================================================
+test_id: "FPOLICY-EVENT-SOURCE-001"
+date_tested: "2026-09-14"
+tester: "Yoshiki Fujiwara"
+corrects: >
+  The claim in docs/{en,ja}/published-article-corrections.md C-01, and the
+  correction notice published in the Part 3 article, that FPolicy "has never
+  been run live as an event source". It has. The reason to prefer a Snowflake
+  Task over it is different, and is stated below.
+depends_on: >
+  fsxn-observability-integrations docs/en/verification-results-fpolicy-s3ap-and-session.md
+  (2026-08-26, ONTAP 9.18.1P3D1) for the measured notification behaviour, and
+  docs/en/operational-notes-fpolicy.md plus
+  docs/en/fpolicy-production-architecture-patterns.md for the operational
+  requirements. Not re-measured here: re-deploying a Fargate FPolicy server to
+  reproduce a number that project already measured would duplicate verified
+  work.
+
+purpose: |
+  Establish whether FPolicy can serve as the trigger for an ingestion pipeline
+  reading FSx for ONTAP data, and under what conditions it cannot — replacing
+  an "unverified" label with a measured boundary.
+
+environment:
+  region: "ap-northeast-1"
+  aws_account: "<ACCOUNT_ID>"
+  fsx_file_system: "<FS_ID>"
+  fsx_deployment_type: "SINGLE_AZ_1"
+  ontap_version: "NetApp Release 9.18.1P5: Thu Jul 09 23:05:16 UTC 2026"
+  ontap_api_access: >
+    ONTAP REST API over the private management LIF, reached from an in-VPC
+    Amazon Linux host through AWS Systems Manager. The management endpoint is
+    not reachable from outside the VPC, so every ONTAP call in this record ran
+    on that host. fsxadmin credentials were read on the host from Secrets
+    Manager under a temporary, single-secret IAM policy that was removed
+    afterwards; the password never transited an SSM command parameter.
+  probe_svm: >
+    An SVM carrying no FPolicy configuration was used for the protocol probe,
+    so nothing already running was touched. Every accepted event was deleted
+    and the SVM was confirmed to hold zero events afterwards.
+
+# ---------------------------------------------------------------------------
+# 1. The structural boundary, re-checked on the running version
+# ---------------------------------------------------------------------------
+# An FPolicy event names the protocol it watches. If no value corresponds to
+# object access, no configuration can be written that would watch the S3
+# access path — which makes "no notification arrived" a property of the
+# mechanism rather than of the configuration used to test it.
+protocol_enum_probe:
+  method: >
+    POST one FPolicy event per candidate protocol value to
+    /api/protocols/fpolicy/{svm}/events, count only the ones created, and
+    delete those. A rejection is HTTP 400 naming the field.
+  accepted: ["cifs", "nfsv3", "nfsv4"]
+  rejected:
+    - value: "s3"
+      http: 400
+      message: '"s3" is an invalid value for field "protocol" (<Protocol>)'
+    - value: "S3"
+      http: 400
+    - value: "object"
+      http: 400
+    - value: "http"
+      http: 400
+    - value: "smb"
+      http: 400
+    - value: "nfs"
+      http: 400
+    - value: "nfsv4.1"
+      http: 400
+  left_behind: 0
+  finding: >
+    Identical to the 9.18.1P3D1 result. Three protocol values, none of them
+    object access. The sibling project's open item "does the same hold on
+    other ONTAP versions?" is closed for 9.18.1P5, which is the version this
+    repository's integrations actually run against.
+
+# ---------------------------------------------------------------------------
+# 2. Configuration presence is not pipeline liveness
+# ---------------------------------------------------------------------------
+live_state_observed:
+  finding: >
+    One SVM carries an FPolicy policy that is enabled, with an external engine
+    and events for cifs and nfsv3 — and both nodes report the engine
+    disconnected. One node gives "TCP Connection to FPolicy server failed."
+    and the other "No local lif present to connect to FPolicy server.", which
+    are different faults on the same policy.
+  why_it_matters: >
+    An enabled policy with configured events looks healthy in a configuration
+    dump and delivers nothing. An ingestion pipeline that treats the presence
+    of an FPolicy policy as evidence that events will arrive has no signal at
+    all. The connection state has to be read per node, and the two nodes can
+    disagree.
+
+# ---------------------------------------------------------------------------
+# 3. What the sibling measurement established (cited, not re-measured)
+# ---------------------------------------------------------------------------
+inherited_findings:
+  - id: "FP-INH-1"
+    finding: "FPolicy notifies for NFSv3 and SMB file operations."
+    detail: >
+      Measured live against an ECS Fargate FPolicy server at protocol version
+      1.2. Notification observed at 0.3 s. So FPolicy is a working event
+      source for data that arrives over a file protocol.
+    tier: "verified (sibling project, 2026-08-26, ONTAP 9.18.1P3D1)"
+  - id: "FP-INH-2"
+    finding: "FPolicy does not notify for S3 Access Point operations."
+    detail: >
+      Nine access-point data-plane calls produced zero notifications, in the
+      same FPolicy session in which a file-protocol control against the same
+      volume did produce them. Verified for both UNIX/NFS and WINDOWS/SMB
+      identity. The writes reached the volume — they were read back over the
+      file protocol — so this is a missing notification, not a missing write.
+    tier: "verified (sibling project)"
+  - id: "FP-INH-3"
+    finding: "The access-point path does not pass through the FPolicy gate at all."
+    detail: >
+      With mandatory=true and a synchronous engine aimed at an address with no
+      listener, an NFSv3 write was refused with Permission denied while access
+      point PUT, GET, LIST and DELETE all succeeded. Repointed at a server
+      that does answer, the NFS write produced a SCREEN_REQ and the access
+      point operations produced nothing. The operations are not un-blocked
+      because nothing reached the server; they are not subject to FPolicy.
+    tier: "verified (sibling project)"
+    consequence: >
+      This is heavier than a missing notification. A design that expects to
+      block or screen a write does not apply to this path.
+  - id: "FP-INH-4"
+    finding: "Session continuity held for 72 hours."
+    detail: >
+      One session, zero spontaneous disconnects, KeepAlive every 120 s. Not
+      generalisable past 72 hours, and the KeepAlive interval corrects an
+      earlier "about 6 seconds" that did not reproduce.
+    tier: "verified (sibling project)"
+
+# ---------------------------------------------------------------------------
+# 4. Operational requirements an ingestion design has to absorb
+# ---------------------------------------------------------------------------
+# These are the reasons to prefer a scheduled Task even where FPolicy does
+# fire. They are requirements, not objections: the sibling project runs this.
+operational_requirements:
+  - item: "An external FPolicy server is mandatory"
+    detail: >
+      FPolicy speaks a proprietary binary protocol to a server you operate.
+      The sibling project runs one ECS Fargate task, TCP 9898. A network load
+      balancer cannot front it — it is used for health checking only, because
+      ONTAP connects directly to the task's ENI private IP.
+  - item: "The engine is registered by IP, and the task IP changes on restart"
+    detail: >
+      primary_servers holds an address, so a task replacement breaks the
+      connection until the engine is re-registered. The sibling project closes
+      this with an EventBridge rule on ECS task state change driving a Lambda
+      that PATCHes the ONTAP engine, and keeps a manual procedure for when
+      that fails.
+  - item: "There is an event-loss window on restart"
+    detail: >
+      About two minutes on task crash, during which operations are not
+      captured. For observability that is a gap in a log. For ingestion it is
+      a file that never gets loaded, with nothing anywhere recording that it
+      was missed. ONTAP 9.14.1+ offers an FPolicy persistent store; not
+      evaluated here.
+  - item: "An enabled policy cannot be modified"
+    detail: >
+      Changing events or scope means disable, change, enable — and operations
+      in that window are not captured. Any change to what the pipeline watches
+      is itself a gap.
+  - item: "NFSv3 write-complete is delayed by default"
+    detail: >
+      The sibling project's server holds write-complete for 5 s by default
+      (tunable 0-60), so an NFSv3 write reaches the queue up to 5 s after it
+      lands. SMB create is not affected. An FPolicy trigger is therefore not
+      unconditionally sub-second end to end, even though the notification
+      itself arrives in 0.3 s.
+
+# ---------------------------------------------------------------------------
+# 5. Architecture patterns available
+# ---------------------------------------------------------------------------
+architecture_patterns:
+  source: "fsxn-observability-integrations docs/en/fpolicy-production-architecture-patterns.md"
+  patterns:
+    - name: "Single Fargate task"
+      shape: "ONTAP FPolicy -> Fargate task -> SQS -> Lambda -> consumer"
+      fit: "PoC and low volume. Single point of failure, IP changes on restart."
+    - name: "Primary / secondary servers"
+      shape: "Two tasks in different AZs, registered as primary_servers and secondary_servers"
+      fit: >
+        ONTAP fails over natively, so a single task restart loses no events.
+        Both tasks write to one queue, so the consumer needs deduplication.
+    - name: "Auto-update with state reconciliation"
+      shape: "ECS task state change -> EventBridge -> Lambda reconciles engine IP against the healthy task"
+      fit: "Self-healing. Requires ONTAP REST reachability from Lambda, so VPC plus egress."
+    - name: "Multi-AZ placement"
+      shape: "Tasks spread across AZs; SQS and Lambda are already multi-AZ"
+      fit: "AZ-level resilience. With a Single-AZ file system the file system remains the limit."
+
+# ---------------------------------------------------------------------------
+# 6. Conclusion for this repository
+# ---------------------------------------------------------------------------
+conclusion:
+  verdict: >
+    FPolicy is a verified event source for files arriving over NFS or SMB, and
+    is blind to files arriving through an S3 Access Point. Which of those a
+    given design is depends on how the Bronze layer is written, not on how it
+    is read.
+  for_the_snowflake_pattern: |
+    The article's Option 1 stays a Snowflake Task running COPY INTO, but for a
+    corrected reason. Not "FPolicy is unverified" — it is verified. Rather:
+
+      1. If anything writes through the access point, FPolicy never fires for
+         those objects, and nothing reports that it did not. A pipeline whose
+         trigger is silently partial is worse than one that is merely slower.
+      2. Where writes do arrive over NFS or SMB, FPolicy fires in 0.3 s, but
+         the pipeline still needs an external server, engine-IP reconciliation
+         and an accepted event-loss window on restart.
+      3. A Task plus COPY INTO needs none of that and gets exactly-once from
+         Snowflake's load history, which no notification path provides.
+
+    So FPolicy earns a place when detection latency genuinely has to be
+    sub-second and every write arrives over a file protocol. Otherwise the
+    scheduled Task is the better trade, and the reason is the boundary and the
+    operational weight, not a lack of evidence.
+  reconciliation_requirement: >
+    Any ingestion path driven by notifications — FPolicy or a synthesized
+    Snowpipe message — has to be monitored by comparing object counts against
+    rows loaded. Both have a silent-miss mode: FPolicy through the access
+    point path and the restart window, Snowpipe through a wrong
+    s3.bucket.name. Pipe or policy status reports healthy in both cases.
+
+not_established:
+  - "End-to-end latency of an FPolicy-driven Snowflake ingestion was not built or measured here."
+  - "The FPolicy persistent store (ONTAP 9.14.1+) was not evaluated as a fix for the restart gap."
+  - "The notification behaviour was not re-measured on 9.18.1P5; only the protocol enum was. The measured half is inherited from 9.18.1P3D1."
+  - "ONTAP native S3, as opposed to an FSx for ONTAP S3 Access Point, was not tested."
+
+reproduce: |
+  # From an in-VPC host with ONTAP REST reachability:
+  # probe which protocol values an FPolicy event accepts
+  for proto in cifs nfsv3 nfsv4 s3 S3 object smb nfs http nfsv4.1; do
+    curl -sk -u "$U:$P" -X POST -H 'Content-Type: application/json' \
+      -d "{\"name\":\"probe_$proto\",\"protocol\":\"$proto\",\
+           \"file_operations\":{\"create\":true,\"write\":true}}" \
+      "https://<mgmt-ip>/api/protocols/fpolicy/<svm-uuid>/events"
+  done
+  # delete every event that was created, then confirm the SVM holds none
+
+  # read engine connection state per node, which is where a configured-but-dead
+  # policy becomes visible
+  curl -sk -u "$U:$P" \
+    "https://<mgmt-ip>/api/protocols/fpolicy/<svm-uuid>/connections?fields=*"

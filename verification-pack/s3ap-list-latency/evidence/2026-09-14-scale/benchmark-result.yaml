@@ -1,0 +1,146 @@
+# ListObjectsV2 Latency at scale: does the 5,000-object result extend?
+#
+# BENCH-S3AP-LIST-001 (2026-08-05) withdrew a 30-80x claim and measured
+# 0.9x-1.4x from 10 to 5,000 objects. It closed with a caveat this repository
+# then repeated in three published articles: "behaviour at 100k+ objects is
+# untested", published as "above 5,000 objects is untested".
+#
+# This run extends the same harness to 10,000 and 20,000 objects. Same script,
+# same method, same client location, so the two runs are comparable.
+#
+# Outcome: no cliff. At both counts the access point listed FASTER than the
+# native S3 bucket measured in the same session. The withdrawal of 30-80x
+# stands and is now supported four times further out. But the "1.3-1.4x"
+# figure should not be quoted as the general behaviour either — see
+# `honest_reading`, because the native side's own spread is wide enough that a
+# single ratio at these counts would be overstating the measurement.
+
+benchmark_id: "BENCH-S3AP-LIST-002"
+date_tested: "2026-09-14"
+measured_at_utc: "2026-09-14T03:46:25Z"
+tester: "Yoshiki Fujiwara"
+extends: "BENCH-S3AP-LIST-001 (2026-08-05), same harness, same client location"
+closes: >
+  The "above 5,000 objects is untested" caveat, up to 20,000 objects. Above
+  20,000 remains untested, and the wording in the articles now says 20,000
+  rather than 5,000.
+harness: "shared/scripts/benchmark_list_objects.py (unchanged)"
+raw_data:
+  - "raw-scale.json"
+
+environment:
+  aws_region: "ap-northeast-1"
+  fsx_file_system: "<FILE_SYSTEM_ID>"
+  fsx_deployment_type: "SINGLE_AZ_1"
+  ontap_version: "NetApp Release 9.18.1P5"
+  ap_name: "<AP_NAME>"
+  ap_origin: "INTERNET"
+  ap_file_system_identity: "UNIX (root)"
+  native_s3_bucket: "<BENCHMARK_BUCKET>, created for this run and deleted after"
+  native_s3_class: "STANDARD"
+  client_location: "Local workstation over public internet (not in-VPC)"
+  client_sdk: "boto3 / botocore, retries disabled"
+
+methodology:
+  timed_region: "The fully-paginated ListObjectsV2 loop only, time.perf_counter()."
+  warm_up: "One discarded list per (target, object_count)."
+  trials_per_count: 5
+  statistic_reported: "median (mean, min, max also captured)"
+  object_body_size_bytes: 9
+  fairness_controls:
+    - "Identical object counts and key layout on both targets."
+    - "Both targets measured in the same run, minutes apart, same network path."
+    - "Retries disabled so a slow call is measured rather than retried."
+    - "Teardown verified by listing both prefixes afterwards: 0 objects remained."
+
+results_flat_layout:
+  layout: "flat — all objects directly under one prefix"
+  measurements:
+    - object_count: 10000
+      fsx_ontap_ap_median_ms: 2766.5
+      fsx_ontap_ap_min_ms: 2411.6
+      fsx_ontap_ap_max_ms: 3584.7
+      fsx_ontap_ap_api_calls: 11
+      native_s3_median_ms: 4180.4
+      native_s3_min_ms: 3199.7
+      native_s3_max_ms: 4908.2
+      native_s3_api_calls: 10
+      slowdown_factor: 0.7
+    - object_count: 20000
+      fsx_ontap_ap_median_ms: 6437.6
+      fsx_ontap_ap_min_ms: 6121.9
+      fsx_ontap_ap_max_ms: 8739.3
+      fsx_ontap_ap_api_calls: 21
+      native_s3_median_ms: 9436.5
+      native_s3_min_ms: 5779.3
+      native_s3_max_ms: 14634.3
+      native_s3_api_calls: 20
+      slowdown_factor: 0.7
+
+observations:
+  - id: "OBS-1"
+    finding: "No cliff between 5,000 and 20,000 objects, and no crossover into slowness."
+    detail: |
+      The access point's median was below the native bucket's at both counts
+      (0.7x at 10,000 and at 20,000). Whatever produced the original 30-80x
+      claim does not appear at four times the previously tested count.
+  - id: "OBS-2"
+    finding: "The native side's spread is wide enough to forbid quoting a precise ratio."
+    detail: |
+      Native S3 at 20,000 objects ranged 5,779-14,634 ms across five trials — a
+      2.5x spread within one target, in one session. The access point's own
+      range at the same count was 6,122-8,739 ms, i.e. tighter. A paginated
+      listing from outside the VPC is 20 sequential round trips, so wall time
+      is dominated by the network, and the ratio between two targets measured
+      minutes apart carries that noise. "Same order, access point not slower"
+      is what the data supports; "0.7x" is the arithmetic, not a claim about
+      the service.
+  - id: "OBS-3"
+    finding: "The extra-API-call effect from the first run persists, and is small and constant."
+    detail: |
+      With MaxKeys=1000, the access point took 11 calls for 10,000 objects and
+      21 for 20,000, against native S3's 10 and 20 — one additional call per
+      10,000 objects, matching BENCH-S3AP-LIST-001's OBS-3. It matters for
+      per-request cost estimation and for clients that cap pagination, not for
+      wall time.
+  - id: "OBS-4"
+    finding: "Absolute listing time grows with object count and is the number that matters operationally."
+    detail: |
+      Whatever the ratio, enumerating 20,000 objects took about 6 seconds from
+      outside the VPC. A query planner or catalog refresh that has to walk a
+      namespace of that size pays that, and it is the figure to design around
+      rather than any multiplier against native S3. An in-VPC client will see
+      less; this was not measured in-VPC.
+  - id: "OBS-5"
+    finding: "Absolute numbers are not comparable across runs, only within a run."
+    detail: |
+      The 2026-08-05 run measured 5,000 objects at 665 ms on the access point;
+      this run measured 10,000 at 2,766 ms, which is more than the doubling the
+      object count alone implies. Both runs were taken over the public internet
+      on different days, so the difference is not attributable to the service.
+      This is why each run measures both targets in the same session and why
+      only the within-run comparison is reported.
+
+conclusion:
+  claim_under_test: "The 1.3-1.4x figure, and the caveat that above 5,000 objects is untested"
+  verdict: "Caveat closed to 20,000 objects. No degradation found; the earlier 30-80x remains not reproduced."
+  measured_range: "0.7x at 10,000 and at 20,000 objects (median-to-median, flat layout)"
+  what_to_publish: |
+    Not "1.3-1.4x" as a general figure. Across 10 to 20,000 objects the access
+    point measured between roughly 0.7x and 1.4x of native S3 — that is, the
+    same order, sometimes faster, with the direction of the small difference
+    varying by run and object count. The useful statements are: the 30-80x
+    figure does not reproduce anywhere in that range, and listing 20,000
+    objects costs seconds in absolute terms.
+  caveats:
+    - "Single file system, single SVM, single volume, one region, one day."
+    - "Object counts tested to 20,000. Above 20,000 is still untested."
+    - "Flat layout only in this run; the nested comparison was not repeated."
+    - "Measured from outside the VPC. In-VPC absolute latency will be lower and less variable."
+    - "Single-threaded. No concurrent-client load was applied."
+  reproduce: |
+    python3 shared/scripts/benchmark_list_objects.py \
+      --ap-arn arn:aws:s3:<region>:<account>:accesspoint/<ap-name> \
+      --native-bucket <comparison-bucket> \
+      --counts 10000,20000 --trials 5 --layout flat --teardown \
+      --output-json raw-scale.json
