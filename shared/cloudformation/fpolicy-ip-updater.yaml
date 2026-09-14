@@ -25,7 +25,7 @@ Parameters:
 
   OntapCredentialSecretArn:
     Type: String
-    Description: ONTAP admin credentials を格納した Secrets Manager ARN (JSON: {"username":"fsxadmin","password":"..."})
+    Description: 'ONTAP admin credentials を格納した Secrets Manager ARN (JSON: {"username":"fsxadmin","password":"..."})'
 
   SvmName:
     Type: String

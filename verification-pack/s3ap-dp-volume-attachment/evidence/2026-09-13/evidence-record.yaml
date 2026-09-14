@@ -1,0 +1,214 @@
+# =============================================================================
+# Can an S3 access point be attached to a SnapMirror destination (DP) volume?
+# =============================================================================
+# Why this record exists: docs/en/s3ap-flexcache-snapmirror-considerations.md
+# section 3.2 asserted "DP (SnapMirror relationship active) -> attachment fails,
+# read-only, junction path cannot be set" with no evidence record behind it. The
+# validated SnapMirror findings (SM-005, SM-VAL-008/009/010) all concern the
+# break -> mount -> attach failover path, not the DP-while-replicating case.
+# The assertion was therefore an inference. This run tests it directly.
+#
+# Outcome: the conclusion was correct, but the gate is not the one the doc
+# implies. The gate is "the volume is mounted", not "the volume is RW". AWS
+# states the mount requirement explicitly and says nothing about volume type.
+#
+# And the restriction is FSx's, not ONTAP's. NetApp documents `vol mount` on a
+# DP volume as a worked example, so ONTAP mounts DP volumes; it is the FSx
+# control plane that refuses to. Everything measured here is therefore a
+# statement about the FSx API, not about what ONTAP permits. Mounting a DP
+# volume through ONTAP and then attaching is an untested route, not a closed
+# one — see not_established.
+#
+# Secondary outcome, and the more dangerous one for automation: UpdateVolume
+# accepts a JunctionPath for a DP volume, returns the volume object, and does
+# nothing. No error, no AdministrativeActions entry.
+#
+# Identifiers masked: <ACCOUNT_ID>, <FS_ID>, <SVM_ID>.
+# =============================================================================
+
+test_id: "S3AP-DP-ATTACH-001"
+date_tested: "2026-09-13"
+tester: "Yoshiki Fujiwara"
+
+purpose: |
+  Establish, with commands rather than inference, whether an FSx for ONTAP S3
+  access point can be attached to a SnapMirror destination volume, and what
+  exactly refuses it.
+
+environment:
+  region: "ap-northeast-1"
+  aws_account: "<ACCOUNT_ID>"
+  fsx_file_system: "<FS_ID>"
+  fsx_deployment_type: "SINGLE_AZ_1"
+  svm: "<SVM_ID>"
+  performed_via: "AWS CLI from an operator workstation"
+  ontap_version: "not captured"
+  ontap_version_note: >
+    The file system management endpoint is a private VPC address and was not
+    reachable from the workstation, so the ONTAP REST API was not queried. The
+    FSx API does not expose the ONTAP version. Every finding below is at the
+    AWS control-plane layer, where the ONTAP version is not the variable under
+    test, but the version is unrecorded and that limits generalisation.
+
+# ---------------------------------------------------------------------------
+# What AWS documents, for comparison against what was observed
+# ---------------------------------------------------------------------------
+documented_expectation:
+  source: "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/create-access-points.html"
+  states: >
+    Attaching an S3 access point to an FSx for ONTAP volume requires the volume
+    to be mounted, that is, to have a junction path. Paraphrased; the page says
+    nothing about the ONTAP volume type.
+  corroborating: "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/troubleshooting-access-points-for-fsxn.html"
+  corroborating_states: >
+    An unmounted volume, described there as no longer having a junction path, is
+    listed as a cause of access point failure. Paraphrased.
+
+# ---------------------------------------------------------------------------
+# Tests, in execution order
+# ---------------------------------------------------------------------------
+tests:
+
+  - id: test_01
+    name: "Attach an access point to a pre-existing DP volume with no junction path"
+    subject: "a DP volume created 2026-06-09 for earlier SnapMirror work; JunctionPath None"
+    command: |
+      aws fsx create-and-attach-s3-access-point \
+        --name dp-probe-20260913 --type ONTAP \
+        --ontap-configuration 'VolumeId=<dp-vol-id>,FileSystemIdentity={Type=UNIX,UnixUser={Name=root}}'
+    observed:
+      exit_status: "error"
+      error_code: "BadRequest"
+      error_message: "Amazon FSx is unable to attach S3access point because the volume is not mounted."
+      resources_created: "none"
+    result: "FAIL, as expected"
+    conclusion: >
+      The refusal names the mount state, not the volume type. Quoted verbatim
+      including the missing space in "S3access", which is AWS's own string.
+
+  - id: test_02
+    name: "NEGATIVE — create a DP volume with a junction path in one call"
+    why_tested: >
+      If a DP volume could be created already mounted, the mount requirement and
+      the DP restriction would be separable and section 3.2 would be wrong.
+    command: |
+      aws fsx create-volume --volume-type ONTAP --name dp_mount_probe \
+        --ontap-configuration '{"StorageVirtualMachineId":"<SVM_ID>","SizeInMegabytes":1024,
+          "OntapVolumeType":"DP","JunctionPath":"/dp_mount_probe","SecurityStyle":"UNIX",
+          "StorageEfficiencyEnabled":true,"SnapshotPolicy":"none"}'
+    observed:
+      exit_status: "error"
+      error_code: "BadRequest"
+      error_message: "Invalid fields provided for a DP volume. JunctionPath, StorageEfficiency, SnapshotPolicy and SecurityStyle cannot be specified for a DP Volume."
+      resources_created: "none"
+    result: "FAIL, as expected"
+    conclusion: >
+      The FSx API refuses JunctionPath on a DP volume by name. A DP volume
+      cannot be created mounted.
+
+  - id: test_03
+    name: "Create a DP volume without the refused fields, as a clean subject"
+    command: |
+      aws fsx create-volume --volume-type ONTAP --name dp_mount_probe \
+        --ontap-configuration '{"StorageVirtualMachineId":"<SVM_ID>","SizeInMegabytes":1024,
+          "OntapVolumeType":"DP"}'
+    observed:
+      volume_created: true
+      lifecycle_transition: "CREATING -> CREATED"
+      time_to_created: "between 45 and 60 s, observed by polling every 15 s"
+      junction_path_after_create: null
+    result: PASS
+    conclusion: >
+      A standalone DP volume with no SnapMirror relationship. Not identical to
+      an active destination, but it isolates the question of whether a DP volume
+      can be mounted at all from anything the relationship contributes.
+
+  - id: test_04
+    name: "DECISIVE — set a junction path on the DP volume after creation"
+    command: |
+      aws fsx update-volume --volume-id <probe-vol-id> \
+        --ontap-configuration '{"JunctionPath":"/dp_mount_probe"}'
+    observed:
+      exit_status: "success"
+      response: "HTTP 200 with the full Volume object returned"
+      junction_path_after_30s: null
+      administrative_actions: "none present"
+      failure_details: "none present"
+    result: "FAIL — silent no-op"
+    severity: MEDIUM
+    conclusion: >
+      The call is accepted and has no effect. There is no error to catch, no
+      administrative action to poll, and no failure message to read. Automation
+      that treats a 200 from UpdateVolume as "the volume is now mounted" will
+      proceed on a false premise. Verify the resulting JunctionPath, not the
+      response.
+
+  - id: test_05
+    name: "Attach an access point to the DP volume after the accepted-but-ineffective update"
+    command: "same as test_01, against the probe volume"
+    observed:
+      error_code: "BadRequest"
+      error_message: "Amazon FSx is unable to attach S3access point because the volume is not mounted."
+    result: "FAIL, as expected"
+    conclusion: >
+      Confirms test_04 changed nothing. The two observations agree, which is why
+      test_04 is read as a no-op rather than as a propagation delay.
+
+# ---------------------------------------------------------------------------
+# Incidental
+# ---------------------------------------------------------------------------
+incidental_findings:
+  - id: INC-01
+    finding: >
+      In the CLI shorthand for create-and-attach-s3-access-point, UnixUser
+      accepts only Name. Passing Uid and Gid fails client-side parameter
+      validation before any API call is made.
+
+# ---------------------------------------------------------------------------
+# What this establishes, and what it does not
+# ---------------------------------------------------------------------------
+established:
+  - "Through the FSx API, an S3 access point cannot be attached to a DP volume, because the FSx API will not give a DP volume a junction path."
+  - "The attachment gate is the junction path, not the RW volume type. The distinction matters because any mounted volume satisfies it, including a clone."
+  - "CreateVolume refuses JunctionPath on a DP volume explicitly; UpdateVolume accepts it and silently discards it."
+
+not_established:
+  - >
+    Whether mounting a DP volume through ONTAP (`vol mount`) makes it
+    attachable. NetApp documents that command on a DP volume, so the read-only
+    volume type is not what blocks mounting in general — only the FSx API
+    refuses. Whether the FSx API surfaces a junction path it did not set, and
+    whether attachment then succeeds, was not tested: the management endpoint is
+    a private address and was unreachable from the workstation. Note that a
+    mounted DP volume is still read-only, so this route, if it works, serves
+    reads only.
+  - >
+    Whether a FlexClone of a SnapMirror destination snapshot can carry an S3
+    access point. This is the case that matters for serving replica data while
+    replication continues, and it is untested here. NetApp documents creating a
+    destination volume clone to test failover without disrupting the active
+    relationship from ONTAP 9.14.1, with one clone per relationship and SnapLock
+    vault relationships excluded. A clone is RW and mountable, so it satisfies
+    the documented gate, but satisfying a documented gate is not a run.
+  - >
+    Whether the ~30 min FSx control-plane propagation recorded in SM-VAL-009 for
+    ONTAP-created volumes applies to FlexClones. FlexClone has no FSx API
+    equivalent, so it is created through ONTAP, and attachment needs an fsvol-*
+    identifier. If the delay applies, "clone in minutes, then query it" does not
+    hold even though the clone itself is instant.
+  - >
+    Whether an active SnapMirror relationship adds any refusal beyond the mount
+    requirement. The subject in test_03 through test_05 had no relationship.
+  - "Whether a mounted DP volume is reachable by any other route. None was found; none was exhaustively searched for."
+  - "Anything about NTFS security style or WINDOWS file-system identity. Both probe subjects were UNIX."
+
+cleanup: |
+  The probe volume was deleted with SkipFinalBackup. The pre-existing DP volume
+  in test_01 was not modified: the only call made against it was an attachment
+  attempt that failed before creating anything. Zero access points were created
+  by this run, confirmed by filtering DescribeS3AccessPointAttachments for the
+  probe name and getting an empty list.
+
+reviewer: ""
+review_date: ""
+review_notes: ""

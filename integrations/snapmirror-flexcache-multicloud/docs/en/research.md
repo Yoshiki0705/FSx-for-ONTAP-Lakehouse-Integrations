@@ -305,12 +305,13 @@ aws fsx create-and-attach-s3-access-point \
 - S3 AP on FlexCache Cache Volume is **not available** on FSx for ONTAP as of 2026-07-24
 - This may require FSx service-side enablement in a future update (separate from ONTAP version)
 - NFS/SMB access to FlexCache Cache Volumes remains the primary remote read acceleration path
-- For S3 API access at the destination, use SnapMirror break + S3 AP re-attach (Guide 07)
+- For S3 API **read** access at a SnapMirror destination, no break is needed: mount the DP volume through ONTAP and attach (SM-VAL-013). Break is only for taking over production service
 
 **Evidence:**
 - [NetApp Docs: FlexCache supported features](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) — "ONTAP S3 NAS bucket: Cache — Supported beginning with ONTAP 9.18.1"
 - [NetApp Docs: FlexCache duality FAQ](https://docs.netapp.com/us-en/ontap/flexcache/flexcache-duality-faq.html) — write-around required, both clusters 9.18.1+
-- FSx for ONTAP validation error (2026-07-24): `Amazon FSx is unable to attach S3access point because the volume is a FlexCache.`
+- FSx for ONTAP validation error (2026-07-24, ONTAP 9.18.1P3D1): `Amazon FSx is unable to attach S3access point because the volume is a FlexCache.`
+- **Re-confirmed 2026-09-13 on ONTAP 9.18.1P5**, ap-northeast-1, against an already-mounted Cache volume that the FSx API reported as type RW with a junction path — so the documented attachment gate was satisfied and the refusal is by volume kind. Error verbatim identical. Nothing was created by the probe. [Evidence](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml), Finding B. This is now measured on two ONTAP 9.18.1 patch levels in two regions, which closes the question of whether 9.18.1 changes it: it does not.
 
 ---
 
@@ -623,6 +624,57 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 **Never:** Delete VPC Peering before step 2 is confirmed. The two-phase SVM peer deletion protocol requires bidirectional connectivity.
 
 **Recovery if orphaned:** Use ONTAP CLI via SSH (`sshpass -p <pass> ssh fsxadmin@<mgmt-ip>`).
+
+### SM-VAL-012: UpdateVolume Accepts a Junction Path on a DP Volume and Silently Discards It
+
+| Item | Details |
+|------|---------|
+| **Finding ID** | SM-VAL-012 |
+| **Classification** | `works_with_caveats` |
+| **Disclosure** | validation evidence |
+| **Measured** | 2026-09-13, ap-northeast-1 ([evidence](../../../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13/evidence-record.yaml)) |
+
+**Finding:** `aws fsx update-volume --ontap-configuration '{"JunctionPath":"..."}'` against a **DP** volume returns HTTP 200 with the full Volume object, and has no effect. 30 s later `DescribeVolumes` still reports `JunctionPath: None`, with no `AdministrativeActions` entry and no failure message. A subsequent access point attachment fails with `the volume is not mounted`, confirming nothing changed.
+
+By contrast, `CreateVolume` refuses the same field explicitly: `Invalid fields provided for a DP volume. JunctionPath, StorageEfficiency, SnapshotPolicy and SecurityStyle cannot be specified for a DP Volume.` The two APIs disagree on how to reject the same invalid input, and the mutating one is the quiet one.
+
+**Interaction with SM-VAL-008, which is the operationally important part.** SM-VAL-008 correctly says not to gate access point attachment on `OntapVolumeType`, because the FSx API keeps reporting `DP` for over ten minutes after a successful cross-region break. Combined with this finding, that leaves an operator unable to distinguish two states from the volume type alone:
+
+| Actual state | FSx API `OntapVolumeType` | `update-volume` with a junction path |
+|---|---|---|
+| Broken, FSx API still lagging | `DP` | Takes effect |
+| Never broken, or resynced | `DP` | Accepted, silently discarded |
+
+**The junction path itself is the only reliable signal.** Set it, then poll `DescribeVolumes` for a non-null `JunctionPath` before attempting attachment. Do not treat the `UpdateVolume` response as confirmation, and do not retry with additional flags — a silent discard looks identical to a slow propagation, and adding flags to a call that was already accepted changes nothing.
+
+**Scope, and what this does NOT mean.** This is an FSx control-plane restriction, not an ONTAP one, and it does **not** mean a DP volume cannot carry an access point. Measured 2026-09-13 in-VPC (SM-VAL-013): ONTAP mounts a DP volume, the FSx API reports that junction path after ~2298 s, and attachment then succeeds and serves reads off a live SnapMirror destination. The correct reading of SM-VAL-012 is narrow: **the FSx API is not a usable way to mount a DP volume, and it fails silently rather than loudly.** Separately, the DP subject in this run had no active SnapMirror relationship; a live destination was tested in SM-VAL-013 and behaved the same way.
+
+### SM-VAL-013: An S3 Access Point Serves a Live SnapMirror Destination
+
+| Item | Details |
+|------|---------|
+| **Finding ID** | SM-VAL-013 |
+| **Classification** | `supported (validated)` |
+| **Disclosure** | validation evidence |
+| **Measured** | 2026-09-13, ap-northeast-1, ONTAP 9.18.1P5, intra-SVM async volume SnapMirror ([evidence](../../../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml)) |
+
+**Finding:** a SnapMirror destination can be read through an S3 access point with the relationship left running — no break, no clone. Mount the DP volume through ONTAP (`vol mount` / `PATCH nas.path`), wait for the FSx API to report the junction path, then attach. Reads succeed, `PutObject` returns `AccessDenied` because a DP volume is read-only, and the relationship stays `snapmirrored` and healthy throughout. **A subsequent SnapMirror transfer became visible and readable through the same access point within 15 s, with no access point change.**
+
+A FlexClone of the destination Snapshot is the alternative and differs in one property: it accepts writes, and it stays frozen at the Snapshot it was cut from.
+
+| Phase | Duration |
+|---|--:|
+| ONTAP operation (mount, or create the clone) | seconds, under 20 s |
+| FSx API reports the volume / junction path | **665 s, 1011 s, 2298 s** |
+| Access point CREATING → AVAILABLE | 31-32 s |
+
+**Automation impact:** FSx control-plane propagation, not the ONTAP operation, dominates first-time setup. Poll `DescribeVolumes` for a non-null `JunctionPath` (DP route) or for the `fsvol-*` identifier to appear (clone route), and do not attempt attachment before then — it fails with `the volume is not mounted`. Three samples on one file system, and the 665 s and 2298 s cases are the same operation, so the spread is not a property of the route. Design for minutes to tens of minutes; do not quote a figure.
+
+**Engine equivalence (S3AP-DP-ATHENA-001).** Amazon Athena over a DP-backed access point returned results identical to an RW-backed control built from the same Parquet files, in one session — same rows, same aggregates, 7493 ms against 7804 ms. Partition discovery (`MSCK REPAIR`) and partition pruning both worked against the read-only volume; `INSERT` failed with S3 403 surfaced as `PERMISSION_DENIED`, leaving nothing on the volume. A partition added by a later transfer became queryable after a catalog refresh alone. Snowflake was **not** tested on a DP-backed access point — the read surface is the same, but that is inference, not measurement.
+
+**Teardown, and a diagnosis that took two passes:** deleting the FlexClone through the FSx API left the parent flagged `clone.has_flexclone=true`, and the parent then refused to delete through both APIs. The first reading — a stale flag, no clone present, not resolvable with the privileges available — was wrong. `aws fsx delete-volume` does not destroy a volume: ONTAP renames it `<name>_NNNN` and moves it into the **volume recovery queue** with type `del`, and the queued clone was still holding the parent's Snapshot. It is invisible to `/api/storage/volumes` and to `volume show` at default privilege, and appears under `privilege_level=diagnostic`, in `volume clone show`, and in `volume recovery-queue show`. `volume recovery-queue purge` cleared it and the parent then deleted normally, with `fsxadmin` privilege alone. Full account: [ONTAP-RECOVERY-QUEUE-001](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml). Also note that an access point's internal `amazon-fsx-fsvol-*` object-store bucket briefly blocks volume deletion and is **not** listed by `GET /api/protocols/s3/buckets`.
+
+**Not established:** whether an analytics engine reads a DP-backed access point identically to an RW-backed one (only the S3 API was exercised); cross-region behaviour; survival across a break/resync cycle with the access point in place; scale beyond four small objects; WINDOWS identity or NTFS security style.
 
 > **Note**: SSH access to `fsxadmin` must be enabled on the FSx file system (Settings → Administrative Endpoints). For production automation, prefer SSH key-based auth or AWS Systems Manager Session Manager over `sshpass`. Resolution time with AWS Support (if self-recovery fails): typically 1-3 business days.
 

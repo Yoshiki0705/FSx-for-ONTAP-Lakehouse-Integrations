@@ -91,15 +91,58 @@ SnapMirror transfers volume data (files/directories) only. The following must be
 
 **Design Rule**: DR failover procedure must include S3 AP creation + IAM policy configuration. Automate with Lambda or Step Functions.
 
-### 3.2 S3 AP Attachment to DP Volumes
+### 3.2 S3 AP Attachment at the Destination
 
-| State | S3 AP Attachment | Notes |
-|-------|:----------------:|-------|
-| DP (SnapMirror relationship active) | ❌ | Read-only; junction path cannot be set |
-| DP → break → RW | ✅ | Set junction path after break, then create S3 AP |
-| After resync | ❌ | Returns to DP; S3 AP unusable |
+**A live SnapMirror destination can be served through an S3 AP, for reads, with no break and no clone.** Measured 2026-09-13. This section previously said the opposite; the correction and what caused the error are below.
 
-**Design Rule**: S3 AP access requires SnapMirror break. Break stops one-way replication — use in DR failover context. "Maintain SnapMirror while using S3 AP at destination" is not possible.
+**The gate is the junction path, not the volume type.** AWS states that attaching an access point requires the volume to be [mounted](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/create-access-points.html), and says nothing about `RW` versus `DP`.
+
+**And setting that junction path is an ONTAP operation, not an FSx one.** ONTAP mounts a DP volume — `vol mount` on a DP volume is a worked example in NetApp's [SVM DR testing KB](https://kb.netapp.com/on-prem/ontap/DP/SnapMirror/SnapMirror-KBs/Can_we_do_the_SVM_level_DR_test_without_stopping_the_Production_SVM_and_cloning_the_destination_volumes), and it was confirmed here. The FSx API refuses the same change: `CreateVolume` rejects `JunctionPath` for a DP volume by name, and `UpdateVolume` accepts it and silently discards it. Mount through ONTAP and the FSx API eventually reports the junction path, after which attachment succeeds.
+
+| Destination-side subject | S3 AP Attachment | Reads | Writes | Notes |
+|---|:---:|:---:|:---:|---|
+| DP volume, junction path attempted via the **FSx API** | ❌ | — | — | `CreateVolume` refuses the field by name; `UpdateVolume` returns 200 and silently discards it. Attachment fails with `the volume is not mounted` |
+| **DP volume, mounted via ONTAP** | ✅ | ✅ | ❌ `AccessDenied` | Replication stays `snapmirrored`/healthy. New data from a later transfer appeared through the same access point in **15 s**, with no access point change |
+| **FlexClone of a destination Snapshot** | ✅ | ✅ | ✅ | Relationship unaffected. Frozen at the cloned Snapshot — a later transfer does not advance it |
+| DP → break → RW | ✅ | ✅ | ✅ | The DR failover path. SM-005, SM-VAL-008/010 |
+
+Evidence: [S3AP-DP-ATTACH-002](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml), on ONTAP 9.18.1P5. The FSx-API-only rows come from [S3AP-DP-ATTACH-001](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13/evidence-record.yaml).
+
+**The real constraint is setup latency, not capability.** Both ONTAP-side routes then wait on FSx control-plane propagation before the volume is attachable:
+
+| Phase | Duration |
+|---|--:|
+| ONTAP operation (mount, or create the clone) | seconds, under 20 s |
+| **FSx API reports the volume / junction path** | **665 s, 1011 s, 2298 s** |
+| Access point CREATING → AVAILABLE | 31-32 s |
+| First successful S3 call | seconds |
+
+Three samples, one file system, same day. Two of them — 665 s and 2298 s — are the *same operation* on the same file system, so **the spread is not explained by which route you take.** Quote it as "minutes to tens of minutes, not under your control" and design a polling loop; do not quote a figure. Steady state after setup is a different matter: on the DP route new data was readable seconds after a transfer.
+
+**An analytics engine cannot tell the difference.** Amazon Athena was pointed at a DP-backed access point and at an RW-backed control built from identical Parquet files, in one session: identical rows, identical aggregates, 7493 ms against 7804 ms. Partition discovery and partition pruning both worked against the read-only volume, and `INSERT` failed cleanly with S3 403 surfaced as `PERMISSION_DENIED`. A partition added by a later transfer became queryable after a catalog refresh, with no change to the access point or the table. Evidence: [S3AP-DP-ATHENA-001](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-athena-on-dp/evidence-record.yaml).
+
+> **Why this section was wrong until 2026-09-13.** The original row asserted ❌ for a DP volume with the reason "read-only; junction path cannot be set", carrying no evidence record. A first pass tested it from outside the VPC, reproduced the FSx API's refusal, and confirmed the ❌ — which looked like verification but had only measured the FSx API. The ONTAP management endpoint is a private address, so the layer that actually decides was never reached. **Testing the reachable API is not testing the claim.**
+
+#### Serving replica data without breaking the relationship
+
+Breaking is not required to read a destination. Two routes keep the relationship running, and they differ in exactly one property that decides between them: **whether the consumer needs to write.**
+
+**Read-only, always current — mount the DP destination.** `vol mount` the destination through ONTAP, wait for the FSx API to report the junction path, attach. Reads work, writes return `AccessDenied`, and each SnapMirror transfer becomes visible through the same access point within seconds. Nothing has to be rebuilt per transfer.
+
+**Writable, fixed point in time — clone the destination.** From ONTAP 9.14.1, NetApp documents creating a **volume clone of a SnapMirror destination to test failover without disrupting the active relationship** ([procedure](https://docs.netapp.com/us-en/ontap/data-protection/create-delete-snapmirror-failover-test-task.html)): same storage VM as the destination, FlexVol and FlexGroup, synchronous and asynchronous. The clone accepts writes through its access point, and stays at the Snapshot it was cut from — a later transfer does not advance it. NetApp's [destination data-access procedure](https://docs.netapp.com/us-en/ontap/data-protection/configure-destination-volume-data-access-concept.html) is written around break because its subject is taking over production service, a different requirement from either of these.
+
+Constraints on the clone route: **one test clone per relationship** at a time, SnapLock vault relationships excluded, and — from the KB above — **a DP volume in an SVM-DR relationship cannot be cloned directly**. The last does not bite on FSx for ONTAP, where SVM-DR is unavailable and volume-level SnapMirror is the only option (SM-007), but it does on-premises.
+
+**Design Rule**: choose by requirement, not by default.
+
+| Requirement | Shape |
+|---|---|
+| Read the destination, current with each transfer | Mount the DP destination via ONTAP, attach the S3 AP to it |
+| Write, or hand consumers an isolated point in time | Clone the destination Snapshot, attach the S3 AP to the clone |
+| Take over production service at the destination | Break, mount, attach — the DR failover path |
+| Near-real-time visibility of source writes | FlexCache, not SnapMirror (§2.2) |
+
+Still unmeasured, and worth stating before a customer commitment: **Snowflake specifically** — Athena is good evidence that the engine layer does not care about the volume type, and Snowflake reads through the same `GetObject` and `ListObjectsV2` surface, but Snowflake was not run against a DP-backed access point, so do not present it as measured. Also unmeasured: behaviour across a break-and-resync cycle with the access point left in place, propagation cross-region or on a second-generation file system, scale beyond a handful of small objects, and WINDOWS file-system identity.
 
 ### 3.3 RPO and Data Visibility
 
@@ -205,7 +248,15 @@ aws fsx delete-storage-virtual-machine --storage-virtual-machine-id svm-XXXXX
 | All files in root directory | maxdir-size overflow + FlexCache skew + LIST degradation | Hierarchical partition |
 | Appending to one large file | SnapMirror incremental transfer large each time | Split into small files |
 | S3 AP + FlexCache write-back on same file | XLD revoke → dirty data lost | Use write-around or separate files |
-| Attempt S3 AP on DP volume | Fails (junction path cannot be set) | Break first, then attach |
+| Try to mount a DP volume through the FSx API | Refused. `CreateVolume` rejects `JunctionPath` by name; `UpdateVolume` returns 200 and discards it | Mount through ONTAP instead, then wait for the FSx API to report the junction path before attaching (§3.2) |
+| Treat a 200 from `UpdateVolume` as proof the junction path was set | On a DP volume the call returns the full Volume object and **silently does nothing** — no error, no `AdministrativeActions` entry, no failure message. Automation proceeds on a false premise | Re-read `JunctionPath` from `DescribeVolumes` and gate on that value, never on the `UpdateVolume` response |
+| Reject a destination-side S3 AP design because "SnapMirror must be broken" | Wrong. A live destination serves reads through an access point once ONTAP has mounted it, and a clone serves writes. Break is only for taking over production service | §3.2 |
+| Promise a clone or a newly mounted destination "in minutes" | The ONTAP operation is seconds, but the FSx control plane took 1011 s and 2298 s to report the volume as attachable | Budget tens of minutes for first-time setup. Steady-state freshness after that is seconds |
+| Read `aws fsx delete-volume` as "deleted" | It is "queued for deletion". ONTAP renames the volume and moves it to the **volume recovery queue** (type `del`, default retention 12 h) while the FSx API reports it gone. A queued FlexClone still holds its parent's Snapshot, so the parent refuses to delete with "has one or more clones" and no clone is visible through `DescribeVolumes`, `/api/storage/volumes`, or `volume show` at default privilege | Query `volume recovery-queue show`, then `volume recovery-queue purge` (advanced privilege). The parent then deletes normally. Mechanism and the retention setting: [Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook), `docs/ja/domains/block-storage/notes/lun-layout-decides-recovery-granularity.md` |
+| Build a teardown runbook on ONTAP `volume delete` for AP-attached volumes | The access point's volume-scoped internal bucket blocks it **permanently**, not briefly — including for a volume whose attach attempt *failed* | Delete through the AWS API. Same playbook, `s3-access-point-constraints.md`, 「撤去時の停滞」 |
+| Conclude a clone is absent because the object API does not list it | Queued clones appear only under `privilege_level=diagnostic`, in `volume clone show`, and in the recovery queue | Ask the recovery queue |
+| Conclude there is no Snapshot dependency from an empty snapshot list | `snapshot show` returns nothing for an **offline** volume, and the CLI passthrough says why while the object API does not. Online, the same volume reported the held Snapshot as `busy` with `owners: ["volume clone"]` | Bring the volume online before believing a snapshot query |
+| Read an empty `GET /api/protocols/s3/buckets` as proof no access point bucket remains | The access point's internal `amazon-fsx-fsvol-*` bucket is not listed there, but still blocks volume deletion and is named in the error | Retry deletion after it clears rather than forcing |
 | Create DP volume via ONTAP REST API only | FSx API propagation takes ~30 min. S3 AP not attachable immediately | Use `aws fsx create-volume` for immediate visibility. For FlexCache (ONTAP API only), wait ~30 min |
 | Delete VPC Peering before SVM peer deletion | Zombie SVM peer → MISCONFIGURED → difficult recovery | Follow SM-VAL-011 order |
 | Periodic full LIST at root | Latency grows with directory size | Prefix-limited or external catalog |
@@ -218,6 +269,7 @@ aws fsx delete-storage-virtual-machine --storage-virtual-machine-id svm-XXXXX
 - [General S3 AP Design Considerations](s3ap-design-considerations.md)
 - [S3 AP Data Collection CloudFormation Template (with DESIGN TIPs)](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/tree/main/infrastructure/s3ap-data-collection) — Includes Mermaid data distribution decision flow
 - [S3 AP + SnapMirror + FlexCache Research](../../integrations/snapmirror-flexcache-multicloud/docs/en/research.md)
+- Evidence: [S3AP-DP-ATTACH-002 — serving a live SnapMirror destination (2026-09-13, in-VPC)](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml) · [S3AP-DP-ATTACH-001 — the FSx-API-only first pass](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13/evidence-record.yaml)
 - [Demo Guide 07: SnapMirror Cross-Region + S3 AP Re-Attach](../../integrations/snapmirror-flexcache-multicloud/docs/en/demo-guide-07-snapmirror-cross-region.md)
 - [Demo Guide 01: FlexCache Same-Region](../../integrations/snapmirror-flexcache-multicloud/docs/en/demo-guide-01-flexcache-same-region.md)
 - [AWS Docs: S3 performance best practices](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html)
