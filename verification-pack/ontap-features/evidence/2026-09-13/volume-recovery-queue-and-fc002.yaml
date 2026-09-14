@@ -1,0 +1,203 @@
+# =============================================================================
+# Two findings: why a "deleted" clone blocks its parent, and FC-002 on 9.18.1P5
+# =============================================================================
+# Finding A corrects TD-04 in
+# ../../../s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml,
+# which concluded that a parent volume had been permanently stranded by a stale
+# clone flag and needed vendor support. That conclusion was wrong. The clone was
+# not stale and it was not absent — it was sitting in ONTAP's volume recovery
+# queue, invisible to every API that had been queried, still holding the
+# parent's snapshot. Purging the queue entry freed the parent immediately.
+#
+# Finding B settles a JA/EN divergence in the research document about whether
+# ONTAP 9.18.1 unblocks S3 access points on FlexCache Cache volumes. It does
+# not. Measured on 9.18.1P5 against a pre-existing Cache volume, so this probe
+# created nothing.
+#
+# Identifiers masked: <SVM_ID>, <FS_ID>, <CACHE_VOL_ID>.
+# =============================================================================
+
+test_id: "ONTAP-RECOVERY-QUEUE-001"
+date_tested: "2026-09-13"
+tester: "Yoshiki Fujiwara"
+corrects: "TD-04 in S3AP-DP-ATTACH-002"
+settles: "FC-002 JA/EN divergence in integrations/snapmirror-flexcache-multicloud/docs/{en,ja}/research.md"
+
+environment:
+  region: "ap-northeast-1"
+  fsx_file_system: "<FS_ID>"
+  fsx_deployment_type: "SINGLE_AZ_1"
+  ontap_version: "NetApp Release 9.18.1P5"
+  svm: "<SVM_ID>"
+  access: "ONTAP REST from an in-VPC host via SSM, including the /api/private/cli passthrough"
+
+# ===========================================================================
+# Finding A — aws fsx delete-volume does not destroy the volume
+# ===========================================================================
+finding_a:
+  title: "A deleted volume goes to ONTAP's volume recovery queue, and a queued FlexClone blocks its parent"
+  severity: MEDIUM
+  classification: "works_with_caveats"
+
+  mechanism: |
+    `aws fsx delete-volume` returns DELETING, the volume disappears from
+    `DescribeVolumes`, and the FSx API reports it gone. ONTAP has not destroyed
+    it. It renames the volume with a numeric suffix — `<name>_NNNN` — and moves
+    it into the **volume recovery queue**, where it sits with volume type `del`.
+
+    A queued volume that was a FlexClone **still holds its parent's snapshot**.
+    The parent therefore cannot be deleted, and neither API explains why in a
+    way an operator can act on.
+
+  what_each_query_returned:
+    - query: "aws fsx describe-volumes on the deleted clone"
+      result: "not found — reads as fully deleted"
+    - query: "GET /api/storage/volumes?clone.is_flexclone=true"
+      result: "returned only an unrelated pre-existing clone. The queued clone is absent."
+    - query: "GET /api/storage/volumes?name=<queued name>"
+      result: "empty"
+    - query: "GET /api/private/cli/volume?volume=<queued name>"
+      result: "empty at default privilege"
+    - query: "GET /api/private/cli/volume?volume=<queued name>&privilege_level=diagnostic"
+      result: "FOUND — state offline. This is the first query that showed it exists."
+    - query: "GET /api/private/cli/volume/clone"
+      result: >
+        FOUND — the clone record, naming the queued volume as flexclone and the
+        stranded volume as parent_volume. Requesting specific fields fails with
+        "invalid for field fields"; request no fields and it returns.
+    - query: "GET /api/private/cli/volume/recovery-queue"
+      result: "FOUND — the authoritative answer. Listed every volume deleted through the FSx API that day."
+
+  the_misleading_intermediate_step: |
+    Earlier, `GET /api/storage/volumes/<parent>/snapshots` returned zero records
+    and that was read as "no snapshot dependency exists". It was wrong. The
+    parent was offline at the time, and the CLI passthrough makes the reason
+    explicit where the object API does not:
+
+      "Info: Unable to get information for snapshots of volume ... Reason:
+       Volume not online."
+
+    Brought online, the same volume reported three snapshots, one of which was
+    `busy: true` with `owners: ["volume clone"]` — precisely the dependency that
+    had been declared absent. **An empty result from a query against an offline
+    volume is not evidence about the volume.**
+
+  operations_refused_on_a_queued_volume:
+    - "volume modify state=online -> This operation is not supported on a volume of type \"DEL\"."
+    - "volume delete -> same message"
+    - "volume delete with force=true -> same message"
+    - "volume clone split start -> Volume ... is not online. It needs to be online for this operation."
+    - "snapshot delete on the held snapshot -> has not expired or is locked"
+
+  resolution:
+    command: "DELETE /api/private/cli/volume/recovery-queue/purge?vserver=<svm>&volume=<name>_NNNN"
+    result: "[Job NNNN] Job succeeded: Successful"
+    effect: >
+      The clone record disappeared immediately, and `aws fsx delete-volume` on
+      the parent then completed in about 100 s. No vendor support was needed.
+      fsxadmin has sufficient privilege for the purge, which is the part the
+      earlier record got wrong when it concluded otherwise from the phrase
+      "Only the cluster administrator can delete the clones".
+    note: >
+      Four other volumes deleted through the FSx API the same day were also in
+      the queue and were purged the same way. They consume space until purged or
+      until the retention period expires.
+
+  guidance: |
+    - Treat `aws fsx delete-volume` as "queued for deletion", not "deleted".
+    - When a parent volume reports "has one or more clones" and no clone is
+      visible, check `volume recovery-queue show` before anything else. It is
+      the only query that answers the question directly.
+    - `privilege_level=diagnostic` is required to see a queued volume through
+      `volume show`.
+    - Purge the queue entry rather than trying to online, delete, split or force
+      the queued volume. None of those are permitted on type `del`.
+    - Deleting clones before their parents still avoids the situation entirely.
+
+  already_documented_elsewhere: |
+    This was not a new discovery. The FSx for ONTAP Adoption Playbook already
+    documents the recovery queue in full, from an independent encounter during a
+    block-storage teardown, and it answers the question this run left open:
+
+      - Default retention is **12 hours**, configurable with
+        `vserver modify -volume-delete-retention-hours`.
+      - The rename is `<name>_<dataset-id>`, matching the `_NNNN` suffix seen here.
+      - `volume recovery-queue purge` needs **advanced** privilege.
+      - ONTAP's own error message tells you to run `volume delete` on the clone,
+        which returns `entry doesn't exist` — the message names a command that
+        cannot work on a queued volume.
+      - Volumes that were deleted *successfully* are in the queue too, so
+        "the delete succeeded" and "the capacity came back" are different claims.
+
+    Source: `docs/ja/domains/block-storage/notes/lun-layout-decides-recovery-granularity.md`,
+    section 「クローンを消しても親が消せない期間」, in
+    https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook
+
+    Consequence for this repository: **do not restate the mechanism here.** The
+    playbook owns it. What belongs here is the S3-Access-Point-specific delta —
+    that this is how a FlexClone cut from a SnapMirror destination strands its
+    parent, and that the FSx API reports the volume gone while it is queued.
+
+  not_established:
+    - "Whether the queue would have cleared on its own within the documented 12-hour default. Roughly two hours elapsed without it clearing, then the entries were purged rather than left to expire."
+    - "Whether the retention default differs on second-generation deployment types or across regions."
+
+# ===========================================================================
+# Finding B — FC-002 is not fixed by ONTAP 9.18.1
+# ===========================================================================
+finding_b:
+  title: "S3 access point attachment to a FlexCache Cache volume is still refused on 9.18.1P5"
+  classification: "unsupported (FSx layer), independent of ONTAP version"
+
+  method: |
+    A FlexCache Cache volume already existed on this cluster, 50 GiB, mounted,
+    reported by the FSx API as type RW with a junction path — so it satisfies the
+    documented attachment gate. Attachment was attempted against it. The call
+    creates nothing when it fails, so this probe added no resources and modified
+    nothing belonging to anyone else.
+
+  result:
+    status: "REFUSED"
+    error: "Amazon FSx is unable to attach S3access point because the volume is a FlexCache."
+    verbatim_match: >
+      Identical to the error recorded on ONTAP 9.17.1 on 2026-07-24, including
+      the missing space in "S3access", which is AWS's own string.
+    resources_created: "none, confirmed by filtering DescribeS3AccessPointAttachments"
+
+  conclusion: |
+    The refusal is by volume kind at the FSx control plane, not by ONTAP
+    capability, and ONTAP 9.18.1 does not change it. The two mechanisms must not
+    be conflated:
+
+    - **ONTAP S3 NAS bucket on a Cache volume** — an ONTAP-native feature,
+      documented by NetApp as supported from ONTAP 9.18.1.
+    - **FSx for ONTAP S3 Access Points** — an AWS managed-layer feature. FlexCache
+      volumes are explicitly refused, and were still refused on 9.18.1P5.
+
+    Resolving this needs an FSx service-side change, not an ONTAP upgrade.
+
+  documentation_impact: |
+    The JA research document classified FC-002 as `version_gated` and stated it
+    was "resolved, confirmed in ONTAP 9.18.1" on the strength of the NetApp
+    feature table. The EN twin recorded the measured FSx API refusal. EN was
+    right; JA read a NetApp capability statement as an FSx capability statement.
+    Both are now aligned to this measurement.
+
+  workaround_that_actually_applies: >
+    For S3 API read access to remote data, replicate with SnapMirror and serve
+    the destination — no break required (SM-VAL-013). This supersedes the older
+    guidance of "break and re-attach", which was written when the destination
+    route was believed to require a break.
+
+cleanup: |
+  Every volume created for this session was deleted and then purged from the
+  recovery queue; the queue was confirmed empty and the verification SVM
+  confirmed to hold only its root volume and one pre-existing volume. The
+  FlexCache used for Finding B belongs to other work and was neither modified
+  nor attached to. The temporary scoped IAM policy was deleted and the role
+  confirmed back to AmazonSSMManagedInstanceCore only. The helper script was
+  removed from the in-VPC host.
+
+reviewer: ""
+review_date: ""
+review_notes: ""
