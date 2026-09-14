@@ -18,7 +18,7 @@ Published May 2026. Reviewed against the repository on 2026-09-13.
 
 The article's central claim is sound and unchanged: without `AWS_ACCESS_POINT_ARN` on the stage, `LIST` succeeds and `SELECT` fails with access denied; with it, the read and governance paths work. Nothing below touches that. The corrections are to secondary claims, three of which would mislead someone building on the article.
 
-### C-01 — An unverified ingestion path is presented as recommended
+### C-01 — An ingestion path is presented as recommended on evidence it does not have
 
 | | |
 |---|---|
@@ -29,11 +29,17 @@ The article's "Snowpipe Alternatives" section labels **"Option 1: FPolicy → La
 
 Three problems:
 
-1. **FPolicy has never been run live as an event source.** What was actually verified is a polling Lambda: write to notification in 2.1 s, excluding the scheduler wait, so real detection lag is the schedule interval plus about two seconds. The `<30s` figure has no evidence record behind it.
+1. **The `<30s` figure has no evidence record behind it.** What this repository had measured was a polling Lambda: write to notification in 2.1 s, excluding the scheduler wait, so real detection lag is the schedule interval plus about two seconds. FPolicy's own latency was not measured here at all.
+
+> **This item was itself wrong, and is corrected (2026-09-14).** It originally read "FPolicy has never been run live as an event source". **It has been** — in the sibling `fsxn-observability-integrations` project, on the same AWS account, with an external FPolicy server on ECS Fargate at protocol version 1.2, a 72-hour session, and notifications measured for NFSv3 and SMB at 0.3 s. Calling it unverified was a statement about where this repository had looked, published as a statement about the mechanism.
+>
+> The correction matters because that project established something sharper, which this page was not carrying: **FPolicy does not see operations arriving through an S3 Access Point at all.** Nine access-point data-plane calls produced zero notifications while a file-protocol control against the same volume, in the same session, produced them. It is not merely unnotified — with `mandatory=true` and a synchronous engine, an NFSv3 write was refused with `Permission denied` while access-point PUT, GET, LIST and DELETE all succeeded, so the path does not pass through the FPolicy gate. The structural reason is that an FPolicy event accepts exactly three `protocol` values — `cifs`, `nfsv3`, `nfsv4` — with no value for object access; re-checked on ONTAP 9.18.1P5, where `s3`, `object` and `http` are each rejected with HTTP 400. Record: [FPolicy as an event source](../../verification-pack/fpolicy-event-source/evidence/2026-09-14/evidence-record.yaml).
 2. **The drawn topology cannot deliver a message.** You cannot subscribe Snowflake's managed SQS queue yourself; the subscription stays `PendingConfirmation` indefinitely because the queue lives in Snowflake's account. The working shape is `AWS_SNS_TOPIC` on the pipe, which makes Snowflake subscribe its own queue.
 3. **Six defects were later found in the published artifacts** for this path, two of which cause silent data loss.
 
-**Correct statement.** For scheduled ingestion, use a **Snowflake Task running `COPY INTO`** — the article's Option 2, which should be Option 1. It is verified, it needs no synthesized notification and no SNS topic policy, and Snowflake's load history gives exactly-once behaviour that a polling window cannot. Event-driven ingestion via a synthesized notification is verified end to end (notification to loaded row in about 0.5 s) but requires four conditions to hold simultaneously and has a failure mode that produces no error anywhere: if `s3.bucket.name` carries the access point ARN instead of the alias, Snowpipe accepts the message and discards it, and the pipe reports healthy. Monitoring for that path must compare object counts against rows loaded.
+**Correct statement.** For scheduled ingestion, use a **Snowflake Task running `COPY INTO`** — the article's Option 2, which should be Option 1. It is verified, it needs no synthesized notification and no SNS topic policy, and Snowflake's load history gives exactly-once behaviour that a polling window cannot.
+
+**Where FPolicy does and does not belong.** It is a working event source for files that arrive over NFS or SMB, and it is blind to files that arrive through an access point — which is the surface every integration in this repository reads through. Whether it fits therefore depends on how the Bronze layer is *written*, not how it is read. Even where it does fire, an ingestion design has to absorb an external FPolicy server, an engine registered by IP that has to be re-registered when the task is replaced, an event-loss window of about two minutes on restart, and a default 5-second hold on NFSv3 write-complete. For observability a restart gap is a hole in a log; for ingestion it is a file that is never loaded, with nothing recording the miss. So FPolicy earns a place when detection genuinely has to be sub-second and every write arrives over a file protocol. Event-driven ingestion via a synthesized notification is verified end to end (notification to loaded row in about 0.5 s) but requires four conditions to hold simultaneously and has a failure mode that produces no error anywhere: if `s3.bucket.name` carries the access point ARN instead of the alias, Snowpipe accepts the message and discards it, and the pipe reports healthy. Monitoring for that path must compare object counts against rows loaded.
 
 Reference: [Snowpipe verification results](../../integrations/snowflake/docs/en/snowpipe-verification-results.md).
 
@@ -90,7 +96,7 @@ The article marks several rows "✅ Expected" or "⚠️ TBD" that have since be
 | JSON, Avro, ORC read — "Expected" | Verified, 2026-08-06 |
 | Snowpark `SnowflakeFile.open` — "Not validated" | Verified |
 | Iceberg Table read — "TBD" | `COPY INTO` a Managed Iceberg Table on an External Volume verified end to end, with a real Iceberg layout on the destination |
-| ListObjectsV2 latency, quoted elsewhere in the series as 30-80x native S3 | Re-measured at 1.3-1.4x up to 5,000 objects; the earlier figure did not reproduce and is withdrawn. Untested above 5,000 objects. The figure originated in the series overview — see [S-01](#s-01--the-series-overview-asserted-the-withdrawn-figure-as-a-product-characteristic) |
+| ListObjectsV2 latency, quoted elsewhere in the series as 30-80x native S3 | Re-measured at 1.3-1.4x up to 5,000 objects, then extended to 20,000 objects, where the access point was the faster of the two (0.7x). The earlier figure did not reproduce anywhere in that range and is withdrawn. Untested above 20,000 objects. The figure originated in the series overview — see [S-01](#s-01--the-series-overview-asserted-the-withdrawn-figure-as-a-product-characteristic) |
 
 ### C-06 — Internal inconsistency in the Cortex function count
 
@@ -135,7 +141,9 @@ C-05 withdrew a listing-latency figure that this article only quoted. The figure
 
 The overview's section 8 was titled "ListObjectsV2 Latency Is a Product-Level Characteristic" and reported 30-80x slower listing than standard S3, resting that characterisation on a vendor support reply. This is where the figure C-05 withdraws actually lived; Part 3 only quoted it.
 
-**Correct statement.** Re-measured at 1.3-1.4x native S3 up to 5,000 objects. The earlier figure did not reproduce. Above 5,000 objects is untested, so the supportable claim is that behaviour at scale is unknown, not that it is slow. The heading asserted the withdrawn conclusion and was changed too — a correction that leaves the heading standing is not applied.
+**Correct statement.** Re-measured at 1.3-1.4x native S3 up to 5,000 objects, and extended on 2026-09-14 to 10,000 and 20,000 objects, where the access point listed *faster* than a native S3 bucket measured in the same session (0.7x at both counts). The earlier figure did not reproduce anywhere from 10 to 20,000 objects.
+
+Do not replace it with "1.3-1.4x" as a general figure either. Across the whole tested range the access point sits between roughly 0.7x and 1.4x of native S3 — the same order, sometimes faster, with the direction of the small difference varying by run and count. Native S3's own spread at 20,000 objects was 5,779-14,634 ms across five trials, which is wide enough that quoting a precise ratio would overstate the measurement. What is worth designing around is the absolute cost: enumerating 20,000 objects took about 6 seconds from outside the VPC. Record: [listing latency at scale](../../verification-pack/s3ap-list-latency/evidence/2026-09-14-scale/benchmark-result.yaml). The heading asserted the withdrawn conclusion and was changed too — a correction that leaves the heading standing is not applied.
 
 ### S-02 — Part 2 extrapolated the withdrawn figure, and published real identifiers
 
@@ -159,7 +167,7 @@ Three separate problems in the Databricks article:
 
 The metadata catalog article projects ListObjectsV2 latency to 1,000 through 1,000,000 objects by extrapolating linearly from a measured 40-file scan, and derives multipliers up to 12,389x in favour of the catalog path. It labelled that extrapolation "intentionally conservative".
 
-**Correct statement.** Listing paginates rather than scaling linearly with object count, so linear extrapolation overstates the namespace-scan cost — and therefore overstates the advantage of the path the article recommends. "Conservative" was the wrong word: the error runs in the author's favour, which is the direction that needs stating plainly. The 40-file measurement stands. Above 5,000 objects is untested.
+**Correct statement.** Listing paginates rather than scaling linearly with object count, so linear extrapolation overstates the namespace-scan cost — and therefore overstates the advantage of the path the article recommends. "Conservative" was the wrong word: the error runs in the author's favour, which is the direction that needs stating plainly. The 40-file measurement stands. Listing has since been measured to 20,000 objects with no degradation against native S3, which makes the linear projection wrong in the same direction at every point on it. Above 20,000 objects is untested.
 
 ### S-04 — Part 5 cited a vendor reply for a result measured in Part 2
 
