@@ -227,7 +227,8 @@ looks like from the storage side.
 | **Root cause** | Product-level performance characteristic of FSx for ONTAP S3 AP |
 | **Originally confirmed** | 2026-05-22 (quoted as 30-80x; withdrawn after the re-measurement below) |
 | **Re-measured** | 2026-08-05 — **0.9x-1.4x** at 10-5,000 objects. The 30-80x figure did not reproduce. [Evidence](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml) |
-| **Status** | ⚠️ Scope reduced — not observed at ≤5,000 objects; unquantified above that |
+| **Extended** | 2026-09-14 — **0.7x** at 10,000 and at 20,000 objects; the access point was the faster of the two. No cliff between 5,000 and 20,000. [Evidence](../../verification-pack/s3ap-list-latency/evidence/2026-09-14-scale/benchmark-result.yaml) |
+| **Status** | ⚠️ Scope reduced — not observed anywhere from 10 to 20,000 objects; unquantified above that |
 | **Resolution criteria** | Measurement at 100k+ objects to establish where, if anywhere, the penalty appears |
 | **Severity** | **Low** — Not measurable at the object counts tested. Workarounds remain sound design practice |
 
@@ -239,12 +240,14 @@ looks like from the storage side.
 | 100 | 52 ms | 39 ms | 1.3x |
 | 1,000 | 162 ms | 128 ms | 1.3x |
 | 5,000 | 665 ms | 704 ms | 0.9x |
+| 10,000 | 2,766 ms | 4,180 ms | 0.7x |
+| 20,000 | 6,438 ms | 9,436 ms | 0.7x |
 
 A nested two-level layout produced the same ratios. All results fall inside the
 performance target originally recorded for this blocker (<1 s for <100 files,
 <3 s for <1,000 files).
 
-**What is still unknown**: listing was only measured up to 5,000 objects.
+**What is still unknown**: listing was measured up to 20,000 objects.
 Behaviour at hundreds of thousands or millions of objects in one directory is
 untested, and [S3 AP design considerations](./s3ap-design-considerations.md)
 notes that ONTAP must sort all directory entries in memory, which would grow

@@ -780,7 +780,7 @@ AI-based PII detection is not 100% accurate. False negatives (missed PII) create
 |-----------|--------|-----------|
 | FSx for ONTAP S3 AP: No conditional writes | Cannot write Iceberg tables directly to FSx for ONTAP S3 AP | Metadata on S3 Tables (not on FSx); raw files on FSx for ONTAP |
 | FSx for ONTAP S3 AP: No S3 Event Notifications | Cannot use native S3 events for change detection | FPolicy provides equivalent real-time detection |
-| FSx for ONTAP S3 AP: ListObjectsV2 latency | 1.3-1.4x native S3 up to 5,000 objects, so not a practical concern at that scale; larger scales unmeasured ([BLK-006](./blocker-tracker.md)) | Metadata table removes the LIST operation entirely, making the question scale-independent |
+| FSx for ONTAP S3 AP: ListObjectsV2 latency | 1.3-1.4x native S3 up to 5,000 objects and 0.7x at 10,000 and 20,000, so not a practical concern at that scale; above 20,000 unmeasured ([BLK-006](./blocker-tracker.md)) | Metadata table removes the LIST operation entirely, making the question scale-independent |
 | Databricks: Session policy blocks S3 AP | Cannot access FSx for ONTAP files directly from UC | Access metadata via Iceberg REST; files via Bedrock/Lambda |
 | Databricks: SQL Warehouse doesn't support S3 Tables | `CREATE CONNECTION TYPE iceberg_rest` not supported (verified May 2026) | Use Spark cluster with Iceberg REST Catalog config, or query via Athena |
 | Snowflake: TO_FILE fails on S3 AP | Vision AI requires internal stage workaround | COPY FILES to internal stage; PARSE_DOCUMENT works directly |

@@ -42,7 +42,7 @@
 | UNV-021 | Athena | Iceberg at realistic table size — manifest growth, compaction cost, partition evolution | A larger dataset. The 2026-08-06 run used a single-digit row count. |
 | UNV-022 | Athena | Concurrency above 25, and working sets larger than the ONTAP cache | A dataset well beyond cache size and a higher concurrency sweep. The 2026-08-06 run was cache-resident. |
 | UNV-023 | Hudi | Any operation on an FSx for ONTAP S3 AP | A Hudi-capable engine. Listed under BLK-002 but never tested. |
-| UNV-025 | FSx for ONTAP | ListObjectsV2 latency above 5,000 objects | A larger object population. The 2026-08-05 measurement covered 10 to 5,000 objects. |
+| UNV-025 | FSx for ONTAP | ListObjectsV2 latency above 20,000 objects | A larger object population. Measured to 20,000 on 2026-09-14 with no degradation. The 2026-08-05 measurement covered 10 to 5,000 objects. |
 | UNV-026 | Bedrock | Whether the Managed Knowledge Base S3 connector accepts an S3 AP URI (the traditional Knowledge Base path is verified) | A Managed Knowledge Base run. |
 | UNV-027 | Tooling | PyIceberg wheel on macOS Apple Silicon | A run on that platform. A wheel exists; this project has not exercised it. |
 | ~~UNV-031~~ | FSx for ONTAP | ~~レプリケーションを継続したまま SnapMirror 宛先を S3 アクセスポイントで提供できるか~~ | **2026-09-13 クローズ: 両経路とも成立。** ONTAP で DP 宛先を mount すると読み取り専用のアクセスポイントが得られ、後続転送が 15 秒で読めた（関係は `snapmirrored` のまま）。宛先 Snapshot のクローンは**書き込み可能**で、その Snapshot 時点に固定される。先に実測した FSx API の拒否は FSx コントロールプレーン限定の制約だった。[検証記録](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml)、SM-VAL-013 |
@@ -112,7 +112,7 @@ ClickHouse インスタンスは稼働していません。
 | Athena | FSx for ONTAP S3 AP 上の Iceberg 読み取り**および書き込み** | 検証済み — UPDATE、DELETE、タイムトラベル、OPTIMIZE、VACUUM、2 件の同時コミットを含むライフサイクル全体 | [2026-08-06](../../verification-pack/athena-iceberg/evidence/2026-08-06/evidence-record.yaml) |
 | Athena | 高同時実行スキャン（10-50 アナリスト） | 25 並列まで検証。25/25 成功、全カラムスキャンで約 2 倍に劣化、キュー時間は 200 ms 未満。データセットはキャッシュに収まる規模 | [2026-08-06](../../verification-pack/athena-concurrency/evidence/2026-08-06/evidence-record.yaml) |
 | Snowflake | 合成した S3 通知で Snowpipe COPY が発火するか | 検証済み — publish から約 0.5 秒で取り込み | [2026-08-06](../../verification-pack/snowpipe-pattern-a/evidence/2026-08-06/snowflake-side-verification.yaml) |
-| FSx for ONTAP | ネイティブ S3 に対する ListObjectsV2 レイテンシ | 10〜5,000 オブジェクトで 1.3〜1.4 倍として再測定。従来の 30〜80 倍は再現せず撤回 | [2026-08-05](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml) |
+| FSx for ONTAP | ネイティブ S3 に対する ListObjectsV2 レイテンシ | 10〜20,000 オブジェクトで 0.7〜1.4 倍として再測定。従来の 30〜80 倍は再現せず撤回 | [2026-08-05](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml) |
 
 ## 本ページの使い方
 

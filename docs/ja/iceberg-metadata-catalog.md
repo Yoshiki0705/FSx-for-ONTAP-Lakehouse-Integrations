@@ -939,7 +939,7 @@ AI ベースの PII 検出は 100% 正確ではない。偽陰性（PII 見逃�
 |------|------|--------|
 | FSx for ONTAP S3 AP: conditional writes 未サポート | FSx for ONTAP S3 AP に直接 Iceberg テーブルを書き込めない | メタデータは S3 Tables に格納（FSx for ONTAP ではなく）; 生ファイルは FSx for ONTAP に格納 |
 | FSx for ONTAP S3 AP: S3 Event Notifications 未サポート | ネイティブ S3 イベントで変更検知不可 | FPolicy が同等のリアルタイム検知を提供 |
-| FSx for ONTAP S3 AP: ListObjectsV2 レイテンシ | 5,000 オブジェクトまではネイティブ S3 比 1.3〜1.4 倍で実用上問題なし。それを超える規模は未測定（[BLK-006](./blocker-tracker.md)） | メタデータテーブルにより LIST 操作自体が不要になり、規模に依存しなくなる |
+| FSx for ONTAP S3 AP: ListObjectsV2 レイテンシ | 5,000 オブジェクトまではネイティブ S3 比 1.3〜1.4 倍、10,000 件と 20,000 件では 0.7 倍で実用上問題なし。20,000 を超える規模は未測定（[BLK-006](./blocker-tracker.md)） | メタデータテーブルにより LIST 操作自体が不要になり、規模に依存しなくなる |
 | Databricks: Session policy が S3 AP をブロック | UC から FSx for ONTAP ファイルに直接アクセス不可 | メタデータは Iceberg REST 経由; ファイルは Bedrock/Lambda 経由 |
 | Databricks: SQL Warehouse が S3 Tables 未対応 | `CREATE CONNECTION TYPE iceberg_rest` 未サポート (2026年5月検証) | Spark クラスターで Iceberg REST Catalog 設定、または Athena 経由 |
 | Snowflake: TO_FILE が S3 AP で失敗 | Vision AI に内部ステージ回避策が必要 | COPY FILES で内部ステージに転送; PARSE_DOCUMENT は直接動作 |

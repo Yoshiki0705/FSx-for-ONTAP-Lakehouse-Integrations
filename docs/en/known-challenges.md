@@ -210,7 +210,7 @@ recorded because a withdrawn claim is also a result.
 
 | Claim | What happened |
 |---|---|
-| ListObjectsV2 is 30–80x slower than native S3 | Re-measured 2026-08-05: **0.9–1.4x** for 10 to 5,000 objects, flat and nested layouts alike. The 30–80x figure did not reproduce and the origin was not determined. Behaviour above 5,000 objects in one directory remains unmeasured, and ONTAP sorts directory entries in memory, so file consolidation and partition structure remain sound design practice — just not because of a measured penalty at small scale |
+| ListObjectsV2 is 30–80x slower than native S3 | Re-measured 2026-08-05: **0.9–1.4x** for 10 to 5,000 objects, flat and nested layouts alike, and extended 2026-09-14 to **0.7x** at 10,000 and 20,000 objects. The 30–80x figure did not reproduce and the origin was not determined. Behaviour above 20,000 objects in one directory remains unmeasured, and ONTAP sorts directory entries in memory, so file consolidation and partition structure remain sound design practice — just not because of a measured penalty at small scale |
 | Snowflake external stages are read-only by design | Wrong, and it concealed 1.2. The write is not refused. It lands, then fails validation |
 | Concurrent Iceberg writes risk corruption on an Access Point | That was inference, not measurement. Two concurrent Athena commits produced the correct row count with no lost update. A two-writer test is not a concurrency limit, but it does show the risk is not categorical |
 
