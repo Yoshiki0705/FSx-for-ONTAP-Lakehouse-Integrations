@@ -1,0 +1,205 @@
+# =============================================================================
+# Does an analytics engine read a DP-backed access point the same as an RW one?
+# =============================================================================
+# S3AP-DP-ATTACH-002 established that the S3 API works against a live SnapMirror
+# destination. It left one question open and said so: only the S3 API had been
+# exercised, not an analytics engine. An engine does more than GetObject — it
+# discovers partitions, reads Parquet footers, plans, and may try to write.
+#
+# This run answers it with Amazon Athena, chosen because it needs no third-party
+# credentials and this repository already has a verified Athena + access point
+# path on RW volumes to compare against. An RW-backed table built from identical
+# files was queried in the same session as the control.
+#
+# Outcome: identical. Same rows, same aggregates, same order of latency. Writes
+# are refused at the S3 layer with 403, surfaced by Athena as PERMISSION_DENIED.
+# A partition added by a later SnapMirror transfer became queryable after a
+# metadata refresh, with no change to the access point or the table location.
+#
+# Identifiers masked: <ACCOUNT_ID>, <FS_ID>, <SVM_ID>, <SRC_ALIAS>, <DST_ALIAS>,
+# <RESULTS_BUCKET>.
+# =============================================================================
+
+test_id: "S3AP-DP-ATHENA-001"
+date_tested: "2026-09-13"
+tester: "Yoshiki Fujiwara"
+depends_on: "S3AP-DP-ATTACH-002 (same file system, same day)"
+closes: "The 'not established' item in S3AP-DP-ATTACH-002 about analytics engines"
+
+purpose: |
+  Determine whether a query engine reading through an access point on a
+  read-only SnapMirror destination behaves the same as one reading an ordinary
+  read-write volume, and whether replicated data stays queryable as transfers
+  continue.
+
+environment:
+  region: "ap-northeast-1"
+  aws_account: "<ACCOUNT_ID>"
+  fsx_file_system: "<FS_ID>"
+  fsx_deployment_type: "SINGLE_AZ_1"
+  ontap_version: "NetApp Release 9.18.1P5"
+  svm: "<SVM_ID>"
+  relationship: "intra-SVM asynchronous volume SnapMirror, policy Asynchronous, built for this run"
+  engine: "Amazon Athena, Glue Data Catalog, engine version as offered in the region on the test date"
+  access_points: "two, both INTERNET origin, UNIX/root file-system identity"
+  ontap_api_access: >
+    ONTAP REST from an in-VPC host via SSM. Credentials read on the host at call
+    time; the temporary scoped IAM grant was removed afterwards.
+
+dataset:
+  layout: "Hive-style partitioning, dt=YYYY-MM-DD"
+  format: "Parquet, Snappy"
+  initial: "2 partitions, 5 rows total, 1275 and 1307 bytes"
+  added_later: "1 partition, 2 rows, to test freshness"
+  note: >
+    Deliberately Parquet rather than CSV so the engine has to read footers and
+    prune partitions, not merely stream bytes. Row counts are tiny; this run is
+    about behavioural equivalence, not performance.
+
+topology: |
+  eng_src (RW, S3 AP)  --SnapMirror-->  eng_dst (DP, mounted via ONTAP, S3 AP)
+        |                                       |
+   Athena table sensors_rw                 Athena table sensors_dp
+   (the control)                           (the subject)
+
+# ---------------------------------------------------------------------------
+# Setup timings, which add a third sample to the propagation question
+# ---------------------------------------------------------------------------
+setup_timings:
+  - phase: "ONTAP PATCH nas.path on the DP destination"
+    duration: "seconds"
+  - phase: "FSx API reports the junction path"
+    duration_seconds: 665
+    note: >
+      Third sample of this delay. Earlier: 1011 s for an ONTAP-created
+      FlexClone, 2298 s for an ONTAP-mounted DP volume. 665 s here, on the same
+      file system and the same day, for the same operation as the 2298 s case.
+      The spread is wide enough that no single figure should be quoted. The
+      honest statement is that it is minutes to tens of minutes and is not
+      under the caller's control.
+  - phase: "Access point CREATING to AVAILABLE"
+    duration_seconds: 31
+
+# ---------------------------------------------------------------------------
+# Control and subject, same session
+# ---------------------------------------------------------------------------
+results:
+  - id: A-01
+    step: "CREATE EXTERNAL TABLE on the RW-backed access point (control)"
+    location: "s3://<SRC_ALIAS>/sensors/"
+    status: "SUCCEEDED"
+  - id: A-02
+    step: "MSCK REPAIR TABLE, control"
+    status: "SUCCEEDED"
+    duration_ms: 22186
+    observed: "both partitions discovered and added"
+  - id: A-03
+    step: "Aggregate query, control"
+    query: "SELECT dt, count(*), round(avg(temperature),2), max(status) GROUP BY dt ORDER BY dt"
+    status: "SUCCEEDED"
+    duration_ms: 7804
+    rows: "dt=2026-09-01 n=2 avg=23.25 | dt=2026-09-02 n=3 avg=49.83"
+  - id: A-04
+    step: "CREATE EXTERNAL TABLE on the DP-backed access point (subject)"
+    location: "s3://<DST_ALIAS>/sensors/"
+    status: "SUCCEEDED"
+    duration_ms: 15952
+  - id: A-05
+    step: "MSCK REPAIR TABLE, subject"
+    status: "SUCCEEDED"
+    duration_ms: 10973
+    observed: >
+      Both partitions discovered and added. Notable because partition discovery
+      is a listing operation against a read-only volume, and it neither failed
+      nor attempted a write.
+  - id: A-06
+    step: "DECISIVE — the same aggregate query against the DP-backed table"
+    status: "SUCCEEDED"
+    duration_ms: 7493
+    rows: "dt=2026-09-01 n=2 avg=23.25 | dt=2026-09-02 n=3 avg=49.83"
+    conclusion: >
+      Identical to the control, value for value, and within noise on latency
+      (7493 ms against 7804 ms). Read-only volume type is not visible to the
+      engine.
+  - id: A-07
+    step: "Partition pruning with a predicate on the partition key, subject"
+    query: "SELECT count(*) WHERE dt='2026-09-02' AND status='anomaly'"
+    status: "SUCCEEDED"
+    duration_ms: 10256
+    result: "1"
+    conclusion: "Partition elimination works; the engine is not forced into a full scan."
+  - id: A-08
+    step: "NEGATIVE — INSERT INTO the DP-backed table"
+    status: "FAILED"
+    duration_ms: 3966
+    error: "PERMISSION_DENIED: Access Denied (Service: S3, Status Code: 403)"
+    conclusion: >
+      The refusal comes from S3, not from a table property, and Athena reports it
+      cleanly. Athena warns that a manifest may have been written to the query
+      results location — that is in the results bucket, not on the file system,
+      so nothing partial lands on the replica. Contrast with the Snowflake unload
+      case (BLK-009), where a complete object is left behind on the volume.
+
+# ---------------------------------------------------------------------------
+# Freshness — the property the architecture depends on
+# ---------------------------------------------------------------------------
+freshness_test:
+  method: |
+    Wrote a third partition (dt=2026-09-03) to the source through the source
+    access point, triggered a SnapMirror transfer, then re-read through the
+    destination access point and the DP-backed table.
+  observed:
+    before_transfer: "DP-backed table: 5 rows, 2 partitions"
+    listing_after_transfer: "third Parquet object visible through the destination access point within 30 s"
+    metadata_refresh: "MSCK REPAIR TABLE added dt=2026-09-03; SUCCEEDED in 10101 ms"
+    after_refresh: "dt=2026-09-01 n=2 avg=23.25 | dt=2026-09-02 n=3 avg=49.83 | dt=2026-09-03 n=2 avg=61.05"
+  result: PASS
+  conclusion: >
+    Replicated data stays queryable as the relationship runs. The access point,
+    the table and its LOCATION were untouched; only catalog metadata needed
+    refreshing, which is the same requirement that applies to any partitioned
+    external table and is unrelated to the volume being a replica.
+  caveat: >
+    A new partition needs a catalog refresh to become visible. That is a Glue
+    and Athena property, not an FSx one, and it is the same reason
+    AUTO_REFRESH-style behaviour is unavailable on this path (BLK-003, no S3
+    Event Notifications). Schedule the refresh.
+
+relationship_state:
+  checked: "after table creation, after every query, and after the transfer"
+  observed: "state=snapmirrored, healthy=true, transfer.state=success throughout"
+
+# ---------------------------------------------------------------------------
+# What this does and does not license
+# ---------------------------------------------------------------------------
+established:
+  - "Athena reads a live SnapMirror destination through an S3 access point and returns results identical to an RW-backed control on identical files."
+  - "Partition discovery and partition pruning both work against a read-only DP volume."
+  - "Writes are refused at S3 with 403 and surfaced by the engine as a permission error, with nothing partial left on the volume."
+  - "Data arriving by SnapMirror transfer becomes queryable after a catalog refresh, with no change to the access point or the table."
+
+not_established:
+  - >
+    Snowflake specifically. Athena is evidence that a query engine reading
+    through an access point does not care about the ONTAP volume type, and
+    Snowflake's read path is the same GetObject and ListObjectsV2 surface, but
+    Snowflake was not run against a DP-backed access point. The residual risk is
+    low and is not zero; do not present Snowflake-on-a-replica as measured.
+  - "Any engine that writes as part of reading — Iceberg or Delta maintenance, CTAS into the same location — is excluded by the read-only volume and was not explored beyond the INSERT case."
+  - "Scale. Three partitions, seven rows. Nothing here speaks to manifest growth, large listings, or concurrency."
+  - "Cross-region. Everything is intra-SVM on one file system."
+  - "Behaviour across a break and resync with the table and access point left in place."
+  - "WINDOWS file-system identity and NTFS security style."
+
+cleanup: |
+  Glue tables and database dropped, both access points deleted, the SnapMirror
+  relationship deleted, both volumes deleted and confirmed gone. The temporary
+  IAM inline policy was removed and the role confirmed back to
+  AmazonSSMManagedInstanceCore only. The helper script was removed from the
+  in-VPC host. No FlexClone was created in this run, deliberately, to avoid
+  repeating the stranding recorded as TD-04 in S3AP-DP-ATTACH-002. A retry on
+  the volume stranded by that earlier run failed again with the same reason.
+
+reviewer: ""
+review_date: ""
+review_notes: ""

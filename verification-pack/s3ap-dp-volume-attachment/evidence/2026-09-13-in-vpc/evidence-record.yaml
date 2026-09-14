@@ -1,0 +1,296 @@
+# =============================================================================
+# Serving a live SnapMirror destination through an S3 access point
+# =============================================================================
+# This supersedes the conclusion of the earlier record in
+# ../2026-09-13/evidence-record.yaml. That run was made from outside the VPC and
+# could only reach the FSx API. It found that the FSx API refuses to give a DP
+# volume a junction path, and concluded that a DP volume therefore cannot carry
+# an access point.
+#
+# The first half of that is confirmed. The conclusion is WRONG.
+#
+# ONTAP mounts a DP volume, the FSx API eventually reports the junction path
+# ONTAP set, and an access point then attaches and serves reads off the live
+# destination while the relationship stays snapmirrored and healthy. A later
+# SnapMirror transfer becomes visible through that same access point within
+# seconds, with no access point change. No break. No clone.
+#
+# The practical constraint is not capability, it is the FSx control-plane
+# propagation delay between the ONTAP-side mount and FSx reporting it:
+# 2298 s measured here. That is what rules out "within minutes".
+#
+# Identifiers masked: <ACCOUNT_ID>, <FS_ID>, <SVM_ID>.
+# =============================================================================
+
+test_id: "S3AP-DP-ATTACH-002"
+date_tested: "2026-09-13"
+tester: "Yoshiki Fujiwara"
+supersedes: "S3AP-DP-ATTACH-001 (conclusion only; its FSx-API measurements stand)"
+
+purpose: |
+  Close UNV-031 and UNV-032: whether an S3 access point can serve a SnapMirror
+  destination while replication continues, by either mounting the DP volume
+  through ONTAP or cloning it, and how long each route takes end to end.
+
+environment:
+  region: "ap-northeast-1"
+  aws_account: "<ACCOUNT_ID>"
+  fsx_file_system: "<FS_ID>"
+  fsx_deployment_type: "SINGLE_AZ_1"
+  ontap_version: "NetApp Release 9.18.1P5 (2026-07-09)"
+  ontap_version_note: >
+    Newer than the 9.17.1 recorded in this repository's earlier Snowflake and
+    SnapMirror evidence. Read every result here as 9.18.1P5.
+  svm: "<SVM_ID>"
+  svm_selection: >
+    Chosen because a query of /api/protocols/s3/services showed it has no
+    object-store server. An SVM that already hosts a native ONTAP S3 server
+    cannot host access points, so this had to be checked first rather than
+    assumed.
+  ontap_api_access: >
+    ONTAP REST reached from an existing in-VPC Linux host in the same subnet as
+    the file system, driven through SSM RunShellScript. The management endpoint
+    is a private address and is not reachable from an operator workstation,
+    which is why the earlier record could not test any of this. Credentials were
+    read on the host from Secrets Manager at call time and never returned to the
+    caller; the temporary scoped IAM grant was removed afterwards.
+  relationship: >
+    Intra-SVM asynchronous volume SnapMirror, policy "Asynchronous", built for
+    this run. Intra-SVM avoids SVM peering entirely and avoids touching anyone
+    else's relationship. No SnapMirror relationship existed on the cluster when
+    the run started.
+  topology: |
+    sm_src_probe (RW, /sm_src_probe, S3 AP) --SnapMirror--> sm_dst_probe (DP)
+                                                                |
+                                                          FlexClone
+                                                                v
+                                                        sm_dst_clone (RW)
+    Test data was written through the source volume's own access point, so the
+    whole path is the one a customer would use.
+
+# ---------------------------------------------------------------------------
+# Route B — access point directly on the live SnapMirror destination
+# ---------------------------------------------------------------------------
+route_b_dp_direct:
+  question: "Can an access point serve the DP destination itself, without a break and without a clone?"
+  answer: "YES, for reads."
+  steps:
+    - step: "PATCH nas.path on the DP volume through ONTAP REST"
+      result: "PASS"
+      detail: >
+        Accepted and effective. A subsequent ONTAP GET reports
+        nas.path=/sm_dst_probe on a volume whose type is still dp. Confirmed
+        twice: once on a leftover DP volume with no relationship, once on this
+        live destination.
+      contrast: >
+        The FSx API refuses the same change. CreateVolume rejects JunctionPath
+        for a DP volume by name; UpdateVolume returns HTTP 200 with the full
+        Volume object and silently discards it. Both from S3AP-DP-ATTACH-001.
+        So the restriction is the FSx control plane's, not ONTAP's.
+    - step: "FSx API reports the junction path ONTAP set"
+      result: "PASS, slowly"
+      measured_seconds: 2298
+      detail: >
+        38.3 min from the ONTAP PATCH to JunctionPath appearing in
+        DescribeVolumes. Polled every 30 s. A second DP volume mounted the same
+        way the same day appeared somewhere between 4 min (confirmed absent) and
+        37 min (confirmed present) — bounded, not pinned down.
+    - step: "create-and-attach-s3-access-point on the DP volume"
+      result: "PASS"
+      measured_seconds: 32
+      detail: "CREATING to AVAILABLE. Before the junction path was visible, the same call failed with `the volume is not mounted`."
+    - step: "ListObjectsV2 and GetObject through the access point"
+      result: "PASS"
+      detail: >
+        All three replicated objects listed. GetObject returned 27 bytes with
+        content matching what was written on the source. ServerSideEncryption
+        aws:fsx, StorageClass FSX_ONTAP.
+    - step: "PutObject through the access point"
+      result: "AccessDenied — correct and expected"
+      detail: >
+        A DP volume is read-only, and the access point reflects that rather than
+        accepting a write that could not land. Reproduced on a second DP volume.
+        This is the honest boundary of the route: reads only.
+    - step: "Relationship state throughout"
+      result: "PASS"
+      detail: "state=snapmirrored, healthy=true, transfer.state=success, before and after mounting, attaching and reading."
+    - step: "DECISIVE — does new replicated data appear through the same access point?"
+      result: "PASS"
+      measured_seconds: 15
+      detail: >
+        A fourth object was written to the source access point, then a manual
+        SnapMirror transfer was triggered. Within 15 s the destination access
+        point listed 4 objects and GetObject returned the new object's content.
+        No access point recreation, no remount, no break. This is the property
+        the whole architecture depends on and it holds.
+
+# ---------------------------------------------------------------------------
+# Route A — access point on a FlexClone of the destination
+# ---------------------------------------------------------------------------
+route_a_flexclone:
+  question: "Can an access point serve a clone of the destination, and is it writable?"
+  answer: "YES, and yes — the clone is writable, unlike the destination."
+  steps:
+    - step: "Create the FlexClone from the SnapMirror snapshot, with nas.path in the same POST"
+      result: "PASS"
+      measured_seconds: 20
+      detail: >
+        Under 20 s to online. type=rw, clone.is_flexclone=true,
+        clone.parent_volume=sm_dst_probe, nas.path=/sm_dst_clone. ONTAP accepts
+        a junction path at clone creation, unlike the FSx API on a DP volume.
+    - step: "Relationship state after cloning"
+      result: "PASS"
+      detail: >
+        state=snapmirrored, healthy=true. Parent still type=dp and now reports
+        clone.has_flexclone=true. Cloning the destination does not disturb
+        replication, which is what NetApp's failover-test-volume procedure
+        (ONTAP 9.14.1+) describes.
+    - step: "FSx API reports the clone"
+      result: "PASS"
+      measured_seconds: 1011
+      detail: >
+        16.9 min from clone creation to the fsvol-* identifier appearing in
+        DescribeVolumes, already carrying JunctionPath and type RW. Faster than
+        the ~30 min SM-VAL-009 records for ONTAP-created volumes, and faster
+        than the 2298 s route B took, but still not minutes.
+    - step: "create-and-attach-s3-access-point on the clone"
+      result: "PASS"
+      measured_seconds: 32
+    - step: "Read through the clone's access point"
+      result: "PASS"
+      detail: "All three objects listed; GetObject returned matching content."
+    - step: "Write through the clone's access point"
+      result: "PASS"
+      detail: >
+        PutObject succeeded. This is the difference that decides which route to
+        use: the destination serves reads only, the clone accepts writes.
+    - step: "Clone is frozen at its snapshot"
+      result: "PASS"
+      detail: >
+        After the later transfer added a fourth object to source and
+        destination, the clone still showed only its original three objects plus
+        the one written directly to it. Confirms the clone is an independent
+        point in time, not a live view.
+
+# ---------------------------------------------------------------------------
+# Choosing between them
+# ---------------------------------------------------------------------------
+route_comparison:
+  by_requirement:
+    - requirement: "Read the destination, staying current with each transfer"
+      route: "B — access point on the DP destination"
+      note: "New data visible ~15 s after a transfer. Writes refused."
+    - requirement: "Write, or give consumers an isolated point in time"
+      route: "A — access point on a clone"
+      note: "Writable. Frozen at the cloned snapshot; a fresh clone is needed to advance it."
+    - requirement: "Take over production service at the destination"
+      route: "break, then mount and attach"
+      note: "Unchanged. SM-005, SM-VAL-008/010."
+  shared_constraint: >
+    Both routes require an ONTAP-side operation and then wait on FSx
+    control-plane propagation: 1011 s for the clone, 2298 s for the DP mount.
+    Neither is a minutes-scale operation on first setup. Once the access point
+    exists, steady-state freshness on route B is seconds.
+
+# ---------------------------------------------------------------------------
+# Teardown findings — all four cost time, and one left residue
+# ---------------------------------------------------------------------------
+teardown_findings:
+  - id: TD-01
+    severity: LOW
+    finding: >
+      After detach-and-delete-s3-access-point returns and the FSx API lists no
+      attachment, ONTAP still refuses to delete the volume because of the access
+      point's internal object-store NAS bucket (amazon-fsx-fsvol-*).
+    guidance_corrected: >
+      This record first said "wait and re-check rather than forcing", inferring
+      from one observation that the association clears on its own. The FSx for
+      ONTAP Adoption Playbook has the better-evidenced rule and it is stronger:
+      the refusal **persists** — hours later, after bringing the volume back
+      online, and after re-attaching and detaching in the correct order. The
+      bucket is volume-scoped, not access-point-scoped, so it does not follow the
+      access point's lifecycle. `aws fsx delete-volume` succeeds and removes both.
+      **Tear down any volume that has ever had an access point attached, or that
+      failed to attach one, through the AWS API.** A runbook built on ONTAP
+      `volume delete` stalls on this path. See
+      `docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md`,
+      section 「撤去時の停滞」, in
+      https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook
+  - id: TD-02
+    severity: LOW
+    finding: >
+      That internal bucket is not listed by GET /api/protocols/s3/buckets. The
+      error message names it; the inventory API does not show it. Do not read an
+      empty bucket list as proof the association is gone.
+  - id: TD-03
+    severity: LOW
+    finding: >
+      An access-point-attached volume must be deleted through the FSx API.
+      ONTAP's DELETE is refused while the internal bucket association exists,
+      and the FSx API handles that cleanup. This is the mirror image of
+      FlexCache, which must be deleted through ONTAP.
+  - id: TD-04
+    severity: MEDIUM
+    status: "RESOLVED and RE-DIAGNOSED 2026-09-13 — see ../../../ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml"
+    finding: >
+      Deleting a FlexClone through the FSx API left the parent volume flagged
+      clone.has_flexclone=true, and the parent could then not be deleted by the
+      FSx API ("has one or more clones") or by ONTAP ("Only the cluster
+      administrator can delete the clones"). Four attempts across both APIs.
+    original_conclusion_was_wrong: >
+      This record first read the flag as stale and the clone as absent, on the
+      strength of /api/storage/volumes?clone.is_flexclone=true returning only an
+      unrelated clone and the parent reporting zero snapshots, and concluded the
+      volume was permanently stranded and needed vendor support. Both premises
+      were false.
+    actual_cause: >
+      `aws fsx delete-volume` does not destroy a volume. ONTAP renames it
+      `<name>_NNNN` and moves it into the **volume recovery queue** with volume
+      type `del`, and the FSx API then reports it gone. The queued clone was
+      still holding the parent's snapshot. It is invisible to
+      /api/storage/volumes and to `volume show` at default privilege; it appears
+      under `privilege_level=diagnostic`, in `volume clone show`, and
+      definitively in `volume recovery-queue show`.
+      The "zero snapshots" reading was an artifact of querying an **offline**
+      volume — brought online, the parent reported the held snapshot as
+      `busy: true` with `owners: ["volume clone"]`.
+    resolution: >
+      `DELETE /api/private/cli/volume/recovery-queue/purge?vserver=<svm>&volume=<name>_NNNN`
+      cleared the clone record immediately, after which the parent deleted
+      normally in about 100 s. fsxadmin has sufficient privilege; no vendor
+      support was needed. Nothing is stranded.
+    guidance: >
+      When a parent reports "has one or more clones" and no clone is visible,
+      query `volume recovery-queue show` first — it is the only query that
+      answers directly. Purge the entry rather than attempting to online, delete,
+      split or force the queued volume; none of those are permitted on type
+      `del`. Deleting clones before their parents avoids the situation.
+
+# ---------------------------------------------------------------------------
+# What this does not establish
+# ---------------------------------------------------------------------------
+not_established:
+  - "Why FSx control-plane propagation took 1011 s in one case and 2298 s in another. Two samples, one file system, one region."
+  - "Whether propagation is faster or slower on a busier or quieter file system, or on a second-generation deployment type. SINGLE_AZ_1 only."
+  - "Cross-region behaviour. Everything here is intra-SVM within one file system, which is the least demanding topology."
+  - "Whether route B survives a SnapMirror break and resync cycle with the access point left in place."
+  - "Whether an engine such as Snowflake reads a DP-backed access point identically to an RW-backed one. Only the S3 API was exercised, not an analytics engine."
+  - "Scale. Four objects of 27 bytes."
+  - "WINDOWS file-system identity and NTFS security style. UNIX/root throughout."
+  - "Whether TD-04 is reproducible, or was a one-off. It happened once and was not deliberately re-triggered, because doing so would strand a second volume."
+
+cleanup: |
+  Deleted: three access points and one earlier probe access point, the
+  FlexClone, the SnapMirror relationship, and both volumes. The pre-existing DP
+  volume borrowed for the first probe was returned to unmounted, its original
+  state. The temporary IAM inline policy was deleted and the role confirmed back
+  to AmazonSSMManagedInstanceCore only. The helper script was removed from the
+  in-VPC host.
+
+  The volume that TD-04 originally recorded as stranded was deleted later the
+  same day once the recovery queue was understood, and every recovery-queue
+  entry from this session was purged. Nothing is left.
+
+reviewer: ""
+review_date: ""
+review_notes: ""

@@ -63,9 +63,14 @@ These findings validate current product positioning:
 
 ## FSx API Observation: VolumeType Lag (SM-005)
 
-During validation, we observed that `describe-volumes` returns `VolumeType: DP` for approximately 60 seconds after a SnapMirror break operation, even though ONTAP-level status is already `RW`. S3 AP attachment requires `VolumeType: RW`.
+During validation, we observed that `describe-volumes` returns `VolumeType: DP` for approximately 60 seconds after a SnapMirror break operation (over 10 minutes cross-region), even though ONTAP-level status is already `RW`.
 
-**Impact**: Failover automation scripts need a polling loop (not a bug, but worth noting for API documentation or eventual faster propagation).
+**Correction, 2026-09-13:** an earlier version of this brief said attachment requires `VolumeType: RW`. It does not. The gate is the **junction path**, which is why attachment succeeds while the FSx API still reports `DP`. Two consequences worth AWS's attention:
+
+1. **A DP volume can carry an access point, but only if ONTAP set the junction path.** `CreateVolume` rejects `JunctionPath` for a DP volume by name, and `UpdateVolume` **accepts it and silently discards it** — HTTP 200 with the full Volume object, no `AdministrativeActions` entry, no failure message. A loud rejection would be better than a silent one.
+2. **Junction-path propagation to the FSx control plane took 2298 s** for an ONTAP-mounted DP volume and **1011 s** for an ONTAP-created FlexClone, against ~30 min previously recorded for ONTAP-created volumes. Attachment fails with `the volume is not mounted` until it lands. This is the dominant cost of standing up a read path on replicated data.
+
+**Impact**: automation must poll `DescribeVolumes` for a non-null `JunctionPath` rather than for `VolumeType: RW`, and budget tens of minutes. Evidence: [S3AP-DP-ATTACH-002](../../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml).
 
 ---
 

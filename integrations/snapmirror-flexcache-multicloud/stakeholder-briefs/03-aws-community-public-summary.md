@@ -29,6 +29,8 @@ FSx for ONTAP S3 Access Points enable S3 API data ingestion into ONTAP volumes. 
 |-----------|--------------|
 | S3 AP volume → SnapMirror Async | Standard volume-level replication. Data written via S3 is replicated. |
 | SnapMirror break → S3 AP re-attach | After failover, create a new S3 AP on the destination volume (~60s wait for API sync). |
+| **S3 AP on a live SnapMirror destination** | Reads work with the relationship still running — no break. Mount the DP volume through ONTAP, wait for the FSx API to report the junction path, attach. Writes return `AccessDenied`; a later transfer was readable through the same access point in 15 s. |
+| **S3 AP on a clone of the destination** | Same, and writable, but frozen at the cloned Snapshot. |
 | S3 AP volume → FlexCache Origin | Cache Volume provides NFS read access to data written via S3 AP. |
 | Cross-region SnapMirror | FSx for ONTAP to FSx for ONTAP (any region pair). |
 | Cross-cloud SnapMirror | FSx for ONTAP → CVO on GCP/Azure, on-premises ONTAP, GCNV. |
@@ -40,7 +42,7 @@ FSx for ONTAP S3 Access Points enable S3 API data ingestion into ONTAP volumes. 
 | Capability | Caveat |
 |-----------|--------|
 | FlexCache write-back + S3 AP Origin writes | If S3 AP writes and Cache writes target the **same file**, Cache dirty data is overwritten. Design for non-overlapping file sets. |
-| S3 AP re-attach timing | FSx API takes ~60s to reflect `VolumeType: RW` after SnapMirror break. Poll before attaching. |
+| S3 AP re-attach timing | Poll `DescribeVolumes` for a non-null `JunctionPath`, not for `VolumeType: RW` — the junction path is the gate. After a break the FSx API keeps reporting `DP` for ~60 s same-region and over 10 min cross-region, while attachment already works. Standing up a read path on a destination that was never broken took 2298 s for the junction path to propagate. |
 | GCNV FlexCache | Cache-only (not Origin). NFSv3 access only. |
 
 ### Does Not Work

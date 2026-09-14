@@ -703,30 +703,37 @@ Phase 3 検証（TC-03/TC-05、ONTAP 9.17.1）により、S3 AP アタッチ済�
 |------|------|
 | **Finding ID** | FC-002 |
 | **Requirement Ref** | Requirement 2, AC 2.2 |
-| **分類** | `version_gated` — 9.17.1 では非サポート、ONTAP 9.18.1 以降でサポート |
-| **公開分類** | publicly verifiable |
+| **分類** | `unsupported`（FSx レイヤ）— ONTAP のバージョンに依存しない |
+| **公開分類** | validation evidence |
 
-**調査結果:**
+> **2026-09-13 訂正。** 本項目は以前 `version_gated`（「ONTAP 9.18.1 以降でサポート」）と分類していた。**誤りである。** 9.18.1P5 上で実測した結果、FSx API は同一のエラーで拒否した。NetApp の機能表を FSx の機能表明として読んでいたのが原因で、両者は別の機構である。EN 版は当初から実測した拒否を記録していた。根拠: [ONTAP-RECOVERY-QUEUE-001](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml)。
 
-FlexCache Cache Volume での ONTAP S3 NAS bucket（FSx for ONTAP S3 AP の基盤技術）のサポートは **ONTAP 9.18.1 で新規追加された機能**である。
+**実測結果（ONTAP 9.18.1P5、2026-09-13）:**
 
-NetApp 公式ドキュメント「Supported and unsupported features for FlexCache volumes」に以下の通り記載:
+対象は同一クラスタ上の既存 FlexCache Cache Volume（50 GiB、mount 済み、FSx API 上は type RW かつ junction path あり、つまりアタッチ条件は満たしている）。
 
-- **Origin Volume**: S3 NAS bucket — "Supported beginning with ONTAP 9.12.1"
-- **Cache Volume**: S3 NAS bucket — "**Supported beginning with ONTAP 9.18.1**"
+```
+Amazon FSx is unable to attach S3access point because the volume is a FlexCache.
+```
 
-**FSx for ONTAP への影響:**
-- ONTAP 9.17.1（本プロジェクト検証環境）: Cache Volume への S3 AP アタッチは**非サポート**（エラーになる）
-- ONTAP 9.18.1 以降: Cache Volume への S3 AP アタッチが可能（FSx for ONTAP サービスが 9.18.1 を採用した時点で利用可能に）
-- 現行 FSx for ONTAP バージョンでは、Cache Volume へのデータアクセスは NFS/SMB が主要手段
+ONTAP 9.17.1 で 2026-07-24 に記録したエラーと逐語一致する（AWS 側の文字列にある "S3access" の欠落スペースを含む）。失敗時は何も作られないため、この検証はリソースを追加していない。
 
-**アーキテクチャ上の考察:**
-- S3 AP on Cache Volume が利用可能になると、FlexCache によるリモート読み取り高速化を S3 API 経由でも実現可能に
-- 例: Origin Volume に S3 AP でデータ書き込み → FlexCache で別サイトにキャッシュ → Cache Volume の S3 AP 経由で S3 API 読み取り
-- これにより NFS/SMB クライアント不要の完全 S3 API ベースの分散アーキテクチャが将来実現可能
+**2 つの機構の区別（ここが取り違えの原因）:**
+
+| 機構 | 層 | Cache Volume での状況 |
+|---|---|---|
+| ONTAP S3 NAS bucket | ONTAP ネイティブ | NetApp のドキュメント上、ONTAP 9.18.1 以降でサポート |
+| **FSx for ONTAP S3 Access Points** | AWS マネージド層 | **ボリューム種別で拒否。9.18.1P5 でも拒否された** |
+
+FSx for ONTAP S3 Access Points は ONTAP S3 NAS bucket の仕組みの上に構築されているが、アタッチ可否を判定しているのは FSx コントロールプレーンであり、そこが FlexCache ボリュームを明示的に拒否する。解消には ONTAP のアップグレードではなく FSx サービス側の対応が必要である。
+
+**該当する回避策:**
+
+リモートのデータに S3 API で読み取りアクセスするなら、SnapMirror で複製して宛先を提供する。**break は不要**（SM-VAL-013）。これは「break して再アタッチ」という旧来の案内を置き換える。旧案内は、宛先経路に break が必要だと考えられていた時期に書かれたものである。
 
 **エビデンス:**
-- [NetApp Docs: Supported and unsupported features for FlexCache volumes](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) — "ONTAP S3 NAS bucket: Cache — Supported beginning with ONTAP 9.18.1"
+- 実測: [ONTAP-RECOVERY-QUEUE-001](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml)（Finding B）
+- [NetApp Docs: Supported and unsupported features for FlexCache volumes](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) — "ONTAP S3 NAS bucket: Cache — Supported beginning with ONTAP 9.18.1"（ONTAP ネイティブ機能についての記述であり、FSx の S3 Access Points についてではない）
 - [AWS Docs: Accessing your data via Amazon S3 access points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
 
 ---
@@ -980,7 +987,7 @@ FlexGroup ボリュームを FlexCache Origin とすることは ONTAP 9.7+ で�
 | Finding ID | トピック | 分類 | Next Action |
 |:----------:|---------|:----:|:-----------:|
 | FC-001 | S3 AP アタッチ済みボリュームの FlexCache Origin 設定可否（S3 NAS bucket: Origin 9.12.1+） | `supported (validated)` | 完了 |
-| FC-002 | Cache Volume での S3 AP 独立アタッチ可否 | `version_gated` (9.18.1+) | なし（公式ドキュメントで確認済） |
+| FC-002 | Cache Volume での S3 AP 独立アタッチ可否 | `unsupported`（FSx レイヤ、バージョン非依存） | 完了（9.18.1P5 で実測、2026-09-13） |
 | FC-003 | FlexCache バージョン互換性要件 | `supported` | なし |
 | FC-004 | Write-back mode と S3 AP の互換性 | `works_with_caveats` | 完了（同一ファイル concurrent write に注意） |
 | FC-005 | NFS v4 Delegation / Lock Propagation | `partially_supported` | 検証テスト |
@@ -991,11 +998,11 @@ FlexGroup ボリュームを FlexCache Origin とすることは ONTAP 9.7+ で�
 - **supported（明確にサポート確認済み）**: 3件（FC-001, FC-003, FC-006）
 - **works_with_caveats（動作するが注意事項あり）**: 1件（FC-004）
 - **partially_supported（条件付きサポート）**: 2件（FC-005, FC-007）
-- **undocumented — validation required（未文書化、検証必要）**: 0件（FC-002 は ONTAP 9.18.1 で解決確認済）
+- **undocumented — validation required（未文書化、検証必要）**: 0件（FC-002 は 2026-09-13 に 9.18.1P5 で実測し、FSx レイヤの `unsupported` として確定）
 - **unsupported（明確に非サポート）**: 0件
 
 **主要な検証ポイント（残）:**
-1. Cache Volume に S3 AP を独立アタッチできること（FC-002）
+1. ~~Cache Volume に S3 AP を独立アタッチできること（FC-002）~~ — 2026-09-13 に決着。9.18.1P5 でも FSx API が拒否する
 2. NFSv4.1 マウント時の Cache Volume での delegation 動作（FC-005）
 3. FlexGroup Origin + S3 AP の組み合わせで constituent レベルの問題がないこと（FC-007）
 
@@ -2293,7 +2300,7 @@ SnapMirror と FlexCache は**競合する技術ではなく、異なるユー�
 
 | # | 質問 | 関連 Finding | 優先度 | 解決方法 |
 |---|------|:------------:|:------:|---------|
-| 1 | FlexCache Cache Volume に S3 AP を独立アタッチ可能か？ | FC-002 | P2 | 実機検証 |
+| 1 | ~~FlexCache Cache Volume に S3 AP を独立アタッチ可能か？~~ 2026-09-13 解決: 不可（9.18.1P5 実測） | FC-002 | — | 実機検証済み |
 | 2 | GCNV External Replication のソース側最低 ONTAP バージョン要件は？ | XC-006 | P2 | GCP ドキュメント更新待ちまたは検証 |
 | 3 | FlexGroup + S3 AP + FlexCache Origin の3要素組み合わせは安定動作するか？ | FC-007 | P2 | 実機検証 |
 | 4 | ANF への代替パス（CVO on Azure 経由 CVR）は実用的か？ | XC-007 | P3 | アーキテクチャ設計 + コスト評価 |
@@ -2439,7 +2446,7 @@ Phase 3 では、Phase 1/2 で `undocumented — validation required` に分類�
 | undocumented → works_with_caveats | FC-004 | 1 |
 | 新規追加（works_with_caveats） | SM-VAL-004/007 | 1 |
 | **合計解決済み** | | **4 / 6** |
-| **残 undocumented** | FC-002（Cache Volume S3 AP アタッチ）| **2** |
+| **残 undocumented** | なし（FC-002 は 2026-09-13 に実測で決着） | **0** |
 
 ---
 
@@ -2453,6 +2460,8 @@ Cross-region SnapMirror + S3 AP re-attach を ap-northeast-1 → us-west-2 間�
 | SM-VAL-009 | `works_with_caveats` | ONTAP REST API で作成したボリュームは FSx API への反映に ~30 分かかる。即時 S3 AP アタッチが必要なら FSx API で作成 |
 | SM-VAL-010 | `supported (validated)` | Cross-region S3 AP re-attach RTO: ~3 分（break + junction 伝搬 + AP 作成 + 初回 API） |
 | SM-VAL-011 | `works_with_caveats` | Teardown 順序が重要。VPC Peering を SVM peer 削除前に削除すると永続的な zombie レコード発生 |
+| SM-VAL-012 | `works_with_caveats` | DP ボリュームへの `update-volume` junction path 指定は 200 を返して無言で破棄される。`DescribeVolumes` の値で判定すること（2026-09-13 追加） |
+| SM-VAL-013 | `supported (validated)` | 稼働中の SnapMirror 宛先を ONTAP で mount すれば S3 AP で読める（break・クローン不要）。転送反映は 15 秒、初回セットアップは FSx 反映待ちで数十分（2026-09-13 追加） |
 
 #### SM-VAL-008: FSx API VolumeType:DP 表示ラグ（Cross-Region）
 
@@ -2507,3 +2516,44 @@ Cross-region SnapMirror + S3 AP re-attach を ap-northeast-1 → us-west-2 間�
 AWS Support による解決が必要な場合の所要日数: 通常 1-3 営業日。
 
 **参考**: [AWS re:Post — FSx for ONTAP SVM 削除](https://repost.aws/knowledge-center/fsx-ontap-delete-svm), [FSx ユーザーガイド — SVM 削除不可](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/cannot-delete-svm.html)
+
+#### SM-VAL-012: DP ボリュームに対する UpdateVolume の junction path 指定の無言の破棄
+
+**測定**: 2026-09-13、ap-northeast-1（[検証記録](../../../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13/evidence-record.yaml)）。分類 `works_with_caveats`。
+
+**発見**: `aws fsx update-volume --ontap-configuration '{"JunctionPath":"..."}'` を **DP** ボリュームに対して実行すると、Volume オブジェクト全体を伴う HTTP 200 が返り、何も起きない。30 秒後も `DescribeVolumes` は `JunctionPath: None` を返し、`AdministrativeActions` エントリも失敗メッセージも存在しない。続けて S3 AP をアタッチすると `the volume is not mounted` で失敗し、何も変わっていないことが確認できる。
+
+対して `CreateVolume` は同じフィールドを明示的に拒否する: `Invalid fields provided for a DP volume. JunctionPath, StorageEfficiency, SnapshotPolicy and SecurityStyle cannot be specified for a DP Volume.` 同一の不正入力に対して 2 つの API が異なる拒否の仕方をしており、状態を変更する側が沈黙する側である。
+
+**SM-VAL-008 との相互作用**（運用上の要点）。SM-VAL-008 は S3 AP アタッチのゲートに `OntapVolumeType` を使うなと述べており、これは正しい。cross-region の break 成功後も FSx API が 10 分以上 `DP` を報告し続けるためである。本 finding と組み合わせると、ボリューム種別だけでは次の 2 状態が区別できない。
+
+| 実際の状態 | FSx API の `OntapVolumeType` | junction path 指定の `update-volume` |
+|---|---|---|
+| break 済み、FSx API が遅延中 | `DP` | 効く |
+| break していない、または resync 済み | `DP` | 受理され、無言で破棄される |
+
+**信頼できる signal は junction path そのものだけである。** 設定した後、`DescribeVolumes` で `JunctionPath` が non-null になるまでポーリングしてからアタッチする。`UpdateVolume` の応答を確認と見なさないこと。またフラグを足して再試行しないこと。無言の破棄は伝搬の遅さと見分けがつかず、すでに受理された呼び出しにフラグを足しても何も変わらない。
+
+**スコープと、これが意味しないこと**: これは ONTAP の制約ではなく FSx コントロールプレーンの制約であり、**DP ボリュームに S3 AP を付けられないことを意味しない**。2026-09-13 に VPC 内から実測（SM-VAL-013）: ONTAP は DP ボリュームを mount し、FSx API はその junction path を約 2298 秒後に報告し、その後アタッチが成功して稼働中の SnapMirror 宛先から読み取りを提供する。SM-VAL-012 の正しい読み方は狭い。**FSx API は DP ボリュームを mount する手段として使えず、かつ失敗が明示されず無言である**、というだけである。また、この実行での DP ボリュームは SnapMirror 関係を持たないが、稼働中の宛先は SM-VAL-013 で検証し同じ挙動だった。
+
+#### SM-VAL-013: 稼働中の SnapMirror 宛先に対する S3 アクセスポイントの成立
+
+**測定**: 2026-09-13、ap-northeast-1、ONTAP 9.18.1P5、SVM 内の非同期ボリューム SnapMirror（[検証記録](../../../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml)）。分類 `supported (validated)`。
+
+**発見**: SnapMirror 宛先は、関係を稼働させたまま S3 アクセスポイント経由で読める。break もクローンも不要。ONTAP で DP ボリュームを mount し（`vol mount` / `PATCH nas.path`）、FSx API が junction path を報告するのを待ってアタッチする。読み取りは成功し、DP は read-only なので `PutObject` は `AccessDenied` を返し、関係は全過程で `snapmirrored`・healthy を維持した。**後続の SnapMirror 転送は同一アクセスポイント経由で 15 秒以内に可視化され読み取れた。アクセスポイントの変更は不要。**
+
+宛先 Snapshot の FlexClone が代替となり、違いは 1 点。書き込みを受け付け、切り出した Snapshot の時点で固定される。
+
+| フェーズ | 所要時間 |
+|---|--:|
+| ONTAP 側の操作（mount またはクローン作成） | 数秒、20 秒未満 |
+| FSx API がボリューム / junction path を報告 | **665 秒・1011 秒・2298 秒** |
+| アクセスポイント CREATING → AVAILABLE | 31〜32 秒 |
+
+**自動化への影響**: 初回セットアップを支配するのは ONTAP 側の操作ではなく FSx コントロールプレーンの反映。`DescribeVolumes` を `JunctionPath` が non-null になるまで（DP 経路）、または `fsvol-*` の識別子が現れるまで（クローン経路）ポーリングし、それ以前にアタッチを試みないこと（`the volume is not mounted` で失敗する）。1 ファイルシステム上の 3 サンプルで、665 秒と 2298 秒は同一操作であるため、ばらつきは経路の性質ではない。数分から数十分を見込んで設計し、特定の数値を引用しない。
+
+**エンジンから見た同等性（S3AP-DP-ATHENA-001）**: Amazon Athena を DP 由来のアクセスポイントに向けた結果は、同一 Parquet ファイルから作った RW 由来のコントロールと同一だった（同一セッション、行も集計値も一致、7493 ミリ秒対 7804 ミリ秒）。read-only ボリュームに対してパーティション検出（`MSCK REPAIR`）と枝刈りの双方が機能し、`INSERT` は S3 403 が `PERMISSION_DENIED` として表面化して失敗し、ボリューム上には何も残らなかった。後続転送で追加されたパーティションはカタログ更新のみでクエリ可能になった。Snowflake は DP 由来のアクセスポイントで**未検証**。読み取りの面は同一だが、それは推論であって測定ではない。
+
+**Teardown と、2 回かかった診断**: FlexClone を FSx API で削除したところ親が `clone.has_flexclone=true` のまま残り、その後どちらの API でも親を削除できなくなった。最初の読み（フラグが陳腐化しクローンは存在せず、自力では解消できない）は誤りだった。`aws fsx delete-volume` はボリュームを破棄しない。ONTAP は `<name>_NNNN` に改名して**ボリューム recovery queue**（type `del`）へ移し、queue にあるクローンが親の Snapshot を保持し続けていた。これは `/api/storage/volumes` と既定権限の `volume show` には現れず、`privilege_level=diagnostic`・`volume clone show`・`volume recovery-queue show` に現れる。`volume recovery-queue purge` で解消し、その後親は正常に削除できた。`fsxadmin` の権限のみで足りる。詳細は [ONTAP-RECOVERY-QUEUE-001](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml)。またアクセスポイントの内部オブジェクトストアバケット `amazon-fsx-fsvol-*` は一時的にボリューム削除をブロックするが、`GET /api/protocols/s3/buckets` には**列挙されない**。
+
+**未確立**: 分析エンジンが DP 由来のアクセスポイントを RW 由来と同一に読むか（S3 API のみを実行）、クロスリージョンの挙動、アクセスポイントを残したままの break/resync 通過、小さな 4 オブジェクトを超える規模、WINDOWS identity と NTFS セキュリティスタイル。

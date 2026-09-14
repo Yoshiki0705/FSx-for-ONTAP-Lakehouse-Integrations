@@ -8,7 +8,7 @@ This exists so the gaps are countable. A claim marked ⚠️ or 🔲 in the [com
 
 Things that are known **not** to work are tracked separately in the [blocker tracker](./blocker-tracker.md). This page is about the unknown, not the broken.
 
-**Total: 24 items.** One closed on 2026-08-12 (UNV-030, FILE-column sharing). Five were closed on 2026-08-06 — see Recently closed.
+**Total: 24 items.** Two were added and closed the same day on 2026-09-13 (UNV-031, UNV-032 — serving a live SnapMirror destination through an access point). One closed on 2026-08-12 (UNV-030, FILE-column sharing). Five were closed on 2026-08-06 — see Recently closed.
 
 ## Summary
 
@@ -45,6 +45,8 @@ Only AWS services this project already uses. These are the realistic next candid
 | UNV-025 | FSx for ONTAP | ListObjectsV2 latency above 5,000 objects | A larger object population. The 2026-08-05 measurement covered 10 to 5,000 objects. |
 | UNV-026 | Bedrock | Whether the Managed Knowledge Base S3 connector accepts an S3 AP URI (the traditional Knowledge Base path is verified) | A Managed Knowledge Base run. |
 | UNV-027 | Tooling | PyIceberg wheel on macOS Apple Silicon | A run on that platform. A wheel exists; this project has not exercised it. |
+| ~~UNV-031~~ | FSx for ONTAP | ~~Whether an S3 access point can serve a SnapMirror destination while replication continues~~ | **Closed 2026-09-13: both routes work.** Mounting the DP destination through ONTAP gives a read-only access point that stays current — a later transfer was readable through it in 15 s, relationship still `snapmirrored`. A clone of the destination Snapshot gives a **writable** access point frozen at that Snapshot. The FSx API's refusal measured earlier was an FSx control-plane restriction only. [Evidence](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml), SM-VAL-013 |
+| ~~UNV-032~~ | FSx for ONTAP | ~~Whether SM-VAL-009's ~30 min propagation applies to FlexClones, deciding if "clone then query" is minutes-scale~~ | **Closed 2026-09-13: it is not minutes-scale, but it is faster than 30 min.** FSx reported the clone at **1011 s** and the ONTAP-mounted DP volume at **2298 s**; the ONTAP operations themselves took seconds, and attachment 32 s. First-time setup is tens of minutes, dominated by propagation; steady-state freshness on the DP route is seconds. Two samples, one file system — not a calibrated range. [Evidence](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml) |
 
 ## Needs a Snowflake session
 

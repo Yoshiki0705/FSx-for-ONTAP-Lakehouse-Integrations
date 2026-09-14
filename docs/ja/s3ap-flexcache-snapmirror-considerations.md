@@ -91,17 +91,58 @@ SnapMirror はボリュームデータ（ファイル/ディレクトリ）の�
 
 **設計ルール**: DR フェイルオーバー手順には S3 AP 再作成 + IAM ポリシー構成を含めること。自動化する場合は Lambda や Step Functions でオーケストレーション。
 
-### 3.2 DP ボリュームの S3 AP アタッチ
+### 3.2 宛先側での S3 AP アタッチ
 
-SnapMirror 宛先ボリューム（DP タイプ）への S3 AP アタッチには条件がある。
+**稼働中の SnapMirror 宛先は、break もクローンもなしに S3 AP 経由で読める。** 2026-09-13 実測。本節は以前これと逆のことを書いていた。訂正内容と誤りの原因は下記。
 
-| 状態 | S3 AP アタッチ | 備考 |
-|------|:-------------:|------|
-| DP（SnapMirror 関係維持中） | ❌ | Read-only のため junction path が設定不可 |
-| DP → break → RW | ✅ | break 後に junction path を設定し、S3 AP を作成 |
-| 再同期（resync）後 | ❌ | 再び DP に戻るため S3 AP は使用不可 |
+**ゲートは junction path であって、ボリューム種別ではない。** AWS はアタッチの条件をボリュームが [mount されていること](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/create-access-points.html)と規定しており、`RW` か `DP` かには言及していない。
 
-**設計ルール**: S3 AP でデータにアクセスするには SnapMirror break が必要。break 後は片方向レプリケーションが停止するため、DR フェイルオーバーの文脈で使用する。「SnapMirror を維持しながら宛先で S3 AP」は不可。
+**そしてその junction path を設定するのは ONTAP の操作であって FSx の操作ではない。** ONTAP は DP ボリュームを mount する。DP ボリュームに対する `vol mount` は NetApp の [SVM DR テストの KB](https://kb.netapp.com/on-prem/ontap/DP/SnapMirror/SnapMirror-KBs/Can_we_do_the_SVM_level_DR_test_without_stopping_the_Production_SVM_and_cloning_the_destination_volumes) に実例として載っており、今回それを確認した。FSx API は同じ変更を拒否する。`CreateVolume` は DP に対する `JunctionPath` をフィールド名を挙げて拒否し、`UpdateVolume` は受理して無言で破棄する。ONTAP 側で mount すれば FSx API はいずれ junction path を報告し、その後アタッチが成功する。
+
+| 宛先側の対象 | S3 AP アタッチ | 読み取り | 書き込み | 備考 |
+|---|:---:|:---:|:---:|---|
+| DP ボリューム（**FSx API** で junction path 設定を試行） | ❌ | — | — | `CreateVolume` はフィールド名を挙げて拒否。`UpdateVolume` は 200 を返して破棄。アタッチは `the volume is not mounted` で失敗 |
+| **DP ボリューム（ONTAP で mount）** | ✅ | ✅ | ❌ `AccessDenied` | レプリケーションは `snapmirrored`/healthy のまま。後続転送の新規データが同一 AP 経由で **15 秒**で見えた。AP の変更は不要 |
+| **宛先 Snapshot の FlexClone** | ✅ | ✅ | ✅ | 関係に影響なし。クローン時点で固定され、後続転送では進まない |
+| DP → break → RW | ✅ | ✅ | ✅ | DR フェイルオーバー経路。SM-005、SM-VAL-008/010 |
+
+根拠は [S3AP-DP-ATTACH-002](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml)（ONTAP 9.18.1P5）。FSx API のみの行は [S3AP-DP-ATTACH-001](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13/evidence-record.yaml)。
+
+**実際の制約は可否ではなくセットアップの所要時間である。** ONTAP 側の 2 経路はいずれも、アタッチ可能になるまで FSx コントロールプレーンの反映を待つ。
+
+| フェーズ | 所要時間 |
+|---|--:|
+| ONTAP 側の操作（mount またはクローン作成） | 数秒、20 秒未満 |
+| **FSx API がボリューム / junction path を報告** | **665 秒・1011 秒・2298 秒** |
+| S3 AP が CREATING → AVAILABLE | 31〜32 秒 |
+| 初回 S3 コール成功 | 数秒 |
+
+同一ファイルシステム・同一日の 3 サンプル。うち 665 秒と 2298 秒は同一ファイルシステム上の**同一操作**であり、**ばらつきは経路の違いでは説明できない**。「数分から数十分、こちら側で制御できない」と伝えてポーリングループを設計すること。特定の数値を引用しない。セットアップ後の定常状態は別問題で、DP 経路では転送の数秒後に新規データが読めた。
+
+**分析エンジンから見た違いはない。** Amazon Athena を DP 由来のアクセスポイントと、同一 Parquet ファイルから作った RW 由来のコントロールに、同一セッションで向けた。行も集計値も一致し、7493 ミリ秒に対して 7804 ミリ秒。read-only ボリュームに対してパーティション検出とパーティション枝刈りの双方が機能し、`INSERT` は S3 403 が `PERMISSION_DENIED` として表面化して明示的に失敗した。後続転送で追加されたパーティションは、アクセスポイントもテーブルも変更せずカタログ更新のみでクエリ可能になった。根拠は [S3AP-DP-ATHENA-001](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-athena-on-dp/evidence-record.yaml)。
+
+> **2026-09-13 まで本節が誤っていた理由。** 元の行は DP に対して ❌ を主張し、理由を「read-only のため junction path が設定不可」としていたが、検証記録を伴っていなかった。最初の検証は VPC 外から行い、FSx API の拒否を再現して ❌ を確認した。検証したように見えるが、測っていたのは FSx API だけだった。ONTAP 管理エンドポイントはプライベートアドレスであり、実際に可否を決めている層には到達していなかった。**到達できる API を試すことは、主張を試すことではない。**
+
+#### break せずにレプリカのデータを提供する構成
+
+宛先を読むために break は不要である。関係を維持したままの経路が 2 つあり、選択を決める違いは 1 点だけ、**消費側が書き込む必要があるか**である。
+
+**読み取り専用で常に最新 — DP 宛先を mount する。** ONTAP で宛先を `vol mount` し、FSx API が junction path を報告するのを待ってアタッチする。読み取りは通り、書き込みは `AccessDenied` になり、各 SnapMirror 転送は同一 AP 経由で数秒後に見える。転送ごとに作り直すものはない。
+
+**書き込み可能で時点固定 — 宛先をクローンする。** ONTAP 9.14.1 以降、NetApp は**稼働中の SnapMirror 関係を妨げずにフェイルオーバーをテストするため、宛先のボリュームクローンを作成する**手順を文書化している（[手順](https://docs.netapp.com/ja-jp/ontap/data-protection/create-delete-snapmirror-failover-test-task.html)）。宛先と同一の Storage VM 上、FlexVol と FlexGroup の双方、同期・非同期の両関係に対応。クローンは AP 経由で書き込みを受け、切り出した Snapshot の時点に留まる（後続転送では進まない）。NetApp の[宛先データアクセス手順](https://docs.netapp.com/ja-jp/ontap/data-protection/configure-destination-volume-data-access-concept.html)が break を前提に書かれているのは、その対象が本番サービスの引き継ぎであり、上記いずれとも別の要件だからである。
+
+クローン経路の制約: **1 つの関係につきテストクローンは同時に 1 つまで**、SnapLock vault 関係は対象外、そして上記 KB 由来で **SVM-DR 関係に含まれる DP ボリュームは直接クローンできない**。最後の 1 つは、SVM-DR が利用できずボリューム単位の SnapMirror のみが選択肢となる FSx for ONTAP では影響しないが（SM-007）、オンプレミスでは影響する。
+
+**設計ルール**: 既定で選ばず、要件で選ぶ。
+
+| 要件 | 構成 |
+|---|---|
+| 各転送に追従しながら宛先を読む | ONTAP で DP 宛先を mount し、S3 AP をそこにアタッチ |
+| 書き込む、または消費側に独立した時点を渡す | 宛先 Snapshot をクローンし、S3 AP をクローンにアタッチ |
+| 宛先で本番サービスを引き継ぐ | break → mount → アタッチ（DR フェイルオーバー経路） |
+| ソースの書き込みを近リアルタイムで見る | SnapMirror ではなく FlexCache（§2.2） |
+
+顧客に約束する前に述べておくべき未測定事項: **Snowflake そのもの**。Athena はエンジン層がボリューム種別を意識しないことの有力な根拠であり、Snowflake も同じ `GetObject` と `ListObjectsV2` の面を通して読むが、Snowflake を DP 由来のアクセスポイントに向けてはいないので、測定済みとして提示しないこと。ほかに未測定なのは、AP を残したまま break と resync を経ても経路が維持されるか、クロスリージョンや第 2 世代ファイルシステムでの反映時間、少数の小さなオブジェクトを超える規模、そして WINDOWS の file-system identity。
 
 ### 3.3 RPO とデータ可視性
 
@@ -207,7 +248,15 @@ aws fsx delete-storage-virtual-machine --storage-virtual-machine-id svm-XXXXX
 | ルート直下に全ファイル配置 | maxdir-size 超過 + FlexCache 偏り + LIST 劣化 | 階層パーティション分割 |
 | 1 つの巨大ファイルに追記 | SnapMirror 増分転送が毎回大きい | 小ファイル分割 |
 | S3 AP + FlexCache write-back で同一ファイル書き込み | XLD revoke → dirty data 消失 | write-around 使用 or ファイル分離 |
-| DP ボリュームに S3 AP アタッチ試行 | 失敗する（junction path 設定不可） | break 後にアタッチ |
+| FSx API 経由で DP ボリュームを mount しようとする | 拒否される。`CreateVolume` はフィールド名を挙げて `JunctionPath` を拒否し、`UpdateVolume` は 200 を返して破棄する | ONTAP 側で mount し、FSx API が junction path を報告するのを待ってからアタッチする（§3.2） |
+| `UpdateVolume` の 200 応答を junction path 設定成功の証拠として扱う | DP ボリュームでは Volume オブジェクトを返して**無言で何もしない**。エラーも `AdministrativeActions` エントリも失敗メッセージもない。自動化が誤った前提で先へ進む | `DescribeVolumes` で `JunctionPath` を読み直してその値で判定する。`UpdateVolume` の応答では判定しない |
+| 「SnapMirror を break しなければならない」を理由に宛先側 S3 AP 構成を却下する | 誤り。稼働中の宛先は ONTAP で mount すれば AP 経由で読み取りを提供し、クローンは書き込みも提供する。break は本番サービスの引き継ぎのためだけ | §3.2 |
+| クローンや新規 mount した宛先を「分単位で」と約束する | ONTAP 側の操作は数秒だが、FSx コントロールプレーンがアタッチ可能として報告するまで 1011 秒と 2298 秒を要した | 初回セットアップは数十分を見込む。その後の定常的な鮮度は数秒 |
+| `aws fsx delete-volume` を「削除済み」と読む | 実際は「削除待ちに投入」である。ONTAP はボリュームを改名して**ボリューム recovery queue**（type `del`、既定の保持は 12 時間）へ移し、その間 FSx API は削除済みと報告する。queue にある FlexClone は親の Snapshot を保持し続けるため、親は "has one or more clones" で削除を拒否するが、そのクローンは `DescribeVolumes`・`/api/storage/volumes`・既定権限の `volume show` のいずれにも現れない | `volume recovery-queue show` で確認し `volume recovery-queue purge` する（advanced 権限）。その後 親は正常に削除できる。機構と保持期間の設定は [Adoption Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) の `docs/ja/domains/block-storage/notes/lun-layout-decides-recovery-granularity.md` |
+| AP を取り付けたボリュームの撤去手順を ONTAP の `volume delete` で組む | AP の内部バケットはボリューム単位なので、一時的にではなく**恒久的に**削除を阻む。取り付けに失敗した AP のボリュームでも同じ | AWS 側の API で削除する。同 playbook の `s3-access-point-constraints.md`「撤去時の停滞」 |
+| オブジェクト API に列挙されないことをクローン不在の根拠とする | queue にあるクローンは `privilege_level=diagnostic`、`volume clone show`、recovery queue にのみ現れる | recovery queue に問う |
+| snapshot の一覧が空であることを Snapshot 依存なしの根拠とする | `snapshot show` は**オフライン**のボリュームに対して何も返さず、CLI passthrough はその理由を示すがオブジェクト API は示さない。オンラインにすると同じボリュームが、保持中の Snapshot を `busy` かつ `owners: ["volume clone"]` として報告した | snapshot のクエリを信じる前にボリュームをオンラインにする |
+| `GET /api/protocols/s3/buckets` が空であることを AP のバケット残存なしの証拠と読む | AP の内部バケット `amazon-fsx-fsvol-*` はここに列挙されないが、ボリューム削除をブロックし、エラーメッセージには名前が出る | 強制せず、解消を待って削除を再試行する |
 | ONTAP REST API のみで DP ボリューム作成 | FSx API への反映に ~30 分かかる。即時 S3 AP アタッチ不可 | 即時性が必要なら `aws fsx create-volume` を使用。FlexCache 等は ONTAP API で作成後 ~30 分待機 |
 | VPC Peering を SVM peer 削除前に削除 | zombie SVM peer → MISCONFIGURED → 復旧困難 | SM-VAL-011 の順序を遵守 |
 | ListObjectsV2 を全件走査で定期実行 | ディレクトリサイズに比例してレイテンシ増大 | prefix 限定 or 外部カタログ |
@@ -220,6 +269,7 @@ aws fsx delete-storage-virtual-machine --storage-virtual-machine-id svm-XXXXX
 - [S3 AP 全般の設計考慮事項](s3ap-design-considerations.md)
 - [S3 AP データ収集 CloudFormation テンプレート（設計 TIPS 付き）](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/tree/main/infrastructure/s3ap-data-collection) — Mermaid 設計判断フローにデータ配信パターン分岐を含む
 - [S3 AP + SnapMirror + FlexCache 調査・検証](../../integrations/snapmirror-flexcache-multicloud/docs/ja/research.md)
+- 検証記録: [S3AP-DP-ATTACH-002 — 稼働中の SnapMirror 宛先の提供（2026-09-13、VPC 内）](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml) · [S3AP-DP-ATTACH-001 — FSx API のみの初回検証](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13/evidence-record.yaml)
 - [Demo Guide 07: SnapMirror Cross-Region + S3 AP Re-Attach](../../integrations/snapmirror-flexcache-multicloud/docs/ja/demo-guide-07-snapmirror-cross-region.md)
 - [Demo Guide 01: FlexCache Same-Region](../../integrations/snapmirror-flexcache-multicloud/docs/ja/demo-guide-01-flexcache-same-region.md)
 - [AWS Docs: S3 performance best practices](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html)

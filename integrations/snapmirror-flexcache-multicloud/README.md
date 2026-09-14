@@ -199,7 +199,7 @@ Cache Volume (Region B)
 S3 API アクセス (Region B から直接)
 ```
 
-現在（9.17.1）は Cache Volume へのアクセスは NFS/SMB のみ。S3 API でアクセスするには SnapMirror break + S3 AP 再アタッチ（Guide 07）が必要。
+Cache Volume へのアクセスは NFS/SMB のみ。FSx API が `the volume is a FlexCache` でアタッチ自体を拒否するため、ONTAP のバージョンには依存しない。リモートのデータに S3 API でアクセスするなら、代わりに SnapMirror で複製して宛先を提供する。**break は不要**（[設計考慮事項 §3.2](../../docs/ja/s3ap-flexcache-snapmirror-considerations.md#32-宛先側での-s3-ap-アタッチ)）。
 
 ### 根拠
 
@@ -211,7 +211,9 @@ NetApp 公式ドキュメント「[Supported and unsupported features for FlexCa
 
 | 目的 | 推奨パターン | ガイド |
 |------|------------|--------|
-| Cache Volume のデータに S3 API でアクセスしたい | SnapMirror + break + S3 AP 再アタッチ | [Guide 07](docs/ja/demo-guide-07-snapmirror-cross-region.md) |
+| リモートのデータに S3 API で読み取りアクセス | SnapMirror の後、宛先を ONTAP で mount して S3 AP をアタッチ。break 不要（[§3.2](../../docs/ja/s3ap-flexcache-snapmirror-considerations.md#32-宛先側での-s3-ap-アタッチ)） | — |
+| リモートのコピーに S3 API で**書き込み**アクセス | SnapMirror の後、宛先 Snapshot をクローンしてクローンにアタッチ | — |
+| 宛先へのフェイルオーバー | break → mount → アタッチ | [Guide 07](docs/ja/demo-guide-07-snapmirror-cross-region.md) |
 | リモート拠点での読み取り高速化（NFS/SMB） | FlexCache（現行で動作） | [Guide 01](docs/ja/demo-guide-01-flexcache-same-region.md)–[06](docs/ja/demo-guide-06-flexcache-gcnv.md) |
 | Origin データに S3 API で直接アクセス | Origin Volume の S3 AP を使用 | 現行で動作 |
 

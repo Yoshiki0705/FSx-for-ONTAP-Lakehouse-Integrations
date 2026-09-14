@@ -8,7 +8,7 @@
 
 動作**しない**ことが判明している事項は [ブロッカートラッカー](./blocker-tracker.md) が扱います。本ページの対象は「壊れているもの」ではなく「未知のもの」です。
 
-**合計 24 件。** 2026-08-12 に 1 件クローズ（UNV-030、FILE 列の共有）。 2026-08-06 に 5 件をクローズしました（下記「直近でクローズした項目」参照）。
+**合計 24 件。** 2026-09-13 に 2 件を追加し同日クローズ（UNV-031・UNV-032、稼働中の SnapMirror 宛先のアクセスポイント提供）。2026-08-12 に 1 件クローズ（UNV-030、FILE 列の共有）。 2026-08-06 に 5 件をクローズしました（下記「直近でクローズした項目」参照）。
 
 ## サマリ
 
@@ -45,6 +45,8 @@
 | UNV-025 | FSx for ONTAP | ListObjectsV2 latency above 5,000 objects | A larger object population. The 2026-08-05 measurement covered 10 to 5,000 objects. |
 | UNV-026 | Bedrock | Whether the Managed Knowledge Base S3 connector accepts an S3 AP URI (the traditional Knowledge Base path is verified) | A Managed Knowledge Base run. |
 | UNV-027 | Tooling | PyIceberg wheel on macOS Apple Silicon | A run on that platform. A wheel exists; this project has not exercised it. |
+| ~~UNV-031~~ | FSx for ONTAP | ~~レプリケーションを継続したまま SnapMirror 宛先を S3 アクセスポイントで提供できるか~~ | **2026-09-13 クローズ: 両経路とも成立。** ONTAP で DP 宛先を mount すると読み取り専用のアクセスポイントが得られ、後続転送が 15 秒で読めた（関係は `snapmirrored` のまま）。宛先 Snapshot のクローンは**書き込み可能**で、その Snapshot 時点に固定される。先に実測した FSx API の拒否は FSx コントロールプレーン限定の制約だった。[検証記録](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml)、SM-VAL-013 |
+| ~~UNV-032~~ | FSx for ONTAP | ~~SM-VAL-009 の約 30 分の反映が FlexClone に当てはまるか。「クローンして即クエリ」が分単位になるかを決める~~ | **2026-09-13 クローズ: 分単位ではないが 30 分より速い。** FSx がクローンを報告したのは **1011 秒**、ONTAP で mount した DP ボリュームは **2298 秒**。ONTAP 側の操作自体は数秒、アタッチは 32 秒。初回セットアップは反映待ちが支配して数十分、DP 経路の定常的な鮮度は数秒。1 ファイルシステム上の 2 サンプルであり校正された範囲ではない。[検証記録](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml) |
 
 ## Snowflake セッションが必要
 
