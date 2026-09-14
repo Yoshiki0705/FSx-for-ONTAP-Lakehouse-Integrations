@@ -154,7 +154,9 @@ character_set:
       - "Byte length of the UTF-8 encoding (odd vs even) — contradicted by 名古屋 (9 bytes) accepted and 機機 (6 bytes) rejected"
       - "Service validating the UTF-8 bytes as UTF-16BE — 15/21 agreement, contradicted by every accepted multibyte case"
       - "UTF-8 bytes also decodable as euc-jp / shift_jis / cp932 / iso2022_jp / big5 / gb2312 / euc-kr — best agreement 11/16, no codec explains the split"
-      # Added 2026-08-12, after filing this with AWS. These three eliminate the implementation guesses a reader
+      # Added 2026-08-12, after filing this with AWS. Now published as an ONTAP defect:
+      # https://kb.netapp.com/on-prem/ontap/da/S3/S3-Issues/CONTAP-771956
+      # These three eliminate the implementation guesses a reader
       # is most likely to make, so they are recorded to stop them being re-tested.
       - "A per-character allowlist or blocklist — decisively contradicted. See per_character_probe below: a character rejected on its own can be accepted inside a longer string"
       - "Statefulness, caching, or contamination from the previous tag — the same inputs give the same results when the sequence is interleaved and then reversed"

@@ -136,7 +136,7 @@ Access Point エイリアスをどう扱うか、あるいはストレージと�
 | 4.6 | Snowflake | ステージのテーブル関数形式ではインラインの `FILE_FORMAT` が受け付けられない | — | 名前付き `FILE FORMAT` オブジェクトを使う。Access Point の制約ではなく Snowflake の構文 |
 | 4.7 | ClickHouse | `s3()` が STS セッショントークンを受け取れず、一時credentialsを使えない | `UNKNOWN_SETTING: s3_session_token is neither a builtin setting`（v26.5.1） | IAM ユーザーの長期キー、または IMDS 経由の EC2 インスタンスプロファイル |
 | 4.8 | Databricks FILE 型（β） | `FILE EXTERNAL` は Unity Catalog Volume 内のファイルしか参照を保存できず、UC External Volume は Access Point 上に作成できないため、ONTAP 常駐ファイルをコピーなしに参照できない | —（構造的制約。ランタイムエラーではなく文書化された制限） | `FILE MANAGED`（バイト列を UC 管理ストレージへコピー）。ただしその場合オブジェクトタグは読めなくなる。[評価](./databricks-file-type-evaluation.md) |
-| 4.9 | Access Point のオブジェクトタグ | U+0100 以上のタグキー / 値は大半の文字列で拒否されるが一部は受理される。文字列ごとに決定的だが、外部から規則を導出できない | `InvalidTag: The TagValue you have provided is invalid` | オブジェクトタグは ASCII に限定し、ローカライズされたテキストはメタデータテーブルに置く。AWS に提起済み（[証拠](../../verification-pack/s3ap-object-tagging/evidence/2026-08-12/evidence-record.yaml)） |
+| 4.9 | Access Point のオブジェクトタグ | U+0100 以上のタグキー / 値は大半の文字列で拒否されるが一部は受理される。文字列ごとに決定的だが、外部から規則を導出できない | `InvalidTag: The TagValue you have provided is invalid` | オブジェクトタグは ASCII に限定し、ローカライズされたテキストはメタデータテーブルに置く。ONTAP の不具合として公開済み（[CONTAP-771956](https://kb.netapp.com/on-prem/ontap/da/S3/S3-Issues/CONTAP-771956)、[自環境の実測](../../verification-pack/s3ap-object-tagging/evidence/2026-08-12/evidence-record.yaml)） |
 
 ### Access Point の問題ではないが、そう見えるもの
 
