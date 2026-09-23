@@ -151,6 +151,20 @@ AWS CLI の資格情報では足りない。これは API 呼び出しではな�
 
 ---
 
+## 7. 標準 S3 非構造化データ AI PoC の実績
+
+**Evidence tier: Verified / Public**（2026-09-23 実測。単価は引用前に再確認する）。
+
+[標準 S3 非構造化データ AI PoC](./databricks-standard-s3-unstructured-poc.md) を実施して、上の価格表では捉えられないコストの事実が判明した。
+
+- **pay-per-token の Foundation Model は US リージョン限定**。Tokyo（ap-northeast-1）ワークスペースには既定の Serving エンドポイントが無く、`ai_query` / `ai_parse_document` はそのままでは呼べない。本 PoC は us-west-2 ワークスペースで実施した。AI Functions が目的ならリージョン選択は価格差ではなく機能の可否を決める。
+- **Serverless SQL Warehouse（Small、10 分オートストップ）** で AI Functions・OCR・Vision を実行。従量課金で少額。
+- **Vector Search はエンドポイント常時起動課金 + 24 時間の残り**。Databricks のドキュメントによれば、エンドポイントはインデックス作成後に課金され、最後のインデックス削除から 24 時間後にのみ課金が止まる。エンドポイントを削除しても課金は即座には止まらない。この残りを見込む。
+- **embedding モデル `databricks-gte-large-en` は pay-per-token で高レイテンシ**であり、初回インデックス同期が遅い一因になる。本 PoC ではインデックスが約 16 分 `PROVISIONING_ENDPOINT` のまま ONLINE 化しなかった（環境依存。コミュニティで複数報告）。
+- **この PoC 構成の撤去チェックリスト**: Vector Search インデックス → エンドポイント（`list_endpoints` で確認）、次に標準 S3 バケット、Storage Credential 用 IAM ロール、UC External Location + 自動生成された Storage Credential、カタログ / スキーマ / ボリューム / テーブル。いずれも大きくはないが、Vector Search の 24 時間の残りだけは注意する。
+
+---
+
 ## 参考資料
 
 - [Databricks の価格](https://www.databricks.com/jp/product/pricing) · [AWS pricing by Databricks](https://www.databricks.com/product/aws-pricing)

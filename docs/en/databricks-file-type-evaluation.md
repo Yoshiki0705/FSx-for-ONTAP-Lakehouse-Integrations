@@ -102,7 +102,7 @@ Goal: reference a file on FSx for ONTAP from a FILE column, without copying
             └─ object tags on the source become unreadable (see §4)
 ```
 
-This is the same wall as every other UC governance feature on FSx for ONTAP data, and the recommended interim path is unchanged: stage to a standard S3 bucket, then govern the copy. See [BLK-001 workarounds](./blocker-tracker.md#blk-001-uc-credential-vending-does-not-authorise-s3-ap-reads) and the [DataSync to S3 guide](./datasync-to-s3-guide.md).
+This is the same wall as every other UC governance feature on FSx for ONTAP data, and the recommended interim path is unchanged: stage to a standard S3 bucket, then govern the copy. What that staged bucket can then do — `ai_query`, `ai_parse_document`, Vector Search, FILE type — is covered in the [standard-S3 unstructured-data PoC](./databricks-standard-s3-unstructured-poc.md). See [BLK-001 workarounds](./blocker-tracker.md#blk-001-uc-credential-vending-does-not-authorise-s3-ap-reads) and the [DataSync to S3 guide](./datasync-to-s3-guide.md).
 
 > **What did change**: the value of resolving BLK-001 went up. Previously it bought lineage, tags, masks and row filters on tabular data resident on FSx for ONTAP. Now it additionally buys `FILE EXTERNAL` over ONTAP-resident unstructured data, which is the multimodal-AI story on data that stays on the NAS. That is worth restating when the feature gap is raised with Databricks — see the [support and forum question set](#6-open-questions-raised-externally).
 
@@ -401,3 +401,4 @@ Not today. The announcement states that support in Parquet, Delta Lake, Iceberg 
 - [Unstructured data access](./unstructured-data-access.md) · [Zero-copy media governance](./zero-copy-media-governance.md)
 - [S3 Annotations / Metadata evaluation](./s3-annotations-governance-evaluation.md) · [OpenSharing and Unity Catalog explained](./opensharing-and-unity-catalog-explained.md)
 - [DataSync to S3 guide](./datasync-to-s3-guide.md) — the recommended interim path under BLK-001
+- [Databricks unstructured-data AI on a standard S3 bucket — PoC](./databricks-standard-s3-unstructured-poc.md) — the counterpart to this page: what `ai_query` / `ai_parse_document` / Vector Search / FILE type can do on the standard staging bucket
