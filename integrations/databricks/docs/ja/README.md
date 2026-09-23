@@ -82,6 +82,8 @@ s3://<s3ap-alias>/gold/      # ビジネスレディ集計
 
 **推奨される暫定パス**: FSx for ONTAP から標準 S3 バケットにデータを同期（DataSync）し、その S3 バケットを UC External Location として登録。
 
+> **標準 S3 にステージングした後、実際に何ができるか**は [標準 S3 バケット上の Databricks 非構造化データ AI 活用 PoC](../../../../docs/ja/databricks-standard-s3-unstructured-poc.md)（[English](../../../../docs/en/databricks-standard-s3-unstructured-poc.md)）で実機検証している。標準バケット上の UC External Location では `ai_query`（Vision）・`ai_parse_document`（OCR）・`FILE EXTERNAL`・AI Functions・Genie が動作し、BLK-001 は発生しない（本ページが扱う S3 Access Point 側とは対照的）。再構築手順は [再現手順](../../../../docs/ja/databricks-standard-s3-reproduction.md)。
+
 UC ガバナンスなしの読み取り専用分析には、AWS ネイティブサービス（Athena、EMR Serverless、DuckDB Lambda）または Snowflake を FSx for ONTAP S3 AP 上で直接使用。
 
 ## 主要概念: Databricks ストレージ & 取り込みアーキテクチャ
@@ -330,6 +332,8 @@ FSx for ONTAP ──S3 AP──▶ Athena（SQL 分析、コピー不要）
 | 音声 (WAV, MP3) | ⚠️ | Instance Profile + boto3（ドライバーのみ） | 文字起こし、音声分析 |
 | バイナリ / アーカイブ | ⚠️ | Instance Profile + boto3（ドライバーのみ） | ダウンロード、カスタム処理 |
 
+> **上表は FSx for ONTAP S3 Access Point 上のステータス**（⚠️ = UC External Location がブロックされ、ガバナンス外の boto3 のみ）。**標準 S3 バケットにステージングした後**は、UC External Volume 経由で画像 Vision（`ai_query`）と PDF OCR（`ai_parse_document`）が UC ガバナンス下で成立することを実機検証済み — [標準 S3 PoC §3.1 / §3.2](../../../../docs/ja/databricks-standard-s3-unstructured-poc.md)（[English](../../../../docs/en/databricks-standard-s3-unstructured-poc.md)）。
+
 **現在の制約:**
 - Unity Catalog External Table 作成がブロック → ガバナンス付き非構造化データカタログ不可
 - `spark.read.binaryFile` は明示的ファイルパスで動作（`access_point` フィールド設定時）
@@ -342,6 +346,8 @@ FSx for ONTAP ──S3 AP──▶ Athena（SQL 分析、コピー不要）
 Databricks は [FILE 型](https://www.databricks.com/blog/introducing-file-type-native-column-type-multimodal-data)を導入した。非構造化ファイルへのガバナンスされた参照を Delta の列として持ち、構造化列と並べてクエリでき、AI 関数に渡せる。Unity Catalog における「ガバナンス付き非構造化データカタログ」に最も近いものである。
 
 ただし上記のステータスは変わらない。`FILE EXTERNAL` は **UC Volume 内**のファイルのみサポートされ、UC External Volume は S3 Access Point 上に作成できない（BLK-001）。到達可能なのは `FILE MANAGED` のみで、これはバイト列を UC 管理ストレージへ**コピー**する。
+
+> **標準 S3 バケット上では `FILE EXTERNAL` が成立する**（S3 Access Point 上でブロックされる操作との対比の核心）。標準バケットの UC External Volume に対し `DESCRIBE TABLE` が `file` 列を `file external` 型と報告し、その列を `ai_parse_document(file)` に直接渡して OCR が通ることを実機確認済み — [標準 S3 PoC §3.3](../../../../docs/ja/databricks-standard-s3-unstructured-poc.md)（[English](../../../../docs/en/databricks-standard-s3-unstructured-poc.md)）。
 
 前進したのは別機能である。[`_object_metadata` 列](https://docs.databricks.com/aws/en/ingestion/object-metadata-column)（DBR 18.2+）が S3 の**オブジェクトタグ**とユーザー定義メタデータをクエリ可能な列として公開し、かつオブジェクトタグ付けは FSx for ONTAP S3 AP で**サポートされる**（2026-08-12 検証済み）。Databricks が Access Point パス経由でそのタグを読めるかは**未検証**。
 
@@ -381,6 +387,8 @@ Databricks は [FILE 型](https://www.databricks.com/blog/introducing-file-type-
 | [ガバナンス: ファイルレベルアクセス制御](ai-demo-guide.md#ファイルレベルのアクセス制御-ontap-ネイティブレイヤー) | ONTAP デュアルレイヤー認可、FPolicy、チームごとの S3 AP 分離（補償コントロール） |
 | [統合: ONTAP × Databricks タグ](ai-demo-guide.md#統合-ontap-ファイルレベル制御--databricks-タグガバナンス) | 組み合わせガバナンスマトリクス、現在 vs 将来、設計パターン |
 | [FILE 型（β）評価](../../../../docs/ja/databricks-file-type-evaluation.md) | FILE 列によるマルチモーダルデータ、BLK-001 が依然適用される理由、`_object_metadata` によるオブジェクトタグの橋渡し、推奨する 3 層メタデータ設計 |
+| [標準 S3 バケット上の非構造化データ AI 活用 PoC](../../../../docs/ja/databricks-standard-s3-unstructured-poc.md) | 標準 S3 へステージングした後の実機検証（`ai_query` Vision・`ai_parse_document` OCR・`FILE EXTERNAL`・AI Functions・Genie の 6 シナリオ、マスク済みスクショ付き）、Snowflake Cortex との機能対比 |
+| [標準 S3 PoC の再現手順](../../../../docs/ja/databricks-standard-s3-reproduction.md) | 上記 PoC を CloudFormation + Databricks コンソール操作でゼロから再構築する手順書 |
 
 ## クイックスタート
 
