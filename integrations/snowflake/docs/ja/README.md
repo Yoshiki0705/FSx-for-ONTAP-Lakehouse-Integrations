@@ -55,6 +55,8 @@
 **NAS 統合で Snowflake vs Databricks を評価中の顧客向け:**
 > 「Snowflake の `AWS_ACCESS_POINT_ARN` 付き External Table は、AI 機能を含むガバナンス付き読み取りアクセスを今日提供します。Databricks Unity Catalog は現在セッションポリシーの制限により S3 Access Points 上でテーブル作成ができません。NAS データに対するガバナンス付き分析には、Snowflake が検証済みパスです。」
 
+> **補足（Databricks を標準 S3 ステージングで使う場合）**: 上記は FSx for ONTAP S3 Access Point 上を直接クエリする前提。Databricks では標準 S3 バケットにステージングすれば UC ガバナンス下で非構造化データ AI（`ai_query` Vision・`ai_parse_document` OCR・`FILE EXTERNAL`・AI Functions・Genie）が動作する（実機検証: [標準 S3 PoC](../../../../docs/ja/databricks-standard-s3-unstructured-poc.md) / [English](../../../../docs/en/databricks-standard-s3-unstructured-poc.md)）。両エンジンを併用する組織は、ゼロコピーのその場クエリ（Snowflake External Table）と、標準 S3 へステージング後のガバナンス付き処理（どちらのエンジンでも可）を用途で使い分けられる。
+
 ## 概要
 
 Amazon FSx for NetApp ONTAP（FSx for ONTAP）の S3 Access Point を Snowflake の External Stage として統合し、External Table / Iceberg Table のストレージレイヤーとして使用するパターンです。

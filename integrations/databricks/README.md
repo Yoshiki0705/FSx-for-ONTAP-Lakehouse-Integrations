@@ -315,6 +315,8 @@ FSx for ONTAP ──S3 AP──▶ Athena (SQL analytics, no copy needed)
 | Audio (WAV, MP3) | ⚠️ | Instance Profile + boto3 (driver only) | Transcription, speech analytics |
 | Binary / Archives | ⚠️ | Instance Profile + boto3 (driver only) | Download, custom processing |
 
+> **The table above is the status on an FSx for ONTAP S3 Access Point** (⚠️ = UC External Location is blocked, only ungoverned boto3 works). **After staging to a standard S3 bucket**, image Vision (`ai_query`) and PDF OCR (`ai_parse_document`) are verified to work under UC governance via a UC External Volume — [standard-S3 PoC §3.1 / §3.2](../../docs/en/databricks-standard-s3-unstructured-poc.md) ([日本語](../../docs/ja/databricks-standard-s3-unstructured-poc.md)).
+
 **Current limitations:**
 - Unity Catalog External Table creation is blocked → no governed unstructured data catalog
 - `spark.read.binaryFile` works for explicit file paths (with `access_point` field set)
@@ -327,6 +329,8 @@ FSx for ONTAP ──S3 AP──▶ Athena (SQL analytics, no copy needed)
 Databricks introduced the [FILE type](https://www.databricks.com/blog/introducing-file-type-native-column-type-multimodal-data): a Delta column holding a governed reference to an unstructured file, queryable and passable to AI functions alongside structured columns. It is the closest thing yet to a governed unstructured-data catalog in Unity Catalog.
 
 It does not change the status above. `FILE EXTERNAL` is supported only for files **inside a UC volume**, and a UC external volume cannot be created on an S3 Access Point (BLK-001), so the only reachable mode is `FILE MANAGED`, which **copies** the bytes into UC-managed storage.
+
+> **`FILE EXTERNAL` does hold on a standard S3 bucket** — the core of the contrast with what is blocked on an S3 Access Point. On a standard-bucket UC External Volume, `DESCRIBE TABLE` reports the `file` column as `file external` type, and passing it straight to `ai_parse_document(file)` OCRs successfully — verified in [standard-S3 PoC §3.3](../../docs/en/databricks-standard-s3-unstructured-poc.md) ([日本語](../../docs/ja/databricks-standard-s3-unstructured-poc.md)).
 
 A separate feature did move the picture: the [`_object_metadata` column](https://docs.databricks.com/aws/en/ingestion/object-metadata-column) (DBR 18.2+) exposes S3 **object tags** and user-defined metadata as queryable columns — and object tagging **is** supported on an FSx for ONTAP S3 AP (verified 2026-08-12). Whether Databricks can read those tags through an Access Point path is **not yet verified**.
 
@@ -366,6 +370,8 @@ A separate feature did move the picture: the [`_object_metadata` column](https:/
 | [Governance: File-Level Access Control](docs/en/ai-demo-guide.md#file-level-access-control-ontap-native-layer) | ONTAP dual-layer auth, FPolicy, per-team S3 AP isolation (compensating control) |
 | [Integration: ONTAP × Databricks Tags](docs/en/ai-demo-guide.md#integration-ontap-file-level-control--databricks-tag-governance) | Combined governance matrix, current vs future state, design patterns |
 | [FILE type (Beta) evaluation](../../docs/en/databricks-file-type-evaluation.md) | Multimodal data via FILE columns, why BLK-001 still applies, the `_object_metadata` object-tag bridge, and the recommended three-layer metadata design |
+| [Unstructured-data AI on a standard S3 bucket — PoC](../../docs/en/databricks-standard-s3-unstructured-poc.md) | Live verification after staging to standard S3 (six scenarios: `ai_query` Vision, `ai_parse_document` OCR, `FILE EXTERNAL`, AI Functions, Genie, with masked screenshots) and the feature-level contrast with Snowflake Cortex |
+| [Reproducing the standard-S3 PoC](../../docs/en/databricks-standard-s3-reproduction.md) | A runbook to rebuild the PoC from scratch with CloudFormation + Databricks console steps |
 
 ## Quick Start
 
@@ -466,5 +472,7 @@ network, credentials issued by Unity Catalog itself
 5. Asked Databricks 2026-05-26. Filed as a feature gap; no published timeline.
 
 **Recommended interim path**: Sync data from FSx for ONTAP into a standard S3 bucket (DataSync), then register that S3 bucket as a UC External Location.
+
+> **What you can actually do once staged to standard S3** is verified live in the [Databricks unstructured-data AI on a standard S3 bucket — PoC](../../docs/en/databricks-standard-s3-unstructured-poc.md) ([日本語](../../docs/ja/databricks-standard-s3-unstructured-poc.md)). On a standard-bucket UC External Location, `ai_query` (Vision), `ai_parse_document` (OCR), `FILE EXTERNAL`, AI Functions, and Genie all work and BLK-001 does not occur — in contrast to the S3 Access Point path this page covers. Rebuild steps: [reproduction runbook](../../docs/en/databricks-standard-s3-reproduction.md).
 
 For read-only analytics without UC governance, use AWS-native services (Athena, EMR Serverless, DuckDB Lambda) or Snowflake directly on FSx for ONTAP S3 AP.

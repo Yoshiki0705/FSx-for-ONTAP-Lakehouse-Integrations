@@ -97,6 +97,8 @@ to a working setup if this is your first time.
 **For customers evaluating Snowflake vs Databricks for NAS integration:**
 > "Snowflake's External Table with `AWS_ACCESS_POINT_ARN` provides governed read access today — including AI functions. Databricks Unity Catalog currently cannot create tables on S3 Access Points due to a session policy limitation. For governed analytics on NAS data, Snowflake is the validated path."
 
+> **Note (using Databricks via standard-S3 staging)**: the above assumes querying an FSx for ONTAP S3 Access Point directly. With Databricks, staging to a standard S3 bucket makes unstructured-data AI work under UC governance (`ai_query` Vision, `ai_parse_document` OCR, `FILE EXTERNAL`, AI Functions, Genie) — verified in the [standard-S3 PoC](../../docs/en/databricks-standard-s3-unstructured-poc.md) ([日本語](../../docs/ja/databricks-standard-s3-unstructured-poc.md)). An organization using both engines can choose by use: zero-copy in-place querying (Snowflake External Table) versus governed processing after staging to standard S3 (either engine)."
+
 ### Customer Qualification Questions
 
 Use these questions to determine the right architecture pattern:
