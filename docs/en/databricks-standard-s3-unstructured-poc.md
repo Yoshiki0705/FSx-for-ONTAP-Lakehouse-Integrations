@@ -14,7 +14,7 @@
 
 - **Subject and result**: given data on a **standard S3 general purpose bucket**, Databricks unstructured-data AI was confirmed to work live. `ai_query` LLM Vision, `ai_parse_document` OCR, FILE type, AI Functions (`ai_classify` / `ai_gen` / `ai_analyze_sentiment`), and Genie natural-language querying all held over data on standard S3. Vector Search held up to endpoint creation; the index did not reach ONLINE within the session (see [Verification Status](#verification-status)).
 - **Why a standard bucket works**: on an FSx for ONTAP S3 Access Point, unstructured-data AI is blocked by [BLK-001](./blocker-tracker.md#blk-001-uc-credential-vending-does-not-authorise-s3-ap-reads) because the down-scoped session policy Unity Catalog vends is written in **bucket-form ARNs** while AWS authorises access-point requests against the **access point ARN**. On a standard S3 bucket both the request and the session policy use the same bucket-form ARN, so the mismatch does not arise. The UC External Location validation here returned Success for Read / List / Write / Delete, confirming this by measurement (see [IAM / authentication and authorization behaviour](#2-iam--authentication-and-authorization-behaviour-on-standard-s3)).
-- **For the NetApp dev team's interest (IAM / auth)**: on a standard bucket all core operations (read/write, AssumeRole, External ID condition) passed. Only File Events (S3 bucket notifications) failed, for lack of the `s3:GetBucketNotification` permission — an optional feature that does not block core function. A presigned URL is a client-side SigV4 calculation and works on a standard bucket as an ordinary `GetObject`.
+- **From an IAM / auth standpoint**: on a standard bucket all core operations (read/write, AssumeRole, External ID condition) passed. Only File Events (S3 bucket notifications) failed, for lack of the `s3:GetBucketNotification` permission — an optional feature that does not block core function. A presigned URL is a client-side SigV4 calculation and works on a standard bucket as an ordinary `GetObject`.
 - **Contrast with Snowflake**: the same "NAS → standard S3 → governed AI" is achievable with Snowflake Cortex. Databricks AI Functions map to Cortex AISQL, Vector Search to Cortex Search, and Genie to Cortex Analyst (see [contrast](#5-contrast-with-snowflake-cortex)). Not which is better, but which fits your existing platform and use.
 - **Recommended shape**: the core of unstructured-data usage (Vision, OCR, FILE type, AI Functions, NL querying) holds on a standard S3 bucket with UC today. It is the practical route when you want governance and AI on Databricks.
 
@@ -52,7 +52,7 @@ Databricks Unity Catalog
 
 **Evidence tier: Public / Verified (marked per item).**
 
-This is the core of the NetApp dev team's interest — how IAM roles / policies, presigned URLs, and S3 bucket authentication behave on a standard bucket versus an S3 Access Point.
+This is the core from an IAM / auth standpoint — how IAM roles / policies, presigned URLs, and S3 bucket authentication behave on a standard bucket versus an S3 Access Point.
 
 ### 2.1 The authorization chain when Databricks reads standard S3
 
@@ -110,7 +110,7 @@ The File Events failure in 2.3 and the presigned-URL positioning in 2.4 were cor
 
 **Evidence of the File Events 403**: from the UC session (`arn:aws:sts::<account-id>:assumed-role/databricks-uc-stds3-poc/<session>`), `GetBucketNotification` was **`AccessDenied` on all 13 calls** and `HeadBucket` **`AccessDenied` on all 4 calls**. The reason is the absence of an identity-based policy allowing `s3:GetBucketNotification` (HTTP 403). This pins down, at the API level, that the "File Events Failed" of 2.3 is caused by that 403. Meanwhile, data-plane operations from the same session (`GetObject` / `HeadObject` / `ListObjects` / `PutObject`) were **not denied**.
 
-**The data-plane principal (AssumeRole, not presign)**: every recorded `GetObject` was `userIdentity.type = AssumedRole` under the UC role. A presigned-URL GET would appear as query-string SigV4 under a different principal, and no such trace exists. That is, UC on standard S3 reads **directly with the assumed-role credential (server-side SigV4)**, and this PoC path used no presigned URL. This is exactly the difference from the NetApp Connector path (Delta Sharing + SigV4 presigned URL).
+**The data-plane principal (AssumeRole, not presign)**: every recorded `GetObject` was `userIdentity.type = AssumedRole` under the UC role. A presigned-URL GET would appear as query-string SigV4 under a different principal, and no such trace exists. That is, UC on standard S3 reads **directly with the assumed-role credential (server-side SigV4)**, and this PoC path used no presigned URL. This differs from an approach where a sharing server vends a SigV4 presigned URL that the client then reads (for example, Delta Sharing credential vending).
 
 **The credential-validation round trip**: at External Location creation, UC ran `PutObject` → `HeadObject` → `GetObject` (later removed with `DeleteObject`) against a validation object. The "Read / List / Write / Delete / Path Exists all Success" of 2.2 matches this sequence of data-plane operations being recorded with no errorCode.
 

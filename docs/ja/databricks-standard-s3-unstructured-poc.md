@@ -14,7 +14,7 @@
 
 - **主題と結果**: データが**標準 S3 汎用バケット**にある前提で、Databricks の非構造化データ AI が実際に動くことを実機で確認した。`ai_query` の LLM Vision、`ai_parse_document` の OCR、FILE 型、AI Functions（`ai_classify`/`ai_gen`/`ai_analyze_sentiment`）、Genie の自然言語問い合わせが標準 S3 上のデータに対して成立した。Vector Search はエンドポイント作成まで成立し、インデックスの ONLINE 化は本環境で時間内に完了しなかった（[検証ステータス](#検証ステータス)）。
 - **なぜ標準バケットなら成立するのか**: FSx for ONTAP S3 Access Point 上で非構造化データ AI が [BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り) に阻まれるのは、Unity Catalog が払い出す down-scoped セッションポリシーが**バケット形式 ARN** で書かれる一方、AWS はアクセスポイント経由のリクエストを**アクセスポイント ARN** に対して認可評価するためだった。標準 S3 バケットでは要求もセッションポリシーも同じバケット形式 ARN なので、この不一致が起きない。本環境の UC External Location 検証で Read / List / Write / Delete がすべて Success したことで、これが実測で裏付けられた（[IAM / 認証・認可の挙動](#2-標準-s3-での-iam--認証認可の挙動)）。
-- **NetApp 開発チームの関心（IAM / 認証）への所見**: 標準バケットではコア操作（読み書き・AssumeRole・External ID 条件）がすべて通った。唯一 File Events（S3 バケット通知）だけが `s3:GetBucketNotification` 権限不足で Failed になったが、これは任意機能でコア機能をブロックしない。presigned URL はクライアント側の SigV4 計算であり、標準バケットでは `GetObject` として普通に動く。
+- **IAM / 認証観点の所見**: 標準バケットではコア操作（読み書き・AssumeRole・External ID 条件）がすべて通った。唯一 File Events（S3 バケット通知）だけが `s3:GetBucketNotification` 権限不足で Failed になったが、これは任意機能でコア機能をブロックしない。presigned URL はクライアント側の SigV4 計算であり、標準バケットでは `GetObject` として普通に動く。
 - **Snowflake との対比**: 同じ「NAS → 標準 S3 → ガバナンス付き AI」を Snowflake Cortex でも実現できる。Databricks の AI Functions は Cortex AISQL 相当、Vector Search は Cortex Search 相当、Genie は Cortex Analyst 相当である（[対比節](#5-snowflake-cortex-との対比)）。どちらが優れているかではなく、既存プラットフォームと用途で選ぶ。
 - **推奨する形**: 非構造化データ活用の中核（Vision・OCR・FILE 型・AI Functions・NL 問い合わせ）は、標準 S3 バケット + UC で今日成立する。ガバナンスと AI を Databricks で得たい場合の実務経路である。
 
@@ -52,7 +52,7 @@ Databricks Unity Catalog
 
 **Evidence tier: Public / Verified（該当箇所に明記）。**
 
-NetApp 開発チームの関心の核心はここにある — IAM ロール / ポリシー、presigned URL、S3 バケットの認証挙動が、標準バケットでは S3 Access Point とどう違うか。
+IAM / 認証の観点で核心となるのはここである — IAM ロール / ポリシー、presigned URL、S3 バケットの認証挙動が、標準バケットでは S3 Access Point とどう違うか。
 
 ### 2.1 Databricks が標準 S3 を読むときの認可の連鎖
 
@@ -110,7 +110,7 @@ FSx for ONTAP S3 Access Point の互換性表が `Presign` を「Not supported�
 
 **File Events 403 の証跡**: UC のセッション（`arn:aws:sts::<account-id>:assumed-role/databricks-uc-stds3-poc/<session>`）による `GetBucketNotification` が **13 件すべて `AccessDenied`**、`HeadBucket` が **4 件すべて `AccessDenied`** だった。エラー理由は `s3:GetBucketNotification` を許可する identity-based policy が無いこと（HTTP 403）。2.3 の「File Events だけ Failed」は、この 403 が原因だと API レベルで確定する。一方、同じセッションによるデータ面操作（`GetObject` / `HeadObject` / `ListObjects` / `PutObject`）は**拒否されていない**。
 
-**データ面アクセスの主体（presign ではなく AssumeRole）**: 記録された `GetObject` はすべて `userIdentity.type = AssumedRole`、主体は UC ロールだった。presigned URL による GET はクエリ文字列 SigV4 として別主体で現れるはずだが、その形跡は無い。つまり、標準 S3 上の UC は **AssumeRole した資格情報で直接（サーバ側 SigV4 で）**読んでおり、本 PoC の経路では presigned URL を使っていない。これは NetApp Connector（Delta Sharing + SigV4 presigned URL）の経路との違いそのものである。
+**データ面アクセスの主体（presign ではなく AssumeRole）**: 記録された `GetObject` はすべて `userIdentity.type = AssumedRole`、主体は UC ロールだった。presigned URL による GET はクエリ文字列 SigV4 として別主体で現れるはずだが、その形跡は無い。つまり、標準 S3 上の UC は **AssumeRole した資格情報で直接（サーバ側 SigV4 で）読んでおり**、本 PoC の経路では presigned URL を使っていない。これは、共有サーバが SigV4 presigned URL を払い出してクライアントがその URL で読む方式（例: Delta Sharing の credential vending）とは異なる経路である。
 
 **資格情報検証のラウンドトリップ**: External Location 作成時、UC は検証用オブジェクトに対し `PutObject` → `HeadObject` → `GetObject`（後に `DeleteObject` で削除）を実行した。2.2 の「Read / List / Write / Delete / Path Exists すべて Success」は、この一連のデータ面操作が errorCode 無しで記録されたことと一致する。
 
