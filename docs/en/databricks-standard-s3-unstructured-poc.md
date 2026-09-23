@@ -236,6 +236,8 @@ Snowflake Cortex is an umbrella over several features, and the Databricks counte
 | IAM reference | Storage Credential | Storage Integration | ✅ Databricks side Verified |
 | Cloud path mapping | External Location | External Stage | ✅ Databricks side Verified |
 
+> The table above is the **AI-feature layer**. The **storage-layer** contrast (Storage Integration↔Storage Credential, External Stage↔External Location, Snowpipe↔Auto Loader) and the per-pattern **quantitative AI-readiness scores** are already in the [Databricks integration README](../../integrations/databricks/README.md) and the [Snowflake integration README](../../integrations/snowflake/README.md). The two are at different granularity and complement each other.
+
 ### 5.2 How to choose (right-tool-for-the-job)
 
 - **Organization already on Databricks**: register the standard S3 bucket as a UC External Location and put unstructured-data AI on it directly with `ai_query` / `ai_parse_document` / AI Functions / FILE type / Genie. This PoC confirmed the sequence works live.

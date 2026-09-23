@@ -236,6 +236,8 @@ Snowflake Cortex は複数機能の総称であり、Databricks 側の対応物�
 | IAM 参照 | Storage Credential | Storage Integration | ✅ Databricks 側を Verified |
 | クラウドパスマッピング | External Location | External Stage | ✅ Databricks 側を Verified |
 
+> 上表は **AI 機能層**の対比である。**ストレージ層**の対比（Storage Integration↔Storage Credential、External Stage↔External Location、Snowpipe↔Auto Loader）と、パターン別の**定量 AI レディネススコア**は、[Databricks 統合 README](../../integrations/databricks/docs/ja/README.md) と [Snowflake 統合 README](../../integrations/snowflake/docs/ja/README.md) に既出。両者は粒度が異なり補完関係にある。
+
 ### 5.2 選び方（right-tool-for-the-job）
 
 - **既に Databricks を使う組織**: 標準 S3 バケットを UC External Location に登録し、`ai_query` / `ai_parse_document` / AI Functions / FILE 型 / Genie でそのまま非構造化データ AI に載せる。本 PoC で一連が動くことを実機確認した。
