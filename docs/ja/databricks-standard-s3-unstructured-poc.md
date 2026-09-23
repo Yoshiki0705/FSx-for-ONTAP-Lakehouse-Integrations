@@ -110,7 +110,7 @@ FSx for ONTAP S3 Access Point の互換性表が `Presign` を「Not supported�
 
 **File Events 403 の証跡**: UC のセッション（`arn:aws:sts::<account-id>:assumed-role/databricks-uc-stds3-poc/<session>`）による `GetBucketNotification` が **13 件すべて `AccessDenied`**、`HeadBucket` が **4 件すべて `AccessDenied`** だった。エラー理由は `s3:GetBucketNotification` を許可する identity-based policy が無いこと（HTTP 403）。2.3 の「File Events だけ Failed」は、この 403 が原因だと API レベルで確定する。一方、同じセッションによるデータ面操作（`GetObject` / `HeadObject` / `ListObjects` / `PutObject`）は**拒否されていない**。
 
-**データ面アクセスの主体（presign ではなく AssumeRole）**: 記録された `GetObject` はすべて `userIdentity.type = AssumedRole`、主体は UC ロールだった。presigned URL による GET はクエリ文字列 SigV4 として別主体で現れるはずだが、その形跡は無い。つまり、標準 S3 上の UC は **AssumeRole した資格情報で直接（サーバ側 SigV4 で）**読んでおり、本 PoC の経路では presigned URL を使っていない。これは 共有サーバが SigV4 presigned URL を払い出してクライアントがその URL で読む方式（例: Delta Sharing の credential vending）とは異なる経路である。
+**データ面アクセスの主体（presign ではなく AssumeRole）**: 記録された `GetObject` はすべて `userIdentity.type = AssumedRole`、主体は UC ロールだった。presigned URL による GET はクエリ文字列 SigV4 として別主体で現れるはずだが、その形跡は無い。つまり、標準 S3 上の UC は **AssumeRole した資格情報で直接（サーバ側 SigV4 で）読んでおり**、本 PoC の経路では presigned URL を使っていない。これは、共有サーバが SigV4 presigned URL を払い出してクライアントがその URL で読む方式（例: Delta Sharing の credential vending）とは異なる経路である。
 
 **資格情報検証のラウンドトリップ**: External Location 作成時、UC は検証用オブジェクトに対し `PutObject` → `HeadObject` → `GetObject`（後に `DeleteObject` で削除）を実行した。2.2 の「Read / List / Write / Delete / Path Exists すべて Success」は、この一連のデータ面操作が errorCode 無しで記録されたことと一致する。
 
