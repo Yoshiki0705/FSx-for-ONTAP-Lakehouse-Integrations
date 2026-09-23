@@ -99,7 +99,7 @@
             └─ 元オブジェクトのタグが読めなくなる（§4 参照）
 ```
 
-これは FSx for ONTAP データに対する他のあらゆる UC ガバナンス機能と同じ壁であり、推奨される暫定経路も変わらない。標準 S3 バケットへステージングし、そのコピーをガバナンスする。[BLK-001 の回避策](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り)と [DataSync → S3 ガイド](./datasync-to-s3-guide.md)を参照。
+これは FSx for ONTAP データに対する他のあらゆる UC ガバナンス機能と同じ壁であり、推奨される暫定経路も変わらない。標準 S3 バケットへステージングし、そのコピーをガバナンスする。ステージング先のバケットで何ができるか（`ai_query`・`ai_parse_document`・Vector Search・FILE 型）は[標準 S3 バケット上の非構造化データ AI 活用 PoC](./databricks-standard-s3-unstructured-poc.md)で扱う。[BLK-001 の回避策](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り)と [DataSync → S3 ガイド](./datasync-to-s3-guide.md)を参照。
 
 > **変わったこと**: BLK-001 を解消する価値が上がった。従来は FSx for ONTAP 常駐の表形式データに対する lineage・タグ・マスク・行フィルタを得るだけだった。今は加えて ONTAP 常駐の非構造化データに対する `FILE EXTERNAL` が得られる。これは「NAS 上に留めたままのマルチモーダル AI」そのものである。Databricks に機能ギャップを提起する際に改めて述べる価値がある — [外部に提起した質問](#6-外部に提起した質問)を参照。
 
@@ -398,3 +398,4 @@ because no session policy allows the s3:ListBucket action
 - [非構造化データアクセス](./unstructured-data-access.md) · [ゼロコピーメディアガバナンス](./zero-copy-media-governance.md)
 - [S3 Annotations / Metadata 評価](./s3-annotations-governance-evaluation.md) · [OpenSharing と Unity Catalog の解説](./opensharing-and-unity-catalog-explained.md)
 - [DataSync → S3 ガイド](./datasync-to-s3-guide.md) — BLK-001 下での推奨暫定経路
+- [標準 S3 バケット上の Databricks 非構造化データ AI 活用 PoC](./databricks-standard-s3-unstructured-poc.md) — 本ページの対。ステージング先の標準バケットで `ai_query` / `ai_parse_document` / Vector Search / FILE 型が何をできるか

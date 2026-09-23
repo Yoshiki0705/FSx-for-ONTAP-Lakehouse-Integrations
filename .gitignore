@@ -210,3 +210,8 @@ integrations/iceberg-metadata-catalog/snowflake/screenshots/raw/
 **/.cross-region-state.env
 **/.s3ap_alias
 **/.vol_id
+
+# Unpublished drafts and review provenance. This used to be covered only by the global gitignore
+# (~/.config/git/ignore), which was narrowed on 2026-09-19 so that an agent could read .private/ in
+# a different repository. Stating it here means this repository no longer depends on that file.
+.private/

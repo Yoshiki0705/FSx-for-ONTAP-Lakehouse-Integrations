@@ -151,6 +151,20 @@ If you want a fully scriptable path instead, create the credential configuration
 
 ---
 
+## 7. Actuals from the standard-S3 unstructured-data AI PoC
+
+**Evidence tier: Verified / Public** (measured 2026-09-23; unit prices re-confirm before quoting).
+
+Running the [standard-S3 unstructured-data AI PoC](./databricks-standard-s3-unstructured-poc.md) surfaced cost facts that the price tables above do not capture:
+
+- **Pay-per-token Foundation Models are US-region only.** A Tokyo (ap-northeast-1) workspace has no default Serving endpoints, so `ai_query` / `ai_parse_document` cannot be called there as-is. The PoC ran on a us-west-2 workspace. If AI Functions are the goal, region selection is a functionality gate, not just a price difference.
+- **Serverless SQL Warehouse (Small, 10-minute auto-stop)** covered the AI Functions, OCR and Vision at metered, small cost.
+- **Vector Search is an always-on endpoint charge with a 24-hour tail.** Per Databricks documentation, the endpoint is billed after an index is created, and billing stops only 24 hours after the last index is deleted. Tearing the endpoint down does not stop the charge immediately. Budget for the tail.
+- **The embedding model `databricks-gte-large-en` is high-latency pay-per-token**, which contributes to slow first-index sync. In the PoC the index stayed in `PROVISIONING_ENDPOINT` for ~16 minutes without reaching ONLINE (environment-dependent; reported repeatedly in the community).
+- **Teardown checklist for this PoC shape**: Vector Search index → endpoint (verify with `list_endpoints`), then the standard S3 bucket, the IAM role for the storage credential, the UC External Location + auto-generated storage credential, and the catalog/schema/volume/tables. None of these is large, but the Vector Search 24-hour tail is the one to watch.
+
+---
+
 ## References
 
 - [Databricks pricing](https://www.databricks.com/product/pricing) · [AWS pricing by Databricks](https://www.databricks.com/product/aws-pricing)
