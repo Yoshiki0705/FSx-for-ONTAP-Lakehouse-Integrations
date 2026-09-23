@@ -96,7 +96,7 @@ In the External Location connection check, while every core operation returned S
 
 ### 2.4 Where presigned URLs fit
 
-**Evidence tier: Public** (AWS Support explanation, already recorded in this repo).
+**Evidence tier: Public** (based on the public SigV4 presign specification and the §2.5 observation from this verification).
 
 A presigned URL is a **client-side SigV4 signature calculation**; no request reaches AWS at URL-generation time. Using the generated URL is an ordinary `GetObject`. On a standard bucket `GetObject` is of course supported, so presigned URLs work too.
 
@@ -218,7 +218,7 @@ The sequence "structure the unstructured data with `ai_parse_document` → query
 
 **Evidence tier: Public** (from Databricks / Snowflake official documentation). Trade-offs stated symmetrically.
 
-The same requirement — governed AI over unstructured data on a standard S3 bucket — is also met by Snowflake Cortex. Choose by use, not by superiority. This connects to the concept mapping in the existing [Databricks integration README](../../integrations/databricks/docs/en/README.md) and [Snowflake integration README](../../integrations/snowflake/docs/en/README.md).
+The same requirement — governed AI over unstructured data on a standard S3 bucket — is also met by Snowflake Cortex. Choose by use, not by superiority. This connects to the concept mapping in the existing [Databricks integration README](../../integrations/databricks/README.md) and [Snowflake integration README](../../integrations/snowflake/README.md).
 
 ### 5.1 Feature mapping
 
@@ -239,7 +239,7 @@ Snowflake Cortex is an umbrella over several features, and the Databricks counte
 ### 5.2 How to choose (right-tool-for-the-job)
 
 - **Organization already on Databricks**: register the standard S3 bucket as a UC External Location and put unstructured-data AI on it directly with `ai_query` / `ai_parse_document` / AI Functions / FILE type / Genie. This PoC confirmed the sequence works live.
-- **Organization already on Snowflake**: the equivalent is available with External Table + Cortex, or COPY INTO an internal table ([Snowflake integration README](../../integrations/snowflake/docs/en/README.md)).
+- **Organization already on Snowflake**: the equivalent is available with External Table + Cortex, or COPY INTO an internal table ([Snowflake integration README](../../integrations/snowflake/README.md)).
 - **Organization using both**: hold the standard S3 bucket in an open format (Delta / Iceberg) so both engines can read it. Do not duplicate storage; use each engine for what it fits.
 - Trade-offs symmetrically: Databricks has the Vector Search endpoint's always-on cost and 24-hour billing rule, and the US-region constraint on pay-per-token. Snowflake has the constraint that `TO_FILE` for Vision cannot resolve over an S3 Access Point external stage (needs a copy-to-internal-stage workaround). Neither runs every feature unconditionally on the spot.
 
@@ -316,4 +316,4 @@ It depends on use — your existing platform, the AI features you need, and the 
 - [FILE type (Beta) evaluation](./databricks-file-type-evaluation.md) — behaviour on an S3 Access Point and the recommendation to stage to standard S3 (the counterpart to this page)
 - [Blocker tracker](./blocker-tracker.md) — BLK-001 (UC credential vending and the S3 Access Point ARN form)
 - [Databricks verification environment cost](./databricks-verification-environment-cost.md) · [DataSync to S3 guide](./datasync-to-s3-guide.md)
-- [Databricks integration README](../../integrations/databricks/docs/en/README.md) · [Snowflake integration README](../../integrations/snowflake/docs/en/README.md)
+- [Databricks integration README](../../integrations/databricks/README.md) · [Snowflake integration README](../../integrations/snowflake/README.md)

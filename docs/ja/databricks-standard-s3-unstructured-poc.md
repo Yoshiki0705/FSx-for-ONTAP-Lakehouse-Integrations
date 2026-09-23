@@ -96,7 +96,7 @@ External Location の接続検証で、コア操作がすべて Success する�
 
 ### 2.4 presigned URL の位置づけ
 
-**Evidence tier: Public**（AWS Support の説明、自リポジトリ既出）。
+**Evidence tier: Public**（SigV4 presign の公開仕様と、本検証の §2.5 の観測に基づく）。
 
 presigned URL は**クライアント側の SigV4 署名計算**であり、URL 生成の時点で AWS にリクエストは届かない。生成した URL を使う操作は通常の `GetObject` である。標準バケットでは `GetObject` は当然サポートされるので presigned URL も動作する。
 
