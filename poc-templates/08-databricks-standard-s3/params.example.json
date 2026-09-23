@@ -1,0 +1,7 @@
+[
+  { "ParameterKey": "BucketName", "ParameterValue": "fsxn-databricks-stds3-poc-<account-id>-<region-short>" },
+  { "ParameterKey": "RoleName", "ParameterValue": "databricks-uc-stds3-poc" },
+  { "ParameterKey": "UnityCatalogRoleArn", "ParameterValue": "arn:aws:iam::<databricks-uc-account>:role/unity-catalog-prod-UCMasterRole-XXXXXXXXXXXXX" },
+  { "ParameterKey": "UnityCatalogExternalId", "ParameterValue": "<databricks-account-uuid>" },
+  { "ParameterKey": "Environment", "ParameterValue": "dev" }
+]

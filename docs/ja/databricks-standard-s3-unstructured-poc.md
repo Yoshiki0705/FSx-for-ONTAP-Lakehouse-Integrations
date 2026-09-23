@@ -313,6 +313,7 @@ AWS DataSync が唯一の検証済み同期機構である（SnapMirror S3 は F
 - [Create vector search endpoints and indexes](https://docs.databricks.com/aws/en/generative-ai/create-query-vector-search) · [Connect agents to unstructured data](https://docs.databricks.com/aws/en/agents/custom-agents/unstructured-retrieval-tools)
 
 **本リポジトリ**
+- [この PoC の再現手順](./databricks-standard-s3-reproduction.md) — CloudFormation + Databricks コンソール操作でゼロから再構築する手順書
 - [FILE 型（β）評価](./databricks-file-type-evaluation.md) — S3 Access Point 上の挙動と、標準 S3 へのステージング推奨（本ページの対）
 - [ブロッカートラッカー](./blocker-tracker.md) — BLK-001（UC 資格情報払い出しと S3 Access Point ARN 形式）
 - [Databricks 検証環境コスト](./databricks-verification-environment-cost.md) · [DataSync → S3 ガイド](./datasync-to-s3-guide.md)
