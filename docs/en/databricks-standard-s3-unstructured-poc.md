@@ -313,6 +313,7 @@ It depends on use — your existing platform, the AI features you need, and the 
 - [Create vector search endpoints and indexes](https://docs.databricks.com/aws/en/generative-ai/create-query-vector-search) · [Connect agents to unstructured data](https://docs.databricks.com/aws/en/agents/custom-agents/unstructured-retrieval-tools)
 
 **This repository**
+- [Reproducing this PoC](./databricks-standard-s3-reproduction.md) — a runbook to rebuild from scratch with CloudFormation + Databricks console steps
 - [FILE type (Beta) evaluation](./databricks-file-type-evaluation.md) — behaviour on an S3 Access Point and the recommendation to stage to standard S3 (the counterpart to this page)
 - [Blocker tracker](./blocker-tracker.md) — BLK-001 (UC credential vending and the S3 Access Point ARN form)
 - [Databricks verification environment cost](./databricks-verification-environment-cost.md) · [DataSync to S3 guide](./datasync-to-s3-guide.md)

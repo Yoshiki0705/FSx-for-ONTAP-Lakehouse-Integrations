@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Databricks Unity Catalog access to a standard S3 bucket — PoC reproduction stack.
+  Creates a standard (general-purpose) S3 bucket and the cross-account IAM role that
+  Unity Catalog assumes to read it. This is the "stage to standard S3, then govern the
+  copy" interim path for Databricks unstructured-data AI, used when an FSx for ONTAP
+  S3 Access Point is blocked by BLK-001 (the UC session policy carries a bucket-form
+  ARN, which does not match an access-point ARN). Databricks-side objects (External
+  Location, catalog, schema, volume, tables, Genie) are created afterwards through the
+  Databricks console/API and are documented in the reproduction guide, not here.
+
+  Reproduction guide: docs/{en,ja}/databricks-standard-s3-reproduction.md
+  Verified PoC write-up:  docs/{en,ja}/databricks-standard-s3-unstructured-poc.md
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: >
+      Name of the standard S3 bucket to create. Must be globally unique. The PoC used
+      a name of the form fsxn-databricks-stds3-poc-<account-id>-<region-short>.
+    AllowedPattern: "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    ConstraintDescription: must be a valid S3 bucket name (3-63 chars, lowercase).
+  RoleName:
+    Type: String
+    Default: databricks-uc-stds3-poc
+    Description: Name of the IAM role Unity Catalog assumes.
+  UnityCatalogRoleArn:
+    Type: String
+    Description: >
+      The Databricks Unity Catalog cross-account role ARN to trust. This is the exact
+      ARN the Databricks External Location wizard displays for your account (a specific
+      unity-catalog-prod-UCMasterRole-* ARN, NOT :root). Enter the wizard's value.
+    AllowedPattern: "^arn:aws:iam::[0-9]{12}:role/.+$"
+  UnityCatalogExternalId:
+    Type: String
+    Description: >
+      The sts:ExternalId the trust policy requires — your Databricks account UUID, as
+      shown by the External Location wizard. Prevents the confused-deputy problem.
+    NoEcho: true
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Environment tag.
+
+Resources:
+  # Standard general-purpose bucket. Public access fully blocked; SSE-S3 (AES256) by
+  # default. No versioning (PoC). This is deliberately NOT an S3 Access Point.
+  StandardBucket:
+    Type: AWS::S3::Bucket
+    # Retain on stack delete so a teardown of the reproduction stack does not silently
+    # destroy staged data. Empty and delete the bucket explicitly when finished.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+            BucketKeyEnabled: false
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: databricks-standard-s3-unstructured-poc
+
+  # The role Unity Catalog assumes. Trust = UC master role + self-assume, gated by the
+  # account-UUID ExternalId. Self-assume is required: UC re-assumes this role to layer
+  # a down-scoped session policy.
+  UnityCatalogAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Ref UnityCatalogRoleArn
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/${RoleName}"
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref UnityCatalogExternalId
+      Policies:
+        - PolicyName: stds3-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Data-plane + bucket-scoped operations UC needs to read/write objects and
+              # to pass its External Location validation (Read/List/Write/Delete/Path
+              # Exists). Note: s3:GetBucketNotification is deliberately absent — that is
+              # why File Events provision returns 403 in the wizard. File Events is
+              # optional; add s3:GetBucketNotification / s3:PutBucketNotification here
+              # only if you intend to use it.
+              - Sid: StandardBucketAccess
+                Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:DeleteObject"
+                  - "s3:ListBucket"
+                  - "s3:GetObjectTagging"
+                  - "s3:PutObjectTagging"
+                  - "s3:GetBucketLocation"
+                  - "s3:ListBucketMultipartUploads"
+                  - "s3:ListMultipartUploadParts"
+                  - "s3:AbortMultipartUpload"
+                Resource:
+                  - !Sub "arn:aws:s3:::${BucketName}"
+                  - !Sub "arn:aws:s3:::${BucketName}/*"
+              - Sid: SelfAssume
+                Effect: Allow
+                Action: "sts:AssumeRole"
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/${RoleName}"
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: databricks-standard-s3-unstructured-poc
+
+Outputs:
+  BucketNameOut:
+    Description: The standard S3 bucket name (use as the External Location target, s3://<bucket>/).
+    Value: !Ref StandardBucket
+  RoleArnOut:
+    Description: >
+      IAM role ARN to paste into the Databricks Storage Credential / External Location
+      wizard.
+    Value: !GetAtt UnityCatalogAccessRole.Arn
