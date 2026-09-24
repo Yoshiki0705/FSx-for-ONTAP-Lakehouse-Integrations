@@ -187,7 +187,7 @@ Amazon S3 はタグのキーと値を UTF-16 で数える Unicode と記載し�
 
 #### presigned URL が動作するのは期待どおり
 
-AWS の Access Point 互換性表は FSx for ONTAP ボリュームについて **`Presign` を「Not supported」**と記載している。本環境の実測では `aws s3 presign` が URL を生成し、認証なしの `curl` が **HTTP 200 とオブジェクト本体**を返した。
+AWS の Access Point 互換性表は FSx for ONTAP ボリュームについて **`Presign` を「Not supported」と記載している**。本環境の実測では `aws s3 presign` が URL を生成し、認証なしの `curl` が **HTTP 200 とオブジェクト本体を返した**。
 
 これは欠陥ではなく、実際には矛盾でもない。**Evidence tier: Public**（本アカウントから過去に提起したケースに対する 2026-05 の AWS Support の説明）: presign は**完全にクライアント側の SigV4 署名計算**であり、presign の時点で AWS にリクエストは届かない。生成された URL を使う操作は単なる `GetObject` であり、同じ表で Supported とされている。したがって `GetObject` を壊さずに presign だけをブロックすることは構造的に不可能である。
 
