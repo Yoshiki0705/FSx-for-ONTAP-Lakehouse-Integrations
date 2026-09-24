@@ -141,7 +141,7 @@ INSERT INTO workspace.stds3_poc.inspection_findings VALUES
   ('Weld seam','Review',0.71), ('Coating','OK',0.95), ('Pressure valve','OK',0.98);
 ```
 
-Genie スペースを作り `inspection_findings` を接続。"Which inspection item has the lowest score?" に対し **Weld seam（0.71、Review）**と返れば成功（NL→SQL 自動生成 → 実行 → NL 回答）。
+Genie スペースを作り `inspection_findings` を接続。"Which inspection item has the lowest score?" に対し **Weld seam（0.71、Review）と返れば成功**（NL→SQL 自動生成 → 実行 → NL 回答）。
 
 ### 4.6 シナリオ 5: Mosaic AI Vector Search（環境依存で未完）
 

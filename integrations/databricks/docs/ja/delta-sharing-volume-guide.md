@@ -11,7 +11,7 @@
 OpenSharing は**共有プロトコル**であり、変換エンジンではありません。任意の NAS ファイル（画像、動画、PDF）をその場でクエリ可能なテーブルに変換するものではありません。OpenSharing が公開するのは、**準備済みの表形式データセット**です。
 
 FSx for ONTAP と Databricks の統合において、OpenSharing は以下の場合に実用的な共有レイヤーを提供します：
-- Databricks がストレージの直接所有者ではなく**受信者（Recipient）**として機能する場合
+- Databricks がストレージの直接所有者ではなく**受信者**（Recipient）として機能する場合
 - データが先に Delta または Parquet テーブルに変換されている場合
 - Unity Catalog Volumes がガバナンス付き非表形式ファイルアクセスに使用される場合
 

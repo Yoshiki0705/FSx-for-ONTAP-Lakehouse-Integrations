@@ -86,7 +86,7 @@ UC 側は外部エンジン向けに**オープン API + credential vending** �
 | 外部テーブル | Delta | 上記 + cloud URIs |
 | Foreign テーブル（federation） | Delta / Iceberg | Iceberg REST（**Preview**）/ Delta Sharing |
 
-> 外部エンジンは**時点のメタデータ**を取得する。foreign テーブルの最新読み取りには**定期的なメタデータ更新（Lakeflow ジョブ）**が必要（[Access Databricks data using external systems](https://docs.gcp.databricks.com/external-access/index.html)）。
+> 外部エンジンは**時点のメタデータを取得する**。foreign テーブルの最新読み取りには**定期的なメタデータ更新（Lakeflow ジョブ）が必要**（[Access Databricks data using external systems](https://docs.gcp.databricks.com/external-access/index.html)）。
 
 ### 通信経路（ネットワーク）
 
