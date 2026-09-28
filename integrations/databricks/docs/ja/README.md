@@ -93,7 +93,7 @@ Databricks のストレージと取り込みの概念を理解することが、
 > **パートナー向けクイックリファレンス**: 顧客から「Databricks で NAS データを S3 Access Points 経由で読めますか？」と聞かれた場合 — 答えは「部分的に可能だが制限あり」。ファイルレベルの読み取りは UC ガバナンス下で動作するが、テーブル作成とディレクトリ一覧はブロックされている。NAS データに対するガバナンス付き分析には、現時点で Snowflake External Table または Athena を推奨。Databricks 固有のワークロードには、S3 へのステージング取り込み → UC マネージドテーブルを推奨（[推奨アーキテクチャパターン](#推奨アーキテクチャパターン現時点)参照）。顧客が既に Databricks を使用している場合、FPolicy → Lambda → S3 → Auto Loader パターンで取り込みデータに完全 UC ガバナンスを維持可能。
 
 > **パートナー向けクイックリファレンス(OpenSharing)**: 顧客から「Databricks で **OpenSharing** 経由で FSx for ONTAP のデータを読めますか?」と聞かれた場合の一次回答:
-> - **プロトコル層は検証済み**: OpenSharing OSS リファレンスサーバー → STS credential vending → S3 AP 読み取り(2026-07 再確認)。再現可能な実装は [opensharing-server](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/tree/main/integrations/opensharing-server)。
+> - **プロトコル層は検証済み**: OpenSharing OSS リファレンスサーバー → STS credential vending → S3 AP 読み取り(2026-07 再確認)。再現可能な実装は [opensharing-server](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/tree/main/integrations/opensharing-server)。
 > - **Databricks ネイティブ recipient(UC Foreign Volume/Table 認識)は実装待ち**(年末の Storage Ecosystem パートナー提供見込み)。
 > - **今できること**: notebook 経由の PoC(`requests` + `boto3` で cred vending → S3 AP 読み取り → 必要に応じて UC テーブル書き込み)。trial(Serverless only)ワークスペースでは compute 起動事象に注意 — これは *環境固有* であり Databricks Serverless 一般の制限ではない。
 > - **本番でガバナンス付き取り込みが今必要**なら、従来どおり DataSync → S3 → UC マネージドテーブル。

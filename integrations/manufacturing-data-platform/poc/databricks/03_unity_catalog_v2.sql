@@ -1,5 +1,5 @@
 -- Manufacturing Data Platform PoC — Unity Catalog v2 (Edge-Aligned)
--- Synced from: ontap-edge-to-cloud-ai Databricks integration design
+-- Synced from: ONTAP-Edge-to-Cloud-AI Databricks integration design
 -- Sync Date: 2026-06-15
 --
 -- Schema: manufacturing_poc (shared between Edge and Lakehouse projects)

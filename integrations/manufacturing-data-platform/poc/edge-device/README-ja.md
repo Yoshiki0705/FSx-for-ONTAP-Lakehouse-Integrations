@@ -8,7 +8,7 @@
 > ADR-008 に基づく3層バッファリング実装（MQTT → SQLite → Kafka べき等プロデューサー）。
 >
 > 別リポジトリのエッジプロジェクトと接続:
-> https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai
+> https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI
 
 ---
 
@@ -53,9 +53,9 @@
 
 ---
 
-## ontap-edge-to-cloud-ai との統合
+## ONTAP-Edge-to-Cloud-AI との統合
 
-[ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) が提供:
+[ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI) が提供:
 - Raspberry Pi GPIO でのセンサーシミュレーション
 - 品質検査用カメラ統合
 - センサーデータの MQTT パブリッシャー
@@ -68,7 +68,7 @@
 ### 統合ポイント
 
 ```
-ontap-edge-to-cloud-ai              本プロジェクト
+ONTAP-Edge-to-Cloud-AI              本プロジェクト
 (センサー/カメラ → MQTT)   →   (MQTT → SQLite → Kafka + NFS アップロード)
 ```
 

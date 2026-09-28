@@ -8,7 +8,7 @@
 > Implements ADR-008 (3-tier buffering: MQTT → SQLite → Kafka idempotent producer).
 >
 > This device connects to the separate edge project:
-> https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai
+> https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI
 
 ---
 
@@ -125,7 +125,7 @@ pip install \
   paho-mqtt==2.1.0 \
   Pillow==11.1.0
 
-# Copy edge gateway code (from this repo or ontap-edge-to-cloud-ai)
+# Copy edge gateway code (from this repo or ONTAP-Edge-to-Cloud-AI)
 # cp edge_gateway.py /opt/edge-gateway/
 # cp config.yaml /opt/edge-gateway/
 ```
@@ -232,9 +232,9 @@ kafka-console-consumer.sh --bootstrap-server <KAFKA_BOOTSTRAP> \
 
 ---
 
-## Integration with ontap-edge-to-cloud-ai
+## Integration with ONTAP-Edge-to-Cloud-AI
 
-The [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) project provides:
+The [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI) project provides:
 - Sensor simulation on Raspberry Pi GPIO
 - Camera integration for quality inspection
 - MQTT publisher for sensor data
@@ -247,7 +247,7 @@ This project provides:
 ### Integration Point
 
 ```
-ontap-edge-to-cloud-ai         this project
+ONTAP-Edge-to-Cloud-AI         this project
 (sensor/camera → MQTT)   →   (MQTT → SQLite → Kafka + NFS upload)
 ```
 

@@ -514,7 +514,7 @@ Monitor the following storage-layer metrics from Amazon FSx for NetApp ONTAP Clo
 | FabricPool tiering ratio | ONTAP REST API | Cold data percentage | Affects access latency for AI processing target files |
 | Snapshot usage | CloudWatch (FSx) / ONTAP REST API | Unexpected growth | Forgotten AI batch processing Snapshots |
 
-For detailed observability pipelines, see [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations).
+For detailed observability pipelines, see [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations).
 
 ---
 
@@ -798,7 +798,7 @@ See [Compatibility Matrix](compatibility-matrix.md) for detailed platform × for
 | [Zero-Copy Unstructured Data Governance](zero-copy-media-governance.md) | Storage optimization options (A/B/C/D) — this document focuses on the metadata catalog layer |
 | [Compatibility Matrix](compatibility-matrix.md) | Detailed verification status for each platform × format × mode |
 | [Governance and Compliance](governance-and-compliance.md) | Horizon Catalog, Lake Formation, audit logging details |
-| [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | Monitoring pipeline for FSx for ONTAP audit logs |
+| [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | Monitoring pipeline for FSx for ONTAP audit logs |
 
 ---
 

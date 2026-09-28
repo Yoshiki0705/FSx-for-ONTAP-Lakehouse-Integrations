@@ -115,11 +115,11 @@ integrations/manufacturing-data-platform/
 | ClickHouse | ClickHouse Cloud | Instaclustr on-prem |
 | ONTAP | FSx for ONTAP (AWS) | On-prem ONTAP (origin) + FlexCache (AWS) |
 | Databricks | AWS | AWS (unchanged) |
-| Edge | Synthetic generator | Raspberry Pi (ontap-edge-to-cloud-ai) |
+| Edge | Synthetic generator | Raspberry Pi (ONTAP-Edge-to-Cloud-AI) |
 
 ## Related Projects
 
-- [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) — Edge device (Raspberry Pi) integration
+- [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI) — Edge device (Raspberry Pi) integration
 
 ## Confidentiality
 

@@ -49,13 +49,13 @@ print(f"✅ Read {df.count()} rows from FSx for ONTAP S3 AP")
 
 **Result**: 1000 rows read successfully from sensor CSV on FSx for ONTAP (explicit file path with `access_point` field set on External Location).
 
-![Spark read succeeds for explicit file path on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-ai-spark-read-success.png)
+![Spark read succeeds for explicit file path on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-ai-spark-read-success.png)
 
 *Spark successfully reads sensor CSV data from FSx for ONTAP S3 Access Point using an explicit file path under Unity Catalog governance.*
 
 **Limitation**: Only explicit file paths work. Directory-level reads (e.g., `spark.read.parquet("s3://<alias>/bronze/")`) fail because subdirectory listing is blocked by the session policy.
 
-![Top-level listing succeeds — 287 items visible on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-ls-success-287-items.png)
+![Top-level listing succeeds — 287 items visible on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-ls-success-287-items.png)
 
 *Top-level `dbutils.fs.ls` succeeds with 287 items visible. However, subdirectory listing and table creation remain blocked.*
 
@@ -75,7 +75,7 @@ LOCATION 's3://<s3ap-alias>/bronze/sensor_data/';
 
 **Result**: ❌ `UC_CLOUD_STORAGE_ACCESS_FAILURE` — Unity Catalog's internal validation cannot access the S3 AP path for table registration.
 
-![CREATE TABLE blocked by UC session policy on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-ai-create-table-blocked.png)
+![CREATE TABLE blocked by UC session policy on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-ai-create-table-blocked.png)
 
 *Unity Catalog rejects table creation on FSx for ONTAP S3 Access Point. The session policy generated during AssumeRole does not include the S3 AP ARN pattern for internal validation operations.*
 
@@ -98,7 +98,7 @@ files = dbutils.fs.ls("s3://<s3ap-alias>/media/images/")
 
 **Result**: ❌ `AccessDenied` on `getFileStatus` — prefix-based ListObjectsV2 is blocked for subdirectories.
 
-![Subdirectory listing blocked by session policy](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-ai-subdir-listing-blocked.png)
+![Subdirectory listing blocked by session policy](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-ai-subdir-listing-blocked.png)
 
 *Subdirectory listing fails with AccessDenied. The UC session policy allows top-level listing but blocks prefix-scoped ListObjectsV2 for subdirectories.*
 
@@ -261,7 +261,7 @@ Governed Tag (classification attribute)
 
 **Unity Catalog table creation on FSx for ONTAP S3 AP is currently blocked** (UC_CLOUD_STORAGE_ACCESS_FAILURE). This means:
 
-![Databricks governance impact — UC governance blocked on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-summary-governance-impact.png)
+![Databricks governance impact — UC governance blocked on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-summary-governance-impact.png)
 
 *Governance Impact Summary: Unity Catalog governance features (tags, masking, row filters, lineage) cannot be applied to FSx for ONTAP S3 AP data because table creation is blocked by the session policy.*
 

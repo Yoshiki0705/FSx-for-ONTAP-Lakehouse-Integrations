@@ -211,7 +211,7 @@ For Observability and Security Monitoring (SIEM) of the architectures proposed i
 
 | Area | Repository | Content |
 |------|-----------|---------|
-| **Observability** | [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | Ship FSx for ONTAP audit logs to Datadog, Splunk, Grafana, Elastic via S3 AP + Lambda pipeline. |
+| **Observability** | [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | Ship FSx for ONTAP audit logs to Datadog, Splunk, Grafana, Elastic via S3 AP + Lambda pipeline. |
 | **SLO / Alerts** | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | SLO Observability patterns, FPolicy event-driven pipeline, capacity guardrails. |
 
 ### Key Metrics to Monitor

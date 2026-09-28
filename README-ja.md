@@ -2,8 +2,8 @@
 
 # FSx for ONTAP Lakehouse Integrations
 
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Yoshiki0705/fsxn-lakehouse-integrations/badge)](https://scorecard.dev/viewer/?uri=github.com/Yoshiki0705/fsxn-lakehouse-integrations)
-[![gitleaks](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/actions/workflows/gitleaks.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/badge)](https://scorecard.dev/viewer/?uri=github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations)
+[![gitleaks](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/actions/workflows/gitleaks.yml)
 
 > エンタープライズファイルデータ（NFS/SMB）を **FSx for ONTAP S3 Access Points** 経由で各種分析・Lakehouse エンジンからクエリする検証フレームワーク。データ移動不要。データエンジニア、ソリューションアーキテクト、実装パートナー向け。
 
@@ -113,7 +113,7 @@
 | リポジトリ | 説明 |
 |---|---|
 | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | FSx for ONTAP S3 AP 向け 17 サーバーレスパターン |
-| [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) | エッジ (Raspberry Pi) → ONTAP → Kafka — [製造プラットフォーム](integrations/manufacturing-data-platform/)にフィード |
+| [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI) | エッジ (Raspberry Pi) → ONTAP → Kafka — [製造プラットフォーム](integrations/manufacturing-data-platform/)にフィード |
 | [FSx-for-ONTAP-Adoption-Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) | ライフサイクルとドメインで整理した導入設計ノート。データ活用ハブが、本リポジトリの統合の上流にあるアクセスポイントの制約とデータセット版管理の判断を扱う |
 
 **ドキュメント索引**: [リーディングパスガイド](docs/ja/reading-path-guide.md) · [業界別ソリューションカタログ（26 業界）](docs/ja/industry-solution-catalog.md)

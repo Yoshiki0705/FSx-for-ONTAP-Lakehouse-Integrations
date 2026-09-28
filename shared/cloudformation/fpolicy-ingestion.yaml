@@ -11,7 +11,7 @@
 # 起点にする。監査ログは AP 経由の操作を Source=HTTP（オブジェクト操作）および
 # Source=S3（LIST）として記録する。ただし要求者の識別情報は記録されない。
 #
-# 詳細: fsxn-observability-integrations の
+# 詳細: FSx-for-ONTAP-Observability-integrations の
 #   docs/ja/s3ap-monitoring-coverage-implications.md
 #   docs/ja/verification-results-fpolicy-s3ap-and-session.md
 

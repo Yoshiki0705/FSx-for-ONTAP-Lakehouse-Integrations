@@ -673,7 +673,7 @@ Amazon FSx for NetApp ONTAP の CloudWatch メトリクスおよび ONTAP REST A
 | FabricPool 階層化率 | ONTAP REST API | コールドデータ比率 | AI 処理対象ファイルのアクセスレイテンシに影響 |
 | Snapshot 使用量 | CloudWatch (FSx) / ONTAP REST API | 予期しない増加 | AI バッチ処理用 Snapshot の削除忘れ |
 
-詳細なオブザーバビリティパイプラインは [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) を参照。
+詳細なオブザーバビリティパイプラインは [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) を参照。
 
 ---
 
@@ -957,7 +957,7 @@ AI ベースの PII 検出は 100% 正確ではない。偽陰性（PII 見逃�
 | [ゼロコピー非構造化データガバナンス](zero-copy-media-governance.md) | ストレージ最適化オプション (A/B/C/D) — 本ドキュメントはメタデータカタログ層にフォーカス |
 | [互換性マトリクス](compatibility-matrix.md) | 各プラットフォーム × フォーマット × モードの詳細検証状況 |
 | [ガバナンスとコンプライアンス](governance-and-compliance.md) | Horizon Catalog、Lake Formation、監査ログの詳細 |
-| [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | FSx for ONTAP 監査ログのモニタリングパイプライン |
+| [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | FSx for ONTAP 監査ログのモニタリングパイプライン |
 
 ---
 

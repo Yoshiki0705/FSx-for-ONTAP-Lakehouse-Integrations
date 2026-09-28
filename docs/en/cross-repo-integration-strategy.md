@@ -24,7 +24,7 @@ work between those repositories, which is narrower and changes faster.
 | **P1: S3 Vectors × Permission-aware RAG** | `FSx-for-ONTAP-Agentic-Access-Aware-RAG` | This repo (reference) | ✅ **Already implemented**. `docs/s3-vectors-sid-architecture-guide.md` + CDK stack (`bin/demo-app.ts`) with S3 Vectors path already built. This repo references as comparison material |
 | **P2: Bedrock Managed KB × Omnigent Polly** | This repository | `FSx-for-ONTAP-Agentic-Access-Aware-RAG` | Managed KB's Agentic Retriever coordinates with Omnigent Polly for multi-step retrieval + multi-agent quality pipeline |
 | **P2: FSx for ONTAP official RAG tutorial** | `FSx-for-ONTAP-Agentic-Access-Aware-RAG` | This repo (link) | Add link to official AWS documentation `docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html` |
-| **P2: LTAP (Kafka → Lakebase) path integration** | `ontap-edge-to-cloud-ai` + this repo | Bidirectional | 🆕 **Under design review** (added 2026-06-18). Path D added on edge repo side. Connector spec publication + Lakehouse//RT GA are adoption gates |
+| **P2: LTAP (Kafka → Lakebase) path integration** | `ONTAP-Edge-to-Cloud-AI` + this repo | Bidirectional | 🆕 **Under design review** (added 2026-06-18). Path D added on edge repo side. Connector spec publication + Lakehouse//RT GA are adoption gates |
 
 ---
 
@@ -118,11 +118,11 @@ Omnigent (multi-agent orchestration)
 
 ---
 
-## Edge → Cloud Integration: ontap-edge-to-cloud-ai Touchpoints
+## Edge → Cloud Integration: ONTAP-Edge-to-Cloud-AI Touchpoints
 
-The `ontap-edge-to-cloud-ai` repository provides patterns for aggregating edge device data into ONTAP and connecting to AWS AI/Analytics via S3 AP. Integration with this repository's manufacturing data platform:
+The `ONTAP-Edge-to-Cloud-AI` repository provides patterns for aggregating edge device data into ONTAP and connecting to AWS AI/Analytics via S3 AP. Integration with this repository's manufacturing data platform:
 
-| This Repo Feature | ontap-edge-to-cloud-ai Counterpart |
+| This Repo Feature | ONTAP-Edge-to-Cloud-AI Counterpart |
 |-------------------|-------------------------------------|
 | Layer 1 edge data ingestion | Edge device → ONTAP aggregation patterns |
 | Kafka → local ClickHouse | Edge-side streaming design |
@@ -131,7 +131,7 @@ The `ontap-edge-to-cloud-ai` repository provides patterns for aggregating edge d
 
 ### Databricks Integration Paths (edge-to-cloud-ai side)
 
-> Sync source: `ontap-edge-to-cloud-ai/docs/en/databricks-integration.md` (updated 2026-06-18)
+> Sync source: `ONTAP-Edge-to-Cloud-AI/docs/en/databricks-integration.md` (updated 2026-06-18)
 
 | Path | Route | Latency | Status |
 |------|-------|---------|--------|
@@ -144,7 +144,7 @@ The `ontap-edge-to-cloud-ai` repository provides patterns for aggregating edge d
 
 ### Path D: Kafka → Lakebase (LTAP) — Details
 
-**Sync status**: Under design review (added 2026-06-18). Added to `ontap-edge-to-cloud-ai` in `docs/en/databricks-integration.md` Section 2.5 and `.kiro/specs/edge-to-cloud-poc/design.md` Section 4.5.
+**Sync status**: Under design review (added 2026-06-18). Added to `ONTAP-Edge-to-Cloud-AI` in `docs/en/databricks-integration.md` Section 2.5 and `.kiro/specs/edge-to-cloud-poc/design.md` Section 4.5.
 
 **Data flow**:
 
@@ -182,7 +182,7 @@ Kafka (MSK / Confluent)
 
 ### Lakeflow Evaluation: Zerobus Ingest / Real-Time Mode (DAIS 2026 — synced 2026-06-18)
 
-> Sync source: `ontap-edge-to-cloud-ai/docs/en/databricks-integration.md` Section 2.6 (added 2026-06-18). Records the evaluation of the DAIS 2026 (2026-06-16) Lakeflow announcements in the context of the edge → cloud streaming design.
+> Sync source: `ONTAP-Edge-to-Cloud-AI/docs/en/databricks-integration.md` Section 2.6 (added 2026-06-18). Records the evaluation of the DAIS 2026 (2026-06-16) Lakeflow announcements in the context of the edge → cloud streaming design.
 
 The Lakeflow-related features announced at DAIS 2026 were evaluated in the context of this ecosystem's streaming design (Paths A–D). All are positioned as **additional options to choose based on use case**, not replacements for the existing Kafka event bus design.
 
@@ -250,15 +250,15 @@ Zerobus Ingest → Delta direct (Kafka bypass, Databricks-only) 🆕 Under evalu
 >
 > Zerobus Ingest is available in ap-northeast-1. The Lakebase limitation affects the Zerobus → Lakebase path specifically. Zerobus → Delta (Structured Streaming) path works in ap-northeast-1.
 
-**Future integration**: Validate LTAP (Kafka → Lakebase) path integrated with `ontap-edge-to-cloud-ai` edge → cloud flows. Re-evaluate at Lakehouse//RT GA.
+**Future integration**: Validate LTAP (Kafka → Lakebase) path integrated with `ONTAP-Edge-to-Cloud-AI` edge → cloud flows. Re-evaluate at Lakehouse//RT GA.
 
 ---
 
-## Observability Integration: fsxn-observability-integrations Touchpoints
+## Observability Integration: FSx-for-ONTAP-Observability-integrations Touchpoints
 
-`fsxn-observability-integrations` provides S3 AP + Lambda patterns for shipping audit logs to external SIEMs. Integration with this repository's agent security design:
+`FSx-for-ONTAP-Observability-integrations` provides S3 AP + Lambda patterns for shipping audit logs to external SIEMs. Integration with this repository's agent security design:
 
-| This Repo Requirement | fsxn-observability-integrations Counterpart |
+| This Repo Requirement | FSx-for-ONTAP-Observability-integrations Counterpart |
 |----------------------|---------------------------------------------|
 | FPolicy audit log × agent access correlation | ⚠️ **Needs redesign**: [`docs/en/agent-fpolicy-correlation-pattern.md`](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations/blob/main/docs/en/agent-fpolicy-correlation-pattern.md) (PR #22). When an agent reaches the data through an S3 access point, FPolicy receives no notification and the correlation does not hold (measured 2026-08-26). The input has to be replaced with the ONTAP native audit log |
 | Omnigent tool call logging | OpenTelemetry → CloudWatch integration |
@@ -275,7 +275,7 @@ Zerobus Ingest → Delta direct (Kafka bypass, Databricks-only) 🆕 Under evalu
 | **P1** | S3 Vectors design pattern | Agentic-RAG repo | ✅ Implemented | `docs/s3-vectors-sid-architecture-guide.md` + CDK stack |
 | **P2** | Managed KB × Omnigent integration design | This repository | ✅ Design complete | Added as Section 4 in `omnigent-multi-agent-evaluation.md` |
 | **P2** | Official RAG tutorial links | Agentic-RAG repo + this repo | ✅ Both repos done | Agentic-RAG repo README "AWS Official Resources" section added |
-| **P2** | LTAP integration design with ontap-edge-to-cloud-ai | This repo + edge repo | 🔄 Under design review | edge repo Path D added (2026-06-18). Awaiting Lakebase GA / connector spec |
+| **P2** | LTAP integration design with ONTAP-Edge-to-Cloud-AI | This repo + edge repo | 🔄 Under design review | edge repo Path D added (2026-06-18). Awaiting Lakebase GA / connector spec |
 | **P2** | Lakeflow Real-Time Mode / Zerobus Ingest evaluation | This repo + edge repo | 🔄 Real-Time Mode GA confirmed, validation pending | Real-Time Mode GA (2025-12). edge repo updated. Next gates: production latency validation / Zerobus Ingest SDK validation (gRPC/Python) |
 | **P3** | AWS Context GA validation for FSx for ONTAP auto-catalog | This repository | 🔲 | Waiting for AWS Context GA |
 | **P3** | Audit log integrated query patterns | observability repo | ✅ Design complete (PR #22) | Implementation after agent infrastructure build |
@@ -286,8 +286,8 @@ Zerobus Ingest → Delta direct (Kafka bypass, Databricks-only) 🆕 Under evalu
 
 - [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
 - [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG)
-- [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai)
-- [fsxn-observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
+- [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI)
+- [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations)
 - [AWS: Build a RAG application with Bedrock KB + FSx for ONTAP](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html)
 - [repost.aws: FSx for ONTAP S3 AP as Bedrock Data Source](https://repost.aws/articles/AReKa8-o8XRGeVW2Nicbg1_w)
 - [Amazon S3 Vectors GA](https://aws.amazon.com/blogs/aws/amazon-s3-vectors-now-generally-available-with-increased-scale-and-performance/)

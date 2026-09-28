@@ -161,8 +161,8 @@ FSx for ONTAP (NFS/SMB/S3 AP)
 |------------|----------------------|------------------------|
 | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | S3 AP events could auto-register metadata in AWS Context | — |
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | AWS Context as discovery layer for permission-aware RAG | Bedrock KB + S3 AP could link with UC External Location |
-| [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) | Auto-catalog registration of edge device data in AWS Context | Databricks-side governance of edge data |
-| [fsxn-observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | Correlation analysis of audit logs via knowledge graph | — |
+| [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI) | Auto-catalog registration of edge device data in AWS Context | Databricks-side governance of edge data |
+| [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | Correlation analysis of audit logs via knowledge graph | — |
 
 ---
 

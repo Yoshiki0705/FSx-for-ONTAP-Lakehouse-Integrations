@@ -72,11 +72,11 @@ pytest tests/ -v
 | ClickHouse | ClickHouse Cloud | Instaclustr オンプレ |
 | ONTAP | FSx for ONTAP (AWS) | オンプレ ONTAP (オリジン) + FlexCache (AWS) |
 | Databricks | AWS | AWS (変更なし) |
-| エッジ | 合成ジェネレーター | Raspberry Pi (ontap-edge-to-cloud-ai) |
+| エッジ | 合成ジェネレーター | Raspberry Pi (ONTAP-Edge-to-Cloud-AI) |
 
 ## 関連プロジェクト
 
-- [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) — エッジデバイス (Raspberry Pi) 統合
+- [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI) — エッジデバイス (Raspberry Pi) 統合
 
 ## 機密性
 

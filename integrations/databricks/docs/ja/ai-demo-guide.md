@@ -49,13 +49,13 @@ print(f"✅ FSx for ONTAP S3 AP から {df.count()} 行を読み取り")
 
 **結果**: FSx for ONTAP 上のセンサー CSV から 1000 行を正常に読み取り（External Location に `access_point` フィールドを設定した明示的ファイルパス）。
 
-![Spark が FSx for ONTAP S3 AP 上の明示的ファイルパスの読み取りに成功](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-ai-spark-read-success.png)
+![Spark が FSx for ONTAP S3 AP 上の明示的ファイルパスの読み取りに成功](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-ai-spark-read-success.png)
 
 *Spark が Unity Catalog ガバナンス下で、明示的ファイルパスを使用して FSx for ONTAP S3 Access Point からセンサー CSV データを正常に読み取り。*
 
 **制限事項**: 明示的ファイルパスのみ動作。ディレクトリレベルの読み取り（例: `spark.read.parquet("s3://<alias>/bronze/")`）はセッションポリシーによりサブディレクトリ一覧がブロックされるため失敗。
 
-![トップレベル一覧は成功 — FSx for ONTAP S3 AP 上で 287 アイテムが表示](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-ls-success-287-items.png)
+![トップレベル一覧は成功 — FSx for ONTAP S3 AP 上で 287 アイテムが表示](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-ls-success-287-items.png)
 
 *トップレベルの `dbutils.fs.ls` は 287 アイテムを表示して成功。ただし、サブディレクトリ一覧とテーブル作成は引き続きブロック。*
 
@@ -75,7 +75,7 @@ LOCATION 's3://<s3ap-alias>/bronze/sensor_data/';
 
 **結果**: ❌ `UC_CLOUD_STORAGE_ACCESS_FAILURE` — Unity Catalog の内部検証が S3 AP パスにアクセスできず、テーブル登録が失敗。
 
-![UC セッションポリシーにより FSx for ONTAP S3 AP 上の CREATE TABLE がブロック](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-ai-create-table-blocked.png)
+![UC セッションポリシーにより FSx for ONTAP S3 AP 上の CREATE TABLE がブロック](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-ai-create-table-blocked.png)
 
 *Unity Catalog が FSx for ONTAP S3 Access Point 上のテーブル作成を拒否。AssumeRole 時に生成されるセッションポリシーが、内部検証操作に対して S3 AP ARN パターンを含まない。*
 
@@ -98,7 +98,7 @@ files = dbutils.fs.ls("s3://<s3ap-alias>/media/images/")
 
 **結果**: ❌ `getFileStatus` で `AccessDenied` — プレフィックスベースの ListObjectsV2 がサブディレクトリに対してブロック。
 
-![セッションポリシーによりサブディレクトリ一覧がブロック](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-ai-subdir-listing-blocked.png)
+![セッションポリシーによりサブディレクトリ一覧がブロック](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-ai-subdir-listing-blocked.png)
 
 *サブディレクトリ一覧が AccessDenied で失敗。UC セッションポリシーはトップレベルの一覧を許可するが、サブディレクトリに対するプレフィックススコープの ListObjectsV2 をブロック。*
 
@@ -261,7 +261,7 @@ Governed Tag（分類属性）
 
 **FSx for ONTAP S3 AP 上での Unity Catalog テーブル作成が現在ブロック**（UC_CLOUD_STORAGE_ACCESS_FAILURE）。これにより:
 
-![Databricks ガバナンス影響 — FSx for ONTAP S3 AP 上で UC ガバナンスがブロック](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/databricks-summary-governance-impact.png)
+![Databricks ガバナンス影響 — FSx for ONTAP S3 AP 上で UC ガバナンスがブロック](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/databricks-summary-governance-impact.png)
 
 *ガバナンス影響サマリー: テーブル作成がセッションポリシーによりブロックされるため、Unity Catalog ガバナンス機能（タグ、マスキング、Row Filter、リネージ）を FSx for ONTAP S3 AP データに適用不可。*
 

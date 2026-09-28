@@ -49,8 +49,8 @@ Legend: ✅ Confirmed/Validated | ❌ Unsupported | ⚠️ Works with caveats
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Yoshiki0705/fsxn-lakehouse-integrations.git
-cd fsxn-lakehouse-integrations/integrations/snapmirror-flexcache-multicloud
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations.git
+cd FSx-for-ONTAP-Lakehouse-Integrations/integrations/snapmirror-flexcache-multicloud
 
 # 2. Copy and edit parameters
 cp scripts/validation/cross-region-params.env.example scripts/validation/cross-region-params.env

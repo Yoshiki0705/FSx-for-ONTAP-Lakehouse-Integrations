@@ -380,5 +380,5 @@ GROUP BY checksum HAVING COUNT(*) > 1;
 
 | 領域 | リポジトリ | 内容 |
 |------|-----------|------|
-| **Observability** | [fsxn-observability-integrations](https://github.com/Yoshiki0705/fsxn-observability-integrations) | FSx for ONTAP の監査ログを S3 AP + Lambda パイプライン経由で Datadog / Splunk / Grafana / Elastic に送信。 |
+| **Observability** | [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | FSx for ONTAP の監査ログを S3 AP + Lambda パイプライン経由で Datadog / Splunk / Grafana / Elastic に送信。 |
 | **SLO / アラート** | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | SLO Observability パターン、FPolicy イベント駆動パイプライン、キャパシティガードレール。 |

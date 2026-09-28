@@ -272,11 +272,11 @@ LTAP/Lakebase は structured/operational データの統合だが、FSx for ONTA
 - **長期**: LTAP が Layer 2+3 を統合する方向性を前提に、クラウド側アーキテクチャの簡素化パスを設計しておく。エッジ側は独立して進化させる。
 - **FSx for ONTAP 連携**: Lakebase レコードと FSx for ONTAP ペイロードのリンク設計（S3 AP URI をメタデータカラムに保持）を Phase A の早期に検証する。
 
-> **クロスリポジトリ連携**: `ontap-edge-to-cloud-ai` リポジトリでは Path D (Kafka → Lakebase) として LTAP パスを設計検討中（2026-06-18 追加）。詳細は [クロスリポジトリ連携戦略](../../../../docs/ja/cross-repo-integration-strategy.md) のエッジ → クラウド連携セクションを参照。
+> **クロスリポジトリ連携**: `ONTAP-Edge-to-Cloud-AI` リポジトリでは Path D (Kafka → Lakebase) として LTAP パスを設計検討中（2026-06-18 追加）。詳細は [クロスリポジトリ連携戦略](../../../../docs/ja/cross-repo-integration-strategy.md) のエッジ → クラウド連携セクションを参照。
 
 > **DAIS 2026 追加情報（2026-06-18）**:
-> - **Lakeflow Zerobus Ingest**: 高スループットイベント取り込みの新インターフェース（GA）。Private Link 対応。Kafka の代替ではなく、Databricks 専用取り込みの**追加オプション**として位置づけ。`ontap-edge-to-cloud-ai` で評価済み（[クロスリポジトリ連携戦略の Lakeflow 評価](../../../../docs/ja/cross-repo-integration-strategy.md#lakeflow-評価-zerobus-ingest--real-time-modedais-2026--2026-06-18-同期)参照）。([Lakeflow blog](https://www.databricks.com/blog/lakeflow-new-era-agentic-data-engineering))
-> - **Lakeflow Real-Time Mode (Spark Declarative Pipelines)**: Structured Streaming のレイテンシを秒〜分から ~5ms まで短縮する実行モード（**GA, 2025-12**）。上記「専用 RT DB vs Lakehouse//RT」比較表のインジェスト遅延（秒〜分, Structured Streaming）を改善するパス。**Lakehouse//RT（クエリエンジン）とは別機能**で、`ontap-edge-to-cloud-ai` の Path A 改善として即適用可能。([Lakeflow blog](https://www.databricks.com/blog/lakeflow-new-era-agentic-data-engineering))
+> - **Lakeflow Zerobus Ingest**: 高スループットイベント取り込みの新インターフェース（GA）。Private Link 対応。Kafka の代替ではなく、Databricks 専用取り込みの**追加オプション**として位置づけ。`ONTAP-Edge-to-Cloud-AI` で評価済み（[クロスリポジトリ連携戦略の Lakeflow 評価](../../../../docs/ja/cross-repo-integration-strategy.md#lakeflow-評価-zerobus-ingest--real-time-modedais-2026--2026-06-18-同期)参照）。([Lakeflow blog](https://www.databricks.com/blog/lakeflow-new-era-agentic-data-engineering))
+> - **Lakeflow Real-Time Mode (Spark Declarative Pipelines)**: Structured Streaming のレイテンシを秒〜分から ~5ms まで短縮する実行モード（**GA, 2025-12**）。上記「専用 RT DB vs Lakehouse//RT」比較表のインジェスト遅延（秒〜分, Structured Streaming）を改善するパス。**Lakehouse//RT（クエリエンジン）とは別機能**で、`ONTAP-Edge-to-Cloud-AI` の Path A 改善として即適用可能。([Lakeflow blog](https://www.databricks.com/blog/lakeflow-new-era-agentic-data-engineering))
 > - **Lakebase Private Link (GA)**: VPC 内から Lakebase への Private Link 接続（port 5432）が利用可能。エージェント → Lakebase アクセスのネットワーク経路にパブリックインターネットを経由しない設計が可能。([Security blog](https://www.databricks.com/blog/whats-new-databricks-platform-security-and-compliance-data-ai-summit-2026))
 > - **AIM (Automatic Identity Management) for Entra ID — GA on AWS**: ユーザー/グループの Databricks ワークスペースへの ID 同期を自動化。エージェントが属するグループメンバーシップの自動反映に寄与し、ACL ベースのアクセス制御設計を簡素化する可能性。
 

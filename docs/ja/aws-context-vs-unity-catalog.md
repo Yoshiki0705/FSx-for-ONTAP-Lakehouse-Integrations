@@ -161,8 +161,8 @@ FSx for ONTAP (NFS/SMB/S3 AP)
 |-----------|---------------------|----------------------|
 | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | S3 AP イベントで AWS Context にメタデータ自動登録するパターンが候補 | — |
 | [FSx-for-ONTAP-Agentic-Access-Aware-RAG](https://github.com/Yoshiki0705/FSx-for-ONTAP-Agentic-Access-Aware-RAG) | Permission-aware RAG のディスカバリ層として活用 | Bedrock KB + S3 AP が UC External Location と連携する可能性 |
-| [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) | エッジデバイスデータの AWS Context 自動カタログ登録 | エッジデータの Databricks 側ガバナンス |
-| [fsxn-observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | 監査ログをナレッジグラフで相関分析 | — |
+| [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI) | エッジデバイスデータの AWS Context 自動カタログ登録 | エッジデータの Databricks 側ガバナンス |
+| [FSx-for-ONTAP-Observability-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Observability-integrations) | 監査ログをナレッジグラフで相関分析 | — |
 
 ---
 

@@ -5,7 +5,7 @@
 # Source: factory.events.raw (Kafka)
 # Target: manufacturing_poc.bronze.kafka_events
 #
-# Synced from: ontap-edge-to-cloud-ai Databricks integration design
+# Synced from: ONTAP-Edge-to-Cloud-AI Databricks integration design
 # Sync Date: 2026-06-15
 #
 # This Delta Live Tables pipeline provides:
