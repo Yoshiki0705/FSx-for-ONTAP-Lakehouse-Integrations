@@ -92,7 +92,7 @@
 
 | # | Title | Source | URL | Accessed | Summary | Relevance |
 |---|-------|--------|-----|----------|---------|-----------|
-| REF-080 | ontap-edge-to-cloud-ai | GitHub (Yoshiki0705) | https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai | 2026-06-07 | Separate project for edge devices (Raspberry Pi) that will merge with this platform. | Critical — convergence target |
+| REF-080 | ontap-edge-to-cloud-ai | GitHub (Yoshiki0705) | https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI | 2026-06-07 | Separate project for edge devices (Raspberry Pi) that will merge with this platform. | Critical — convergence target |
 
 
 ## FlexCache — On-Demand Caching (No Data Duplication)

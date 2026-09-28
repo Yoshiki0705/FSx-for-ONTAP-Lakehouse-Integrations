@@ -1,5 +1,5 @@
 -- Manufacturing Data Platform PoC — ClickHouse DDL (Edge v3 Aligned)
--- Synced from: ontap-edge-to-cloud-ai/cloud/clickhouse/ddl/
+-- Synced from: ONTAP-Edge-to-Cloud-AI/cloud/clickhouse/ddl/
 -- Sync Date: 2026-06-15
 -- Schema Version: 2.0.0 (Unified Event Envelope)
 --

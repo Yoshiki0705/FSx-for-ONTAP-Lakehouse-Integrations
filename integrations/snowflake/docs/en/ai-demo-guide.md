@@ -27,7 +27,7 @@ SELECT SNOWFLAKE.CORTEX.PARSE_DOCUMENT(
 
 **Result**: Structured text extracted from the image (~8s).
 
-![PARSE_DOCUMENT OCR extracts text from image on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-08-parse-document-ocr.png)
+![PARSE_DOCUMENT OCR extracts text from image on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-08-parse-document-ocr.png)
 
 *PARSE_DOCUMENT successfully extracts text from an invoice image stored on FSx for ONTAP via S3 Access Point. The result includes structured fields such as invoice number, customer name, and amount.*
 
@@ -46,7 +46,7 @@ LIMIT 1;
 
 **Result**: "The text is a JSON object containing data on humidity, pressure, temperature, sensor ID, status, and timestamp." (3.3s)
 
-![Cortex SUMMARIZE generates AI summary from External Table on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-07-cortex-llm-summary.png)
+![Cortex SUMMARIZE generates AI summary from External Table on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-07-cortex-llm-summary.png)
 
 *Cortex SUMMARIZE generates an AI summary of sensor data stored on FSx for ONTAP, accessed via External Table (3.3s).*
 
@@ -71,7 +71,7 @@ ORDER BY LAST_MODIFIED DESC;
 
 **Result**: File catalog with downloadable URLs for each image.
 
-![Directory Table with presigned URLs for unstructured data on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-06-directory-table-presigned-url.png)
+![Directory Table with presigned URLs for unstructured data on FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-06-directory-table-presigned-url.png)
 
 *Directory Table catalogs image files on FSx for ONTAP with metadata and generates download URLs for each file.*
 
@@ -118,13 +118,13 @@ FROM (
 
 **Result**: ✅ Vision AI correctly identified: Invoice #INV-2026-0524, Customer: Acme Corp, Amount: USD 1,234.56 (41s)
 
-![Vision AI successfully analyzes invoice image from FSx for ONTAP (via internal stage workaround)](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-15-vision-ai-success.png)
+![Vision AI successfully analyzes invoice image from FSx for ONTAP (via internal stage workaround)](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-15-vision-ai-success.png)
 
 *Cortex COMPLETE (pixtral-large) correctly extracts invoice details from an image originally stored on FSx for ONTAP, accessed via the COPY FILES → internal stage → TO_FILE workaround.*
 
 **Why direct TO_FILE on FSx for ONTAP S3 AP fails**:
 
-![TO_FILE returns "Remote file not found" on FSx for ONTAP S3 AP external stage](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-10-tofile-remote-not-found.png)
+![TO_FILE returns "Remote file not found" on FSx for ONTAP S3 AP external stage](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-10-tofile-remote-not-found.png)
 
 *TO_FILE() cannot resolve files on FSx for ONTAP S3 AP external stages. The same file is accessible via PARSE_DOCUMENT (which uses a different file access mechanism) but not via TO_FILE.*
 
@@ -154,11 +154,11 @@ SELECT SNOWFLAKE.CORTEX.EXTRACT_ANSWER(VALUE::VARCHAR,
 ) AS extracted FROM fsxn_sensor_ext_table LIMIT 1;
 ```
 
-![CORTEX.TRANSLATE successfully translates External Table data from FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-11-cortex-translate-success.png)
+![CORTEX.TRANSLATE successfully translates External Table data from FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-11-cortex-translate-success.png)
 
 *CORTEX.TRANSLATE translates sensor status text from English to Japanese directly from External Table on FSx for ONTAP S3 AP (5.1s).*
 
-![CORTEX.COMPLETE generates AI analysis of sensor data from FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-12-cortex-complete-text-success.png)
+![CORTEX.COMPLETE generates AI analysis of sensor data from FSx for ONTAP S3 AP](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-12-cortex-complete-text-success.png)
 
 *CORTEX.COMPLETE (mistral-large2) generates detailed AI analysis of IoT sensor data stored on FSx for ONTAP (16s).*
 
@@ -200,14 +200,14 @@ SELECT SNOWFLAKE.CORTEX.EXTRACT_ANSWER(VALUE::VARCHAR,
 
 ## Screenshots
 
-- [OCR success](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-08-parse-document-ocr.png)
-- [Cortex SUMMARIZE](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-07-cortex-llm-summary.png)
-- [Directory Table](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-06-directory-table-presigned-url.png)
-- [TO_FILE compilation error](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-09-tofile-compilation-error.png)
-- [TO_FILE remote not found](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-10-tofile-remote-not-found.png)
-- [CORTEX.TRANSLATE success](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-11-cortex-translate-success.png)
-- [CORTEX.COMPLETE text success](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-12-cortex-complete-text-success.png)
-- [Vision AI success (workaround)](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-15-vision-ai-success.png)
+- [OCR success](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-08-parse-document-ocr.png)
+- [Cortex SUMMARIZE](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-07-cortex-llm-summary.png)
+- [Directory Table](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-06-directory-table-presigned-url.png)
+- [TO_FILE compilation error](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-09-tofile-compilation-error.png)
+- [TO_FILE remote not found](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-10-tofile-remote-not-found.png)
+- [CORTEX.TRANSLATE success](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-11-cortex-translate-success.png)
+- [CORTEX.COMPLETE text success](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-12-cortex-complete-text-success.png)
+- [Vision AI success (workaround)](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-15-vision-ai-success.png)
 
 ---
 
@@ -243,7 +243,7 @@ Object Tag (classification)
 
 Unlike some platforms, Snowflake applies the same governance controls to External Tables as to native tables:
 
-![SELECT fails without AWS_ACCESS_POINT_ARN — access denied despite LIST working](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-03-select-denied.png)
+![SELECT fails without AWS_ACCESS_POINT_ARN — access denied despite LIST working](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-03-select-denied.png)
 
 *Without `AWS_ACCESS_POINT_ARN`: SELECT fails with "access denied" even though LIST works. With the parameter set, full governance (tags, masking, row policies) can be applied to External Tables on FSx for ONTAP S3 AP.*
 
@@ -290,7 +290,7 @@ ALTER TAG data_classification SET MASKING POLICY pii_mask;
 
 ### FSx for ONTAP S3 AP + Snowflake Governance: Validated
 
-![Snowflake validation summary — all read and governance paths verified](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-05-summary-table.png)
+![Snowflake validation summary — all read and governance paths verified](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-05-summary-table.png)
 
 *Complete validation summary: LIST, SELECT, External Table, COPY INTO, Directory Table, and Governance Tags all verified with `AWS_ACCESS_POINT_ARN`.*
 

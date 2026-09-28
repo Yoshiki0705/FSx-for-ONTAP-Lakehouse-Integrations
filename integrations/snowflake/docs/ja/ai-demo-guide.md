@@ -27,7 +27,7 @@ SELECT SNOWFLAKE.CORTEX.PARSE_DOCUMENT(
 
 **結果**: 画像から構造化テキストを抽出（約8秒）。
 
-![PARSE_DOCUMENT OCR が FSx for ONTAP S3 AP 上の画像からテキストを抽出](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-08-parse-document-ocr.png)
+![PARSE_DOCUMENT OCR が FSx for ONTAP S3 AP 上の画像からテキストを抽出](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-08-parse-document-ocr.png)
 
 *PARSE_DOCUMENT が FSx for ONTAP S3 Access Point 経由で保存された請求書画像からテキストを抽出。請求書番号、顧客名、金額などの構造化フィールドを含む結果を返却。*
 
@@ -46,7 +46,7 @@ LIMIT 1;
 
 **結果**: "The text is a JSON object containing data on humidity, pressure, temperature, sensor ID, status, and timestamp."（3.3秒）
 
-![Cortex SUMMARIZE が External Table 経由で FSx for ONTAP S3 AP データの AI 要約を生成](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-07-cortex-llm-summary.png)
+![Cortex SUMMARIZE が External Table 経由で FSx for ONTAP S3 AP データの AI 要約を生成](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-07-cortex-llm-summary.png)
 
 *Cortex SUMMARIZE が FSx for ONTAP に保存されたセンサーデータの AI 要約を生成（External Table 経由、3.3秒）。*
 
@@ -71,7 +71,7 @@ ORDER BY LAST_MODIFIED DESC;
 
 **結果**: 各画像のダウンロード URL 付きファイルカタログ。
 
-![Directory Table が FSx for ONTAP S3 AP 上の非構造化データをカタログ化し presigned URL を生成](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-06-directory-table-presigned-url.png)
+![Directory Table が FSx for ONTAP S3 AP 上の非構造化データをカタログ化し presigned URL を生成](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-06-directory-table-presigned-url.png)
 
 *Directory Table が FSx for ONTAP 上の画像ファイルをメタデータ付きでカタログ化し、各ファイルのダウンロード URL を生成。*
 
@@ -118,13 +118,13 @@ FROM (
 
 **結果**: ✅ Vision AI が正確に識別: Invoice #INV-2026-0524, Customer: Acme Corp, Amount: USD 1,234.56（41秒）
 
-![Vision AI が FSx for ONTAP の請求書画像を正常に分析（内部ステージ回避策経由）](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-15-vision-ai-success.png)
+![Vision AI が FSx for ONTAP の請求書画像を正常に分析（内部ステージ回避策経由）](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-15-vision-ai-success.png)
 
 *Cortex COMPLETE (pixtral-large) が FSx for ONTAP に保存された画像から請求書詳細を正確に抽出。COPY FILES → 内部ステージ → TO_FILE 回避策を使用。*
 
 **FSx for ONTAP S3 AP で直接 TO_FILE が失敗する理由**:
 
-![TO_FILE が FSx for ONTAP S3 AP 外部ステージで "Remote file not found" を返す](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-10-tofile-remote-not-found.png)
+![TO_FILE が FSx for ONTAP S3 AP 外部ステージで "Remote file not found" を返す](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-10-tofile-remote-not-found.png)
 
 *TO_FILE() は FSx for ONTAP S3 AP 外部ステージのファイルを解決できない。同じファイルは PARSE_DOCUMENT（異なるファイルアクセスメカニズムを使用）ではアクセス可能だが、TO_FILE では不可。*
 
@@ -154,11 +154,11 @@ SELECT SNOWFLAKE.CORTEX.EXTRACT_ANSWER(VALUE::VARCHAR,
 ) AS extracted FROM fsxn_sensor_ext_table LIMIT 1;
 ```
 
-![CORTEX.TRANSLATE が FSx for ONTAP S3 AP の External Table データを正常に翻訳](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-11-cortex-translate-success.png)
+![CORTEX.TRANSLATE が FSx for ONTAP S3 AP の External Table データを正常に翻訳](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-11-cortex-translate-success.png)
 
 *CORTEX.TRANSLATE が FSx for ONTAP S3 AP 上の External Table からセンサーステータステキストを英語から日本語に翻訳（5.1秒）。*
 
-![CORTEX.COMPLETE が FSx for ONTAP S3 AP のセンサーデータの AI 分析を生成](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-12-cortex-complete-text-success.png)
+![CORTEX.COMPLETE が FSx for ONTAP S3 AP のセンサーデータの AI 分析を生成](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-12-cortex-complete-text-success.png)
 
 *CORTEX.COMPLETE (mistral-large2) が FSx for ONTAP に保存された IoT センサーデータの詳細な AI 分析を生成（16秒）。*
 
@@ -200,14 +200,14 @@ SELECT SNOWFLAKE.CORTEX.EXTRACT_ANSWER(VALUE::VARCHAR,
 
 ## スクリーンショット
 
-- [OCR 成功](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-08-parse-document-ocr.png)
-- [Cortex SUMMARIZE](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-07-cortex-llm-summary.png)
-- [Directory Table](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-06-directory-table-presigned-url.png)
-- [TO_FILE コンパイルエラー](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-09-tofile-compilation-error.png)
-- [TO_FILE remote not found](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-10-tofile-remote-not-found.png)
-- [CORTEX.TRANSLATE 成功](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-11-cortex-translate-success.png)
-- [CORTEX.COMPLETE テキスト成功](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-12-cortex-complete-text-success.png)
-- [Vision AI 成功（回避策）](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-15-vision-ai-success.png)
+- [OCR 成功](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-08-parse-document-ocr.png)
+- [Cortex SUMMARIZE](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-07-cortex-llm-summary.png)
+- [Directory Table](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-06-directory-table-presigned-url.png)
+- [TO_FILE コンパイルエラー](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-09-tofile-compilation-error.png)
+- [TO_FILE remote not found](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-10-tofile-remote-not-found.png)
+- [CORTEX.TRANSLATE 成功](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-11-cortex-translate-success.png)
+- [CORTEX.COMPLETE テキスト成功](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-12-cortex-complete-text-success.png)
+- [Vision AI 成功（回避策）](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-15-vision-ai-success.png)
 
 ---
 
@@ -243,7 +243,7 @@ Object Tag（分類）
 
 一部のプラットフォームとは異なり、Snowflake は External Table にもネイティブテーブルと同じガバナンス制御を適用します:
 
-![AWS_ACCESS_POINT_ARN なしでは SELECT が失敗 — LIST は動作するのに access denied](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-03-select-denied.png)
+![AWS_ACCESS_POINT_ARN なしでは SELECT が失敗 — LIST は動作するのに access denied](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-03-select-denied.png)
 
 *`AWS_ACCESS_POINT_ARN` なし: LIST は動作するが SELECT は "access denied" で失敗。パラメータ設定後は、FSx for ONTAP S3 AP 上の External Table に完全なガバナンス（タグ、マスキング、Row Policy）を適用可能。*
 
@@ -290,7 +290,7 @@ ALTER TAG data_classification SET MASKING POLICY pii_mask;
 
 ### FSx for ONTAP S3 AP + Snowflake ガバナンス: 検証済み
 
-![Snowflake 検証サマリー — 全ての読み取りおよびガバナンスパスを検証](https://raw.githubusercontent.com/Yoshiki0705/fsxn-lakehouse-integrations/main/docs/images/snowflake-05-summary-table.png)
+![Snowflake 検証サマリー — 全ての読み取りおよびガバナンスパスを検証](https://raw.githubusercontent.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/main/docs/images/snowflake-05-summary-table.png)
 
 *検証結果サマリー: LIST、SELECT、External Table、COPY INTO、Directory Table、Governance Tags の全てを `AWS_ACCESS_POINT_ARN` 付きで検証済み。*
 

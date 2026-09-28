@@ -77,8 +77,8 @@ integrations/snapmirror-flexcache-multicloud/
 
 ```bash
 # 1. リポジトリをクローン
-git clone https://github.com/Yoshiki0705/fsxn-lakehouse-integrations.git
-cd fsxn-lakehouse-integrations/integrations/snapmirror-flexcache-multicloud
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations.git
+cd FSx-for-ONTAP-Lakehouse-Integrations/integrations/snapmirror-flexcache-multicloud
 
 # 2. パラメータをコピーして編集
 cp scripts/validation/cross-region-params.env.example scripts/validation/cross-region-params.env

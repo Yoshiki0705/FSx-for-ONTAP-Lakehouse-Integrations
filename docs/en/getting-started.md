@@ -13,8 +13,8 @@
 ## Step 1: Clone Repository
 
 ```bash
-git clone https://github.com/Yoshiki0705/fsxn-lakehouse-integrations.git
-cd fsxn-lakehouse-integrations
+git clone https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations.git
+cd FSx-for-ONTAP-Lakehouse-Integrations
 ```
 
 ## Step 2: Deploy Base Infrastructure

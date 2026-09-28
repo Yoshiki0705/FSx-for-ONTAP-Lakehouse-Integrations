@@ -1,8 +1,8 @@
 # 14. Edge-to-Cloud ↔ Lakehouse Project Synchronization
 
 **Sync Date**: 2026-06-15
-**Edge Repository**: [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai)
-**Lakehouse Repository**: [fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations)
+**Edge Repository**: [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI)
+**Lakehouse Repository**: [FSx-for-ONTAP-Lakehouse-Integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations)
 
 ---
 
@@ -133,7 +133,7 @@ manufacturing_poc (catalog)
 
 **Import procedure**:
 ```bash
-EDGE_REPO="../ontap-edge-to-cloud-ai"
+EDGE_REPO="../ONTAP-Edge-to-Cloud-AI"
 cp ${EDGE_REPO}/tests/sample_events/*.json \
    integrations/manufacturing-data-platform/poc/shared-test-data/samples/
 ```

@@ -100,7 +100,7 @@ See [cost-estimate.md](cost-estimate.md) for detailed breakdown.
 | Risk | Mitigation |
 |------|-----------|
 | FSx throughput impact on NFS/SMB workloads | Measure during PoC; rollback = revoke AP policy |
-| Platform doesn't support S3 AP | Validated in [blog series](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations#blog-series--ブログシリーズ); fallback = DataSync |
+| Platform doesn't support S3 AP | Validated in [blog series](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations#blog-series--ブログシリーズ); fallback = DataSync |
 | Governance requirements not met | Lake Formation (AWS) or Snowflake Tags provide fine-grained control |
 | PoC data contains sensitive information | Use synthetic data; real data only after approval |
 
@@ -118,6 +118,6 @@ See [cost-estimate.md](cost-estimate.md) for detailed breakdown.
 
 ## References
 
-- [GitHub: fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations)
+- [GitHub: fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations)
 - [AWS: FSx for ONTAP S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
-- [Blog Series: 7-part validation](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations#blog-series--ブログシリーズ)
+- [Blog Series: 7-part validation](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations#blog-series--ブログシリーズ)

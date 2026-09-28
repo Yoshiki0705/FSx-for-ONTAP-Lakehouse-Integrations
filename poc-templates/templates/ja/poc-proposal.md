@@ -94,7 +94,7 @@ After:  NFS/SMB ←→ FSx for ONTAP ←→ S3 Access Point → 分析プラッ�
 | リスク | 軽減策 |
 |--------|-------|
 | NFS/SMB ワークロードへの FSx スループット影響 | PoC 中に測定; ロールバック = AP ポリシー取り消し |
-| プラットフォームが S3 AP を非サポート | [ブログシリーズ](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations#blog-series--ブログシリーズ)で検証済み; フォールバック = DataSync |
+| プラットフォームが S3 AP を非サポート | [ブログシリーズ](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations#blog-series--ブログシリーズ)で検証済み; フォールバック = DataSync |
 | ガバナンス要件を満たせない | Lake Formation (AWS) または Snowflake Tags で細粒度制御を提供 |
 | PoC データに機密情報を含む | 合成データを使用; 承認後のみ実データ |
 
@@ -112,6 +112,6 @@ After:  NFS/SMB ←→ FSx for ONTAP ←→ S3 Access Point → 分析プラッ�
 
 ## 参考資料
 
-- [GitHub: fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations)
+- [GitHub: fsxn-lakehouse-integrations](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations)
 - [AWS: FSx for ONTAP S3 Access Points](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)
-- [ブログシリーズ: 7パート検証](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations#blog-series--ブログシリーズ)
+- [ブログシリーズ: 7パート検証](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations#blog-series--ブログシリーズ)

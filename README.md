@@ -2,8 +2,8 @@
 
 # FSx for ONTAP Lakehouse Integrations
 
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Yoshiki0705/fsxn-lakehouse-integrations/badge)](https://scorecard.dev/viewer/?uri=github.com/Yoshiki0705/fsxn-lakehouse-integrations)
-[![gitleaks](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/Yoshiki0705/fsxn-lakehouse-integrations/actions/workflows/gitleaks.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/badge)](https://scorecard.dev/viewer/?uri=github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations)
+[![gitleaks](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/Yoshiki0705/FSx-for-ONTAP-Lakehouse-Integrations/actions/workflows/gitleaks.yml)
 
 > Validation framework for querying enterprise file data (NFS/SMB) from analytics and lakehouse engines via **FSx for ONTAP S3 Access Points** — without data movement. For data engineers, solutions architects, and implementation partners evaluating zero-copy analytics on existing file storage.
 
@@ -111,7 +111,7 @@ Full architecture details: [docs/en/architecture.md](docs/en/architecture.md)
 | Repository | Description |
 |---|---|
 | [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) | 17 serverless patterns for FSx for ONTAP S3 AP |
-| [ontap-edge-to-cloud-ai](https://github.com/Yoshiki0705/ontap-edge-to-cloud-ai) | Edge (Raspberry Pi) → ONTAP → Kafka — feeds [Manufacturing Platform](integrations/manufacturing-data-platform/) |
+| [ONTAP-Edge-to-Cloud-AI](https://github.com/Yoshiki0705/ONTAP-Edge-to-Cloud-AI) | Edge (Raspberry Pi) → ONTAP → Kafka — feeds [Manufacturing Platform](integrations/manufacturing-data-platform/) |
 | [FSx-for-ONTAP-Adoption-Playbook](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook) | Adoption design notes organized by lifecycle and domain. Its Data Utilization hub covers the access-point constraints and dataset-versioning decisions that sit upstream of the integrations here |
 
 **Documentation index**: [Reading Path Guide](docs/en/reading-path-guide.md) · [Industry Solution Catalog (26 industries)](docs/en/industry-solution-catalog.md)
