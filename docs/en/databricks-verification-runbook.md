@@ -1,4 +1,4 @@
-🌐 **English** | [日本語](../ja/databricks-verification-runbook.md)
+**English** | [日本語](../ja/databricks-verification-runbook.md)
 
 # Runbook: Unity Catalog on an FSx for ONTAP S3 Access Point
 
@@ -13,7 +13,7 @@ result and it is not a mistake on your part:
 | Step | Expected result |
 |---|---|
 | Register a storage credential, an external location and an external volume on an Access Point alias | ✅ Succeeds, with Unity Catalog's own validation enabled |
-| Read through them (`read_files`, `list_files`, `to_file`, `dbutils.fs.ls`) | ❌ Denied with 403 |
+| Read through them (`read_files`, `list_files`, `to_file`, `dbutils.fs.ls`) | Denied with 403 |
 | The same read against a native S3 bucket | ✅ Succeeds, object tags populated |
 
 The read is denied because AWS authorises an Access Point request against the
@@ -68,7 +68,7 @@ because a Unity Catalog storage credential reaches into that account.
 
 | Option | Works for this test? | Cost |
 |---|---|---|
-| 14-day trial workspace | ❌ Serverless-only, so no storage credential into your account | Free |
+| 14-day trial workspace | No. Serverless-only, so no storage credential into your account | Free |
 | Non-trial, "Use your existing cloud account", same region | ✅ This is the one | See the cost table |
 | Existing workspace in another region | ⚠️ Cross-region adds a variable you do not want in a verification | Whatever it already costs |
 

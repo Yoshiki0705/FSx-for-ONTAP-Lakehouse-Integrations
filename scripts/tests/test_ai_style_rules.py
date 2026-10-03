@@ -156,5 +156,60 @@ class CopyableCli(unittest.TestCase):
         self.assertEqual(self.run_cli("--selftest").returncode, 0)
 
 
+class TheGateIsWiredAndBites(unittest.TestCase):
+    """The ai-style workflow runs the detector with --fail, so a fail-tier finding gates.
+
+    The report-only phase ran --summary only, which counts findings but never changes the
+    exit code. These tests pin the flip: the workflow invokes --fail on the corpus paths, and
+    a fail-tier string injected into one of those paths makes --fail exit 1. Without the
+    injection the corpus is clean, so the gate passes today and bites the moment a D1/D2/D5/D14
+    finding is introduced.
+    """
+
+    WORKFLOW = ROOT / ".github" / "workflows" / "ai-style.yml"
+    GATE_PATHS = ("docs/ja", "docs/en", "README-ja.md", "README.md")
+
+    def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "ai_style_rules.py"), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+
+    def test_workflow_gates_with_fail_on_the_corpus(self) -> None:
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        gate_line = next(
+            (
+                line
+                for line in text.splitlines()
+                if "ai_style_rules.py" in line and "--fail" in line
+            ),
+            None,
+        )
+        self.assertIsNotNone(
+            gate_line, "the workflow must invoke the detector with --fail"
+        )
+        for path in self.GATE_PATHS:
+            self.assertIn(path, gate_line, f"the gate must cover {path}")
+        # The report-only phase named itself so; the flipped workflow must not.
+        self.assertNotIn("report-only", text)
+
+    def test_corpus_passes_the_gate_today(self) -> None:
+        result = self.run_cli(*self.GATE_PATHS, "--fail")
+        self.assertEqual(
+            result.returncode, 0, "the corpus has a fail-tier finding the gate would reject"
+        )
+
+    def test_a_fail_tier_finding_makes_the_gate_exit_one(self) -> None:
+        """Negative control: inject a D1 string next to the corpus and the gate must bite."""
+        with tempfile.TemporaryDirectory() as name:
+            note = Path(name) / "scratch.md"
+            note.write_text("上は**「X」**で引く。\n", encoding="utf-8")
+            self.assertEqual(self.run_cli(str(note), "--fail").returncode, 1)
+            self.assertEqual(self.run_cli(str(note)).returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

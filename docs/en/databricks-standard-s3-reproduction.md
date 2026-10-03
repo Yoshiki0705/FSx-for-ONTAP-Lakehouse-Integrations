@@ -1,4 +1,4 @@
-🌐 **English** | [日本語](../ja/databricks-standard-s3-reproduction.md)
+**English** | [日本語](../ja/databricks-standard-s3-reproduction.md)
 
 # Reproducing the standard-S3 × Databricks unstructured-AI PoC
 

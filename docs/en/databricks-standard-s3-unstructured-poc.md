@@ -1,4 +1,4 @@
-🌐 **English** | [日本語](../ja/databricks-standard-s3-unstructured-poc.md)
+**English** | [日本語](../ja/databricks-standard-s3-unstructured-poc.md)
 
 # Databricks Unstructured-Data AI on a Standard S3 Bucket — PoC
 
@@ -12,11 +12,15 @@
 
 ## Executive Summary
 
-- **Subject and result**: given data on a **standard S3 general purpose bucket**, Databricks unstructured-data AI was confirmed to work live. `ai_query` LLM Vision, `ai_parse_document` OCR, FILE type, AI Functions (`ai_classify` / `ai_gen` / `ai_analyze_sentiment`), and Genie natural-language querying all held over data on standard S3. Vector Search held up to endpoint creation; the index did not reach ONLINE within the session (see [Verification Status](#verification-status)).
-- **Why a standard bucket works**: on an FSx for ONTAP S3 Access Point, unstructured-data AI is blocked by [BLK-001](./blocker-tracker.md#blk-001-uc-credential-vending-does-not-authorise-s3-ap-reads) because the down-scoped session policy Unity Catalog vends is written in **bucket-form ARNs** while AWS authorises access-point requests against the **access point ARN**. On a standard S3 bucket both the request and the session policy use the same bucket-form ARN, so the mismatch does not arise. The UC External Location validation here returned Success for Read / List / Write / Delete, confirming this by measurement (see [IAM / authentication and authorization behaviour](#2-iam--authentication-and-authorization-behaviour-on-standard-s3)).
-- **From an IAM / auth standpoint**: on a standard bucket all core operations (read/write, AssumeRole, External ID condition) passed. Only File Events (S3 bucket notifications) failed, for lack of the `s3:GetBucketNotification` permission — an optional feature that does not block core function. A presigned URL is a client-side SigV4 calculation and works on a standard bucket as an ordinary `GetObject`.
-- **Contrast with Snowflake**: the same "NAS → standard S3 → governed AI" is achievable with Snowflake Cortex. Databricks AI Functions map to Cortex AISQL, Vector Search to Cortex Search, and Genie to Cortex Analyst (see [contrast](#5-contrast-with-snowflake-cortex)). Not which is better, but which fits your existing platform and use.
-- **Recommended shape**: the core of unstructured-data usage (Vision, OCR, FILE type, AI Functions, NL querying) holds on a standard S3 bucket with UC today. It is the practical route when you want governance and AI on Databricks.
+Subject and result: given data on a standard S3 general purpose bucket, Databricks unstructured-data AI was confirmed to work live. `ai_query` LLM Vision, `ai_parse_document` OCR, FILE type, AI Functions (`ai_classify` / `ai_gen` / `ai_analyze_sentiment`), and Genie natural-language querying all held over data on standard S3. Vector Search held up to endpoint creation; the index did not reach ONLINE within the session (see [Verification Status](#verification-status)).
+
+Why a standard bucket works: on an FSx for ONTAP S3 Access Point, unstructured-data AI is blocked by [BLK-001](./blocker-tracker.md#blk-001-uc-credential-vending-does-not-authorise-s3-ap-reads) because the down-scoped session policy Unity Catalog vends is written in bucket-form ARNs while AWS authorises access-point requests against the access point ARN. On a standard S3 bucket both the request and the session policy use the same bucket-form ARN, so the mismatch does not arise. The UC External Location validation here returned Success for Read / List / Write / Delete, confirming this by measurement (see [IAM / authentication and authorization behaviour](#2-iam--authentication-and-authorization-behaviour-on-standard-s3)).
+
+From an IAM / auth standpoint, on a standard bucket all core operations (read/write, AssumeRole, External ID condition) passed. Only File Events (S3 bucket notifications) failed, for lack of the `s3:GetBucketNotification` permission, which is an optional feature that does not block core function. A presigned URL is a client-side SigV4 calculation and works on a standard bucket as an ordinary `GetObject`.
+
+Contrast with Snowflake: the same "NAS → standard S3 → governed AI" is achievable with Snowflake Cortex. Databricks AI Functions map to Cortex AISQL, Vector Search to Cortex Search, and Genie to Cortex Analyst (see [contrast](#5-contrast-with-snowflake-cortex)). The question is not which is better, but which fits your existing platform and use.
+
+Recommended shape: the core of unstructured-data usage (Vision, OCR, FILE type, AI Functions, NL querying) holds on a standard S3 bucket with UC today. It is the practical route when you want governance and AI on Databricks.
 
 ---
 
@@ -74,8 +78,8 @@ The IAM role's trust policy allows AssumeRole from the Databricks Unity Catalog 
 | | Standard S3 general purpose bucket | FSx for ONTAP S3 Access Point |
 |---|---|---|
 | ARN the request is authorized against | Bucket-form `arn:aws:s3:::<bucket>` | Access point ARN `arn:aws:s3:<region>:<account>:accesspoint/<name>` |
-| ARN form of the session policy UC vends | Bucket-form | Bucket-form (**same**) |
-| Do they match | ✅ Match → read succeeds | ❌ Mismatch → `s3:ListBucket` denied (BLK-001) |
+| ARN form of the session policy UC vends | Bucket-form | Bucket-form (same) |
+| Do they match | Match (read succeeds) | Mismatch (`s3:ListBucket` denied, BLK-001) |
 
 On a standard bucket, the request's evaluation target and the session policy's wording are both bucket-form ARNs, so the intersection is not empty. This is the technical basis for "stage to standard S3 and governed AI under UC holds" ([BLK-001](./blocker-tracker.md#blk-001-uc-credential-vending-does-not-authorise-s3-ap-reads)).
 
@@ -89,10 +93,10 @@ On a standard bucket, the request's evaluation target and the session policy's w
 
 **Evidence tier: Verified** (the External Location validation in this environment).
 
-In the External Location connection check, while every core operation returned Success, **only File Events (S3 bucket notifications) provisioning failed**. The cause was that the assumed session lacked `s3:GetBucketNotification` (`no identity-based policy allows the s3:GetBucketNotification action`, HTTP 403).
+In the External Location connection check, while every core operation returned Success, only File Events (S3 bucket notifications) provisioning failed. The cause was that the assumed session lacked `s3:GetBucketNotification` (`no identity-based policy allows the s3:GetBucketNotification action`, HTTP 403).
 
-- File Events is an **optional feature** (improves ingestion performance, reduces storage-listing cost); reads, writes and AI processing hold without it. You can proceed with "Force create".
-- **IAM implication**: to use UC File Events, the IAM role needs `s3:GetBucketNotification` (and `PutBucketNotification`, etc.). A read/write-centric least-privilege policy will fail File Events but does not block core function. Whether you use File Events changes the IAM permissions you need — a design decision point.
+- File Events is an optional feature (improves ingestion performance, reduces storage-listing cost); reads, writes and AI processing hold without it. You can proceed with "Force create".
+- IAM implication: to use UC File Events, the IAM role needs `s3:GetBucketNotification` (and `PutBucketNotification`, etc.). A read/write-centric least-privilege policy will fail File Events but does not block core function. Whether you use File Events changes the IAM permissions you need, which is a design decision point.
 
 ### 2.4 Where presigned URLs fit
 
@@ -190,8 +194,7 @@ A Delta table of chunked extracted text (with Change Data Feed enabled) was buil
 
 The inspection table extracted by `ai_parse_document` was made into a structured table (`item` / `status` / `score`, with a table comment), connected to a Genie Agent, and queried in natural language.
 
-- **Question**: "Which inspection item has the lowest score?"
-- **Genie's answer** (NL → SQL auto-generated → executed → NL answer): "The inspection item with the lowest score is **Weld seam** with a score of **0.71**. This item has a status of 'Review', indicating it requires further attention." → correct.
+The question was "Which inspection item has the lowest score?". Genie's answer (NL → SQL auto-generated → executed → NL answer) was "The inspection item with the lowest score is Weld seam with a score of 0.71. This item has a status of 'Review', indicating it requires further attention." and was correct.
 
 The sequence "structure the unstructured data with `ai_parse_document` → query that table in natural language with Genie" held. This is symmetric with Snowflake's "`PARSE_DOCUMENT` → Cortex Analyst." Genie runs on the SQL warehouse and incurs no always-on charge.
 
@@ -240,10 +243,13 @@ Snowflake Cortex is an umbrella over several features, and the Databricks counte
 
 ### 5.2 How to choose (right-tool-for-the-job)
 
-- **Organization already on Databricks**: register the standard S3 bucket as a UC External Location and put unstructured-data AI on it directly with `ai_query` / `ai_parse_document` / AI Functions / FILE type / Genie. This PoC confirmed the sequence works live.
-- **Organization already on Snowflake**: the equivalent is available with External Table + Cortex, or COPY INTO an internal table ([Snowflake integration README](../../integrations/snowflake/README.md)).
-- **Organization using both**: hold the standard S3 bucket in an open format (Delta / Iceberg) so both engines can read it. Do not duplicate storage; use each engine for what it fits.
-- Trade-offs symmetrically: Databricks has the Vector Search endpoint's always-on cost and 24-hour billing rule, and the US-region constraint on pay-per-token. Snowflake has the constraint that `TO_FILE` for Vision cannot resolve over an S3 Access Point external stage (needs a copy-to-internal-stage workaround). Neither runs every feature unconditionally on the spot.
+| Organization situation | Recommended shape |
+|---|---|
+| Already on Databricks | Register the standard S3 bucket as a UC External Location and put unstructured-data AI on it directly with `ai_query` / `ai_parse_document` / AI Functions / FILE type / Genie. This PoC confirmed the sequence works live |
+| Already on Snowflake | The equivalent is available with External Table + Cortex, or COPY INTO an internal table ([Snowflake integration README](../../integrations/snowflake/README.md)) |
+| Using both | Hold the standard S3 bucket in an open format (Delta / Iceberg) so both engines can read it. Do not duplicate storage; use each engine for what it fits |
+
+Read the trade-offs symmetrically. Databricks has the Vector Search endpoint's always-on cost and 24-hour billing rule, and the US-region constraint on pay-per-token. Snowflake has the constraint that `TO_FILE` for Vision cannot resolve over an S3 Access Points external stage (needs a copy-to-internal-stage workaround). Neither runs every feature unconditionally on the spot.
 
 ---
 

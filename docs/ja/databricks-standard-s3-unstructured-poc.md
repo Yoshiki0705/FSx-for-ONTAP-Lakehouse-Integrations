@@ -1,4 +1,4 @@
-🌐 [English](../en/databricks-standard-s3-unstructured-poc.md) | **日本語**
+[English](../en/databricks-standard-s3-unstructured-poc.md) | **日本語**
 
 # 標準 S3 バケット上の Databricks 非構造化データ AI 活用 PoC
 
@@ -12,11 +12,15 @@
 
 ## エグゼクティブサマリー
 
-- **主題と結果**: データが**標準 S3 汎用バケット**にある前提で、Databricks の非構造化データ AI が実際に動くことを実機で確認した。`ai_query` の LLM Vision、`ai_parse_document` の OCR、FILE 型、AI Functions（`ai_classify`/`ai_gen`/`ai_analyze_sentiment`）、Genie の自然言語問い合わせが標準 S3 上のデータに対して成立した。Vector Search はエンドポイント作成まで成立し、インデックスの ONLINE 化は本環境で時間内に完了しなかった（[検証ステータス](#検証ステータス)）。
-- **なぜ標準バケットなら成立するのか**: FSx for ONTAP S3 Access Point 上で非構造化データ AI が [BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り) に阻まれるのは、Unity Catalog が払い出す down-scoped セッションポリシーが**バケット形式 ARN** で書かれる一方、AWS はアクセスポイント経由のリクエストを**アクセスポイント ARN** に対して認可評価するためだった。標準 S3 バケットでは要求もセッションポリシーも同じバケット形式 ARN なので、この不一致が起きない。本環境の UC External Location 検証で Read / List / Write / Delete がすべて Success したことで、これが実測で裏付けられた（[IAM / 認証・認可の挙動](#2-標準-s3-での-iam--認証認可の挙動)）。
-- **IAM / 認証観点の所見**: 標準バケットではコア操作（読み書き・AssumeRole・External ID 条件）がすべて通った。唯一 File Events（S3 バケット通知）だけが `s3:GetBucketNotification` 権限不足で Failed になったが、これは任意機能でコア機能をブロックしない。presigned URL はクライアント側の SigV4 計算であり、標準バケットでは `GetObject` として普通に動く。
-- **Snowflake との対比**: 同じ「NAS → 標準 S3 → ガバナンス付き AI」を Snowflake Cortex でも実現できる。Databricks の AI Functions は Cortex AISQL 相当、Vector Search は Cortex Search 相当、Genie は Cortex Analyst 相当である（[対比節](#5-snowflake-cortex-との対比)）。どちらが優れているかではなく、既存プラットフォームと用途で選ぶ。
-- **推奨する形**: 非構造化データ活用の中核（Vision・OCR・FILE 型・AI Functions・NL 問い合わせ）は、標準 S3 バケット + UC で今日成立する。ガバナンスと AI を Databricks で得たい場合の実務経路である。
+主題と結果: データが標準 S3 汎用バケットにある前提で、Databricks の非構造化データ AI が実際に動くことを実機で確認した。`ai_query` の LLM Vision、`ai_parse_document` の OCR、FILE 型、AI Functions（`ai_classify`/`ai_gen`/`ai_analyze_sentiment`）、Genie の自然言語問い合わせが標準 S3 上のデータに対して成立した。Vector Search はエンドポイント作成まで成立し、インデックスの ONLINE 化は本環境で時間内に完了しなかった（[検証ステータス](#検証ステータス)）。
+
+標準バケットなら成立する理由は次のとおり。FSx for ONTAP S3 Access Points 上で非構造化データ AI が [BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り) に阻まれるのは、Unity Catalog が払い出す down-scoped セッションポリシーがバケット形式 ARN で書かれる一方、AWS はアクセスポイント経由のリクエストをアクセスポイント ARN に対して認可評価するためだった。標準 S3 バケットでは要求もセッションポリシーも同じバケット形式 ARN なので、この不一致が起きない。本環境の UC External Location 検証で Read / List / Write / Delete がすべて Success したことで、これが実測で裏付けられた（[IAM / 認証・認可の挙動](#2-標準-s3-での-iam--認証認可の挙動)）。
+
+IAM / 認証観点の所見として、標準バケットではコア操作（読み書き・AssumeRole・External ID 条件）がすべて通った。唯一 File Events（S3 バケット通知）だけが `s3:GetBucketNotification` 権限不足で Failed になったが、これは任意機能でコア機能をブロックしない。presigned URL はクライアント側の SigV4 計算であり、標準バケットでは `GetObject` として普通に動く。
+
+Snowflake との対比として、同じ「NAS → 標準 S3 → ガバナンス付き AI」を Snowflake Cortex でも実現できる。Databricks の AI Functions は Cortex AISQL 相当、Vector Search は Cortex Search 相当、Genie は Cortex Analyst 相当である（[対比節](#5-snowflake-cortex-との対比)）。優劣ではなく、既存プラットフォームと用途で選ぶ。
+
+推奨する形として、非構造化データ活用の中核（Vision・OCR・FILE 型・AI Functions・NL 問い合わせ）は、標準 S3 バケット + UC で今日成立する。ガバナンスと AI を Databricks で得たい場合の実務経路である。
 
 ---
 
@@ -74,8 +78,8 @@ IAM ロールは信頼ポリシーで Databricks の Unity Catalog アカウン�
 | | 標準 S3 汎用バケット | FSx for ONTAP S3 Access Point |
 |---|---|---|
 | リクエストの認可評価対象 ARN | バケット形式 `arn:aws:s3:::<bucket>` | アクセスポイント ARN `arn:aws:s3:<region>:<account>:accesspoint/<name>` |
-| UC が払い出すセッションポリシーの ARN 形式 | バケット形式 | バケット形式（**同じ**） |
-| 一致するか | ✅ 一致する → 読み取り成立 | ❌ 不一致 → `s3:ListBucket` が拒否（BLK-001） |
+| UC が払い出すセッションポリシーの ARN 形式 | バケット形式 | バケット形式（同じ） |
+| 一致するか | 一致する（読み取り成立） | 不一致（`s3:ListBucket` が拒否、BLK-001） |
 
 標準バケットでは、リクエストの評価対象とセッションポリシーの記述がどちらもバケット形式 ARN なので積集合が空にならない。これが「標準 S3 へステージングすれば UC ガバナンス下の AI が成立する」の技術的な根拠である（[BLK-001](./blocker-tracker.md#blk-001-uc-の資格情報払い出しでは通らない-s3-ap-の読み取り)）。
 
@@ -89,10 +93,10 @@ IAM ロールは信頼ポリシーで Databricks の Unity Catalog アカウン�
 
 **Evidence tier: Verified**（本環境の External Location 検証）。
 
-External Location の接続検証で、コア操作がすべて Success する一方、**File Events（S3 バケット通知）の provision だけが Failed** になった。原因は AssumeRole したセッションが `s3:GetBucketNotification` を持たないこと（`no identity-based policy allows the s3:GetBucketNotification action`, HTTP 403）。
+External Location の接続検証で、コア操作がすべて Success する一方、File Events（S3 バケット通知）の provision だけが Failed になった。原因は AssumeRole したセッションが `s3:GetBucketNotification` を持たないこと（`no identity-based policy allows the s3:GetBucketNotification action`, HTTP 403）。
 
-- File Events は**任意機能**（取り込み性能の向上・ストレージ一覧コストの削減）であり、無くても読み書きと AI 処理は成立する。「Force create」で先へ進める。
-- **IAM 観点の含意**: UC の File Events を使うなら IAM ロールに `s3:GetBucketNotification`（および `PutBucketNotification` など）が必要。読み書き中心の最小権限では File Events が付かず Failed になるが、コア機能はブロックされない。File Events を使うかどうかで必要な IAM 権限が変わる、という設計判断ポイントである。
+- File Events は任意機能（取り込み性能の向上・ストレージ一覧コストの削減）であり、無くても読み書きと AI 処理は成立する。「Force create」で先へ進める。
+- IAM 観点の含意として、UC の File Events を使うなら IAM ロールに `s3:GetBucketNotification`（および `PutBucketNotification` など）が必要になる。読み書き中心の最小権限では File Events が付かず Failed になるが、コア機能はブロックされない。File Events を使うかどうかで必要な IAM 権限が変わる、という設計判断ポイントである。
 
 ### 2.4 presigned URL の位置づけ
 
@@ -190,8 +194,7 @@ Vision（`ai_query`）と OCR（`ai_parse_document`）と合わせ、Cortex AISQ
 
 `ai_parse_document` で抽出した点検表を構造化テーブル（`item` / `status` / `score`、テーブルコメント付き）にし、Genie Agent に接続して自然言語で質問した。
 
-- **質問**: "Which inspection item has the lowest score?"
-- **Genie の回答**（NL → SQL 自動生成 → 実行 → NL 回答）: "The inspection item with the lowest score is **Weld seam** with a score of **0.71**. This item has a status of 'Review', indicating it requires further attention." → 正答。
+質問は "Which inspection item has the lowest score?"。Genie の回答（NL → SQL 自動生成 → 実行 → NL 回答）は "The inspection item with the lowest score is Weld seam with a score of 0.71. This item has a status of 'Review', indicating it requires further attention." で、正答だった。
 
 「非構造化データを `ai_parse_document` で構造化 → その表に Genie で自然言語問い合わせ」という一連が成立した。これは Snowflake の「`PARSE_DOCUMENT` → Cortex Analyst」と対称である。Genie は SQL ウェアハウス上で動作し、常時起動課金は発生しない。
 
@@ -240,10 +243,13 @@ Snowflake Cortex は複数機能の総称であり、Databricks 側の対応物�
 
 ### 5.2 選び方（right-tool-for-the-job）
 
-- **既に Databricks を使う組織**: 標準 S3 バケットを UC External Location に登録し、`ai_query` / `ai_parse_document` / AI Functions / FILE 型 / Genie でそのまま非構造化データ AI に載せる。本 PoC で一連が動くことを実機確認した。
-- **既に Snowflake を使う組織**: External Table + Cortex、または COPY INTO 内部テーブルで同等のことができる（[Snowflake 統合 README](../../integrations/snowflake/docs/ja/README.md)）。
-- **両方使う組織**: 標準 S3 バケットをオープン形式（Delta / Iceberg）で持てば、どちらのエンジンからも読める。ストレージを二重に持たず、エンジンを用途で使い分ける。
-- トレードオフは対称に: Databricks は Vector Search エンドポイントの常時起動コストと 24 時間課金ルール、pay-per-token の US リージョン制約がある。Snowflake は Vision 用の `TO_FILE` が S3 Access Point 外部ステージで解決できない制約（内部ステージへのコピー回避策が必要）がある。どちらも「その場で全機能が無条件に動く」わけではない。
+| 組織の状況 | 推奨する形 |
+|---|---|
+| 既に Databricks を使う組織 | 標準 S3 バケットを UC External Location に登録し、`ai_query` / `ai_parse_document` / AI Functions / FILE 型 / Genie でそのまま非構造化データ AI に載せる。本 PoC で一連が動くことを実機確認した |
+| 既に Snowflake を使う組織 | External Table + Cortex、または COPY INTO 内部テーブルで同等のことができる（[Snowflake 統合 README](../../integrations/snowflake/docs/ja/README.md)） |
+| 両方使う組織 | 標準 S3 バケットをオープン形式（Delta / Iceberg）で持てば、どちらのエンジンからも読める。ストレージを二重に持たず、エンジンを用途で使い分ける |
+
+トレードオフは対称に見る。Databricks は Vector Search エンドポイントの常時起動コストと 24 時間課金ルール、pay-per-token の US リージョン制約がある。Snowflake は Vision 用の `TO_FILE` が S3 Access Points 外部ステージで解決できない制約（内部ステージへのコピー回避策が必要）がある。どちらも「その場で全機能が無条件に動く」わけではない。
 
 ---
 

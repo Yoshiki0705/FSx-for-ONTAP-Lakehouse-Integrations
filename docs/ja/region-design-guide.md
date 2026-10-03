@@ -1,6 +1,6 @@
 # リージョン設計ガイド
 
-🌐 [English](../en/region-design-guide.md)
+[English](../en/region-design-guide.md)
 
 ## 概要
 
@@ -48,21 +48,21 @@ Amazon FSx for NetApp ONTAP（FSx for ONTAP）と Lakehouse プラットフォ�
 
 ### 原則 1: FSx for ONTAP と分析プラットフォームは同一リージョンに配置
 
-```
-✅ 推奨: 同一リージョン
+```text
+推奨: 同一リージョン
 ┌──────────────────────────────────┐
 │  Region X                         │
 │  FSx for ONTAP + S3 AP + Platform │
 └──────────────────────────────────┘
 
-❌ 非推奨: クロスリージョン
+非推奨: クロスリージョン
 ┌──────────────┐         ┌──────────────┐
 │  Region A    │ ──────▶ │  Region B    │
 │  FSx for ONTAP│  高レイテンシ │  Platform    │
 └──────────────┘  転送コスト  └──────────────┘
 ```
 
-**理由:**
+理由:
 - S3 Access Point はリージョナルリソース（FSx for ONTAP と同じリージョンに作成）
 - VPC-scoped AP はリージョン内の VPC からのみアクセス可能
 - クロスリージョンアクセスは 100-200ms のレイテンシ追加
@@ -75,10 +75,10 @@ Amazon FSx for NetApp ONTAP（FSx for ONTAP）と Lakehouse プラットフォ�
 | Databricks | ✅ 推奨 | 可能（非推奨） |
 | EMR / Spark | ✅ 推奨 | 可能 |
 | Lambda | ✅ 推奨 | 可能 |
-| Snowflake | ❌ 不可 | ✅ 必須 |
-| Athena | ❌ 不可 | ✅ 必須 |
-| Glue | ❌ 不可 | ✅ 必須 |
-| Redshift Spectrum | ❌ 不可 | ✅ 必須 |
+| Snowflake | 不可 | ✅ 必須 |
+| Athena | 不可 | ✅ 必須 |
+| Glue | 不可 | ✅ 必須 |
+| Redshift Spectrum | 不可 | ✅ 必須 |
 
 ### 原則 3: データレジデンシー要件を最優先
 
@@ -150,11 +150,11 @@ Amazon FSx for NetApp ONTAP（FSx for ONTAP）と Lakehouse プラットフォ�
 ### Databricks Workspace 作成手順
 
 1. [Databricks Account Console](https://accounts.cloud.databricks.com/) にログイン
-2. **Workspaces** → **Create Workspace**
-3. **Cloud**: AWS を選択
-4. **Region**: FSx for ONTAP と同じリージョンを選択
-5. **Pricing Tier**: Premium 以上（Unity Catalog に必要）
-6. VPC 設定: Customer-managed VPC を推奨（FSx for ONTAP と同じ VPC またはピアリング）
+2. 「Workspaces」→「Create Workspace」を選択
+3. Cloud で AWS を選択
+4. Region は FSx for ONTAP と同じリージョンを選択
+5. Pricing Tier は Premium 以上（Unity Catalog に必要）
+6. VPC 設定は Customer-managed VPC を推奨（FSx for ONTAP と同じ VPC またはピアリング）
 
 ---
 

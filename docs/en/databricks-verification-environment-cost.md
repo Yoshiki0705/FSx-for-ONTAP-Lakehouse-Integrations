@@ -1,4 +1,4 @@
-🌐 **English** | [日本語](../ja/databricks-verification-environment-cost.md)
+**English** | [日本語](../ja/databricks-verification-environment-cost.md)
 
 # Standing Up a Databricks Workspace to Verify FSx for ONTAP Integration: Cost and Decision Axes
 
@@ -11,7 +11,7 @@
 ## Executive Summary
 
 - **The plan tier is usually not the blocker.** A workspace on a credit-funded Premium plan could create Unity Catalog storage credentials perfectly well (**Verified**). What it could not do was launch classic compute, because it was created as a **"Serverless only"** workspace.
-- **Two attributes decide whether a workspace can verify FSx for ONTAP integration at all**: its **region** (must match the FSx file system) and its **storage and compute mode** (must be "use your existing cloud account" if you need an instance profile).
+- Two attributes decide whether a workspace can verify FSx for ONTAP integration at all: its region (must match the FSx file system) and its storage and compute mode (must be "use your existing cloud account" if you need an instance profile).
 - **The dominant cost is not compute.** It is the **NAT Gateway** inside the Databricks-managed VPC, at **$0.062/hour in ap-northeast-1 — about $45/month — billed whether or not any cluster runs.**
 - **Databricks credits do not pay for AWS infrastructure.** Credits cover DBUs. EC2, NAT Gateway and S3 bill to the AWS account separately. A "$400 of free credit" balance does not make the exercise free.
 - **Tokyo is at parity with Oregon for classic compute and ~43% more expensive for SQL Serverless** ($1.00 vs $0.70 per DBU, Premium).
@@ -91,9 +91,9 @@ Two consequences:
 
 | Option | AWS cost | Databricks cost | Can it verify an Access Point read? |
 |---|---|---|---|
-| **A. Serverless workspace, co-located region** | $0 | SQL Serverless at $1.00/DBU | ❌ No. Serverless-only means no instance profile, so the only path is a UC external location, which BLK-001 blocks |
-| **B. "Use your existing cloud account", co-located region** | NAT Gateway ~$1.5/day + EC2 while running | Jobs $0.15 or All-Purpose $0.55 per DBU | ✅ **Yes — the only option that can** |
-| **C. Reuse an existing workspace in another region** | $0 | same as its mode allows | ❌ No, if it is serverless-only. Cross-region also adds egress and latency |
+| A. Serverless workspace, co-located region | $0 | SQL Serverless at $1.00/DBU | No. Serverless-only means no instance profile, so the only path is a UC external location, which BLK-001 blocks |
+| B. "Use your existing cloud account", co-located region | NAT Gateway ~$1.5/day + EC2 while running | Jobs $0.15 or All-Purpose $0.55 per DBU | Yes, the only option that can |
+| C. Reuse an existing workspace in another region | $0 | same as its mode allows | No, if it is serverless-only. Cross-region also adds egress and latency |
 
 Option A is still worth a few dollars for one narrow purpose: re-confirming BLK-001 on a **current** workspace and capturing today's error message. That is evidence, just not the evidence we need.
 
@@ -161,7 +161,7 @@ Running the [standard-S3 unstructured-data AI PoC](./databricks-standard-s3-unst
 - **Serverless SQL Warehouse (Small, 10-minute auto-stop)** covered the AI Functions, OCR and Vision at metered, small cost.
 - **Vector Search is an always-on endpoint charge with a 24-hour tail.** Per Databricks documentation, the endpoint is billed after an index is created, and billing stops only 24 hours after the last index is deleted. Tearing the endpoint down does not stop the charge immediately. Budget for the tail.
 - **The embedding model `databricks-gte-large-en` is high-latency pay-per-token**, which contributes to slow first-index sync. In the PoC the index stayed in `PROVISIONING_ENDPOINT` for ~16 minutes without reaching ONLINE (environment-dependent; reported repeatedly in the community).
-- **Teardown checklist for this PoC shape**: Vector Search index → endpoint (verify with `list_endpoints`), then the standard S3 bucket, the IAM role for the storage credential, the UC External Location + auto-generated storage credential, and the catalog/schema/volume/tables. None of these is large, but the Vector Search 24-hour tail is the one to watch.
+- Teardown checklist for this PoC shape: Vector Search index → endpoint (verify with `list_endpoints`), then the standard S3 bucket, the IAM role for the storage credential, the UC External Location + auto-generated storage credential, and the catalog/schema/volume/tables. None of these is large, but the Vector Search 24-hour tail is the one to watch.
 
 ---
 

@@ -159,11 +159,13 @@ Technical KPIs must be translated into business/operational metrics that executi
 
 For CxO reporting, distill to 4-5 headline metrics:
 
-1. **Cost avoidance**: $X/month saved by eliminating data copy pipelines
-2. **Time-to-insight**: Reduced from Y days to Z hours
-3. **Compliance posture**: 100% of data access auditable via CloudTrail
-4. **AI readiness**: N documents accessible for AI/RAG without migration
-5. **Operational risk**: DR tested, RTO < 15 min, RPO < 1 hour
+| Metric | Detail |
+|---|---|
+| Cost avoidance | $X/month saved by eliminating data copy pipelines |
+| Time-to-insight | Reduced from Y days to Z hours |
+| Compliance posture | 100% of data access auditable via CloudTrail |
+| AI readiness | N documents accessible for AI/RAG without migration |
+| Operational risk | DR tested, RTO < 15 min, RPO < 1 hour |
 
 ---
 
@@ -196,11 +198,14 @@ For CxO reporting, distill to 4-5 headline metrics:
 | **delta-rs** | DeltaTable.open | 10K rows | 0.91s | — | $0 |
 | **delta-rs** | to_pyarrow_table | 10K rows | 1.38s | — | $0 |
 
-**Key takeaways for PoC planning**:
-- **Lowest cost**: DuckDB Lambda ($0 idle, ~$0.00001/query) — best for ad-hoc lightweight analytics
-- **Fastest large scan**: Athena (54.8 MB/s) — best for serverless SQL on large datasets
-- **Most flexible**: EMR Spark (read + write + Iceberg read) — best for ETL pipelines
-- **DWH integration**: Redshift Spectrum — best when joining with existing Redshift tables
+Key takeaways for PoC planning, as a use-case guide based on the measured results:
+
+| Engine | Measured | Suits |
+|---|---|---|
+| DuckDB Lambda | $0 idle, ~$0.00001/query | Ad-hoc lightweight analytics |
+| Athena | 54.8 MB/s | Serverless SQL on large datasets |
+| EMR Spark | read + write + Iceberg read | ETL pipelines |
+| Redshift Spectrum | joins with existing Redshift | Joining with existing Redshift tables |
 
 ### Athena + Parquet Read (103 MB dataset, 5M rows, 10 columns)
 
@@ -442,14 +447,16 @@ As AI evolves from RAG to autonomous agents, FSx for ONTAP S3 AP positions enter
 
 ### Governance for Agentic AI
 
-When AI agents access enterprise data autonomously, governance becomes critical:
+When AI agents access enterprise data autonomously, the following governance becomes critical.
 
-- **Read-only access points**: Agents should NEVER have write access to source data
-- **Scoped IAM roles**: Per-agent IAM roles with minimum necessary permissions
-- **Audit trail**: All agent data access logged via CloudTrail S3 data events
-- **Human-in-the-loop**: Agent actions that affect business decisions require human approval
-- **Rate limiting**: Prevent runaway agents from overwhelming FSx for ONTAP throughput
-- **Data classification awareness**: Agents must respect data classification boundaries
+| Control | Detail |
+|---|---|
+| Read-only access points | Agents never have write access to source data |
+| Scoped IAM roles | Per-agent IAM roles with minimum necessary permissions |
+| Audit trail | All agent data access logged via CloudTrail S3 data events |
+| Human-in-the-loop | Agent actions that affect business decisions require human approval |
+| Rate limiting | Prevent runaway agents from overwhelming FSx for ONTAP throughput |
+| Data classification awareness | Agents must respect data classification boundaries |
 
 ### Strategic Positioning
 

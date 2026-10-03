@@ -1,78 +1,77 @@
-# FSx for ONTAP S3 AP Networking Considerations
+# FSx for ONTAP S3 Access Points Networking Considerations
 
 ## Overview
 
-FSx for ONTAP S3 Access Points have specific networking requirements that differ from regular S3 bucket access. This document consolidates findings from multiple verification rounds.
+Amazon FSx for NetApp ONTAP S3 Access Points have specific networking requirements that differ from regular S3 bucket access. This document consolidates findings from multiple verification rounds.
 
 ## Key Findings
 
-### 1. S3 Gateway Endpoint and FSx for ONTAP S3 AP
+### 1. S3 Gateway Endpoint and FSx for ONTAP S3 Access Points
 
-**Known issue** (documented in [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)):
+Known issue (documented in [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)): a VPC-internal Lambda times out when it reaches an internet-origin AP through the S3 Gateway EP. Place the Lambda outside the VPC, or route it through a NAT Gateway.
 
-> VPC 内 Lambda からタイムアウト | Internet Origin AP に S3 Gateway EP 経由でアクセス | Lambda を VPC 外に配置、または NAT Gateway 経由に変更
+Explanation: When a VPC-attached Lambda or EC2 instance accesses an internet-origin FSx for ONTAP S3 Access Point, the S3 Gateway VPC Endpoint may intercept the traffic but fail to route it correctly to the backend. This is because FSx for ONTAP S3 Access Points aliases resolve to `s3-r-w.<region>.amazonaws.com`, which may not be handled the same way as standard S3 bucket traffic by the Gateway endpoint.
 
-**Explanation**: When a VPC-attached Lambda or EC2 instance accesses an internet-origin FSx for ONTAP S3 AP, the S3 Gateway VPC Endpoint may intercept the traffic but fail to route it correctly to the FSx for ONTAP S3 AP backend. This is because FSx for ONTAP S3 AP aliases resolve to `s3-r-w.<region>.amazonaws.com` which may not be handled the same way as standard S3 bucket traffic by the Gateway endpoint.
+Workarounds:
 
-**Workarounds**:
-1. Place Lambda outside VPC (no VPC attachment) — simplest for internet-origin APs
-2. Use NAT Gateway for outbound S3 AP traffic
-3. Remove S3 Gateway endpoint from the specific route table (not recommended for production — breaks regular S3 access optimization)
+1. Place Lambda outside the VPC (no VPC attachment). Simplest for internet-origin APs
+2. Use NAT Gateway for outbound S3 Access Points traffic
+3. Remove the S3 Gateway endpoint from the specific route table (not recommended for production; breaks regular S3 access optimization)
 
 ### 2. Internet-Origin vs VPC-Origin
 
 | AP Type | Access from VPC Lambda | Access from non-VPC Lambda | Access from EC2 (public subnet) |
 |---------|----------------------|---------------------------|-------------------------------|
-| Internet-origin | ⚠️ May timeout via Gateway EP | ✅ Works | ✅ Works (via IGW) |
-| VPC-origin | ✅ Works (via Interface EP) | ❌ Blocked by design | ✅ Works (same VPC) |
+| Internet-origin | May timeout via Gateway EP | Works | Works (via IGW) |
+| VPC-origin | Works (via Interface EP) | Blocked by design | Works (same VPC) |
 
 ### 3. AWS Service Access Patterns
 
-| Service | Network Path | FSx for ONTAP S3 AP Compatibility |
+| Service | Network Path | FSx for ONTAP S3 Access Points Compatibility |
 |---------|-------------|------------------------|
-| Athena | AWS-managed (no customer VPC) | ✅ Internet-origin required |
-| Glue ETL | AWS-managed or VPC-attached | ✅ Internet-origin (non-VPC) or NAT Gateway (VPC) |
-| EMR Serverless | AWS-managed | ✅ Internet-origin required |
-| Lambda (no VPC) | Internet | ✅ Internet-origin works directly |
-| Lambda (VPC-attached) | VPC routing | ⚠️ Requires NAT Gateway or no S3 Gateway EP |
-| Redshift Spectrum | AWS-managed | ✅ Internet-origin required |
-| Databricks | Customer-managed VPC | ⚠️ Session policy blocks (separate issue) |
+| Athena | AWS-managed (no customer VPC) | Internet-origin required |
+| Glue ETL | AWS-managed or VPC-attached | Internet-origin (non-VPC) or NAT Gateway (VPC) |
+| EMR Serverless | AWS-managed | Internet-origin required |
+| Lambda (no VPC) | Internet | Internet-origin works directly |
+| Lambda (VPC-attached) | VPC routing | Requires NAT Gateway or no S3 Gateway EP |
+| Redshift Spectrum | AWS-managed | Internet-origin required |
+| Databricks | Customer-managed VPC | Session policy blocks (separate issue) |
 
 ### 4. DNS Resolution
 
-FSx for ONTAP S3 AP aliases resolve differently from regular S3 buckets:
+FSx for ONTAP S3 Access Points aliases resolve differently from regular S3 buckets.
 
-```
+```text
 Regular S3 bucket:
   my-bucket.s3.ap-northeast-1.amazonaws.com → S3 service IPs (in prefix list)
 
-FSx for ONTAP S3 AP alias:
+FSx for ONTAP S3 Access Points alias:
   my-ap-alias-ext-s3alias.s3.ap-northeast-1.amazonaws.com → s3-r-w.ap-northeast-1.amazonaws.com
 ```
 
-The `s3-r-w` hostname is the FSx for ONTAP S3 AP backend. Its IP addresses may or may not be included in the S3 prefix list (`pl-61a54008` for ap-northeast-1) used by S3 Gateway endpoints.
+The `s3-r-w` hostname is the FSx for ONTAP S3 Access Points backend. Its IP addresses may or may not be included in the S3 prefix list (`pl-61a54008` for ap-northeast-1) used by S3 Gateway endpoints.
 
 ### 5. Troubleshooting Checklist
 
-When FSx for ONTAP S3 AP access times out:
+When FSx for ONTAP S3 Access Points access times out, check the following.
 
-1. **Verify DNS resolution**: `nslookup <alias>.s3.<region>.amazonaws.com`
-2. **Verify TCP connectivity**: `curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://<alias>.s3.<region>.amazonaws.com/`
-3. **Test regular S3**: `aws s3 ls s3://<regular-bucket>/` — if this works, the issue is S3 AP-specific
-4. **Check S3 Gateway endpoint**: Is the route table associated with a Gateway endpoint? If yes, try removing it temporarily
-5. **Check AP lifecycle**: `aws fsx describe-s3-access-point-attachments` — should be AVAILABLE
-6. **Check volume status**: `aws fsx describe-volumes --volume-ids <vol-id>` — should be CREATED/AVAILABLE
-7. **Check SVM S3 protocol**: Ensure the SVM has S3 protocol enabled and the volume is mounted
+1. Verify DNS resolution: `nslookup <alias>.s3.<region>.amazonaws.com`
+2. Verify TCP connectivity: `curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://<alias>.s3.<region>.amazonaws.com/`
+3. Test regular S3: `aws s3 ls s3://<regular-bucket>/`. If this works, the issue is S3 Access Points specific
+4. Check the S3 Gateway endpoint: is the route table associated with a Gateway endpoint? If yes, try removing it temporarily
+5. Check AP lifecycle: `aws fsx describe-s3-access-point-attachments` should report AVAILABLE
+6. Check volume status: `aws fsx describe-volumes --volume-ids <vol-id>` should report CREATED/AVAILABLE
+7. Check SVM S3 protocol: ensure the SVM has S3 protocol enabled and the volume is mounted
 
 ### 6. Recommended Architecture for VPC-Internal Access
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │  VPC                                                             │
 │                                                                  │
 │  ┌──────────────────┐     ┌──────────────────┐                  │
 │  │ Private Subnet    │     │ Public Subnet     │                  │
-│  │ (Lambda/EC2)      │────▶│ NAT Gateway       │────▶ IGW ──▶ FSx for ONTAP S3 AP
+│  │ (Lambda/EC2)      │────▶│ NAT Gateway       │────▶ IGW ──▶ FSx for ONTAP S3 Access Points
 │  │                   │     │                   │                  │
 │  └──────────────────┘     └──────────────────┘                  │
 │         │                                                        │
@@ -82,29 +81,28 @@ When FSx for ONTAP S3 AP access times out:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-For VPC-internal workloads that need both regular S3 and FSx for ONTAP S3 AP:
-- Keep S3 Gateway endpoint for regular S3 bucket access (free, low latency)
-- Route FSx for ONTAP S3 AP traffic through NAT Gateway (or place compute outside VPC)
+For VPC-internal workloads that need both regular S3 and FSx for ONTAP S3 Access Points, keep the S3 Gateway endpoint for regular S3 bucket access (free, low latency) and route FSx for ONTAP S3 Access Points traffic through a NAT Gateway (or place compute outside the VPC).
 
 ---
 
-## 7. SVM DNS/AD Configuration and S3 AP Availability
+## 7. SVM DNS/AD Configuration and S3 Access Points Availability
 
-### Problem: S3 AP ReadTimeout Caused by Unreachable DNS Servers
+### S3 Access Points ReadTimeout Caused by Unreachable DNS Servers
 
-If an SVM has DNS servers configured (for Active Directory domain membership) and those DNS servers become unreachable, **all S3 Access Points on that SVM will time out** — even if:
-- The S3 AP volumes use UNIX security style
+If an SVM has DNS servers configured (for Active Directory domain membership) and those DNS servers become unreachable, all S3 Access Points on that SVM time out. This happens even when:
+
+- The S3 Access Points volumes use UNIX security style
 - Customer-configured FPolicy is disabled
 - NFS export policies allow all access
-- The S3 AP lifecycle state is AVAILABLE
+- The S3 Access Points lifecycle state is AVAILABLE
 
-This is because the S3 AP request processing path traverses the SVM's name-service stack. When CIFS/AD is configured, ONTAP attempts user-mapping resolution (UNIX ↔ Windows) which requires DNS communication with domain controllers.
+This is because the S3 Access Points request processing path traverses the SVM's name-service stack. When CIFS/AD is configured, ONTAP attempts user-mapping resolution (UNIX and Windows), which requires DNS communication with domain controllers.
 
 ### Root Cause Mechanism
 
-```
+```text
 S3 API Request
-  → FSx for ONTAP S3 AP Backend
+  → FSx for ONTAP S3 Access Points backend
     → SVM file system access
       → ONTAP name-service stack (ns-switch: files, dns)
         → CIFS server present → user-mapping requires DC lookup
@@ -115,15 +113,15 @@ S3 API Request
 
 ### Authentication Mode Behavior Matrix
 
-| SVM Configuration | DNS Dependency for S3 AP | S3 AP Behavior if DNS Down |
+| SVM Configuration | DNS Dependency for S3 Access Points | Behavior if DNS Down |
 |---|---|---|
-| NFS-only (no CIFS, no DNS) | None | ✅ Works normally |
-| CIFS Workgroup mode (no AD) | None | ✅ Works normally |
-| CIFS + AD domain join + DNS configured + DNS reachable | Yes (but transparent) | ✅ Works normally |
-| CIFS + AD domain join + DNS configured + **DNS unreachable** | Yes (blocks) | ❌ ReadTimeout |
-| FPolicy configured (any state) + no CIFS/DNS | None | ✅ Works normally |
+| NFS-only (no CIFS, no DNS) | None | Works normally |
+| CIFS Workgroup mode (no AD) | None | Works normally |
+| CIFS + AD domain join + DNS configured + DNS reachable | Yes (but transparent) | Works normally |
+| CIFS + AD domain join + DNS configured + DNS unreachable | Yes (blocks) | ReadTimeout |
+| FPolicy configured (any state) + no CIFS/DNS | None | Works normally |
 
-**Key insight**: The DNS dependency is triggered by the presence of a CIFS server joined to an AD domain, not by FPolicy, export policies, or volume security style.
+Key insight: the DNS dependency is triggered by the presence of a CIFS server joined to an AD domain, not by FPolicy, export policies, or volume security style.
 
 ### Diagnostic Commands
 
@@ -145,7 +143,7 @@ vserver services name-service ns-switch show -vserver <SVM_NAME>
 
 ### Resolution Options
 
-**Option A: Remove DNS and CIFS (if AD/SMB not needed)**
+Option A: Remove DNS and CIFS (if AD/SMB not needed)
 
 ```bash
 # Force-delete CIFS (AD server may be gone, use force flag)
@@ -159,7 +157,7 @@ vserver services dns delete -vserver <SVM_NAME>
 vserver services name-service ns-switch modify -vserver <SVM_NAME> -database hosts -sources files
 ```
 
-**Option B: Point DNS to a reachable server (if AD/SMB needed)**
+Option B: Point DNS to a reachable server (if AD/SMB needed)
 
 ```bash
 # Update DNS to VPC-provided DNS (AmazonProvidedDNS)
@@ -167,26 +165,24 @@ vserver services name-service ns-switch modify -vserver <SVM_NAME> -database hos
 vserver services dns modify -vserver <SVM_NAME> -name-servers 10.0.0.2 -domains <domain>
 ```
 
-Note: Option B restores DNS resolution but CIFS/AD authentication will fail unless the domain controller is also reachable.
+Note: Option B restores DNS resolution but CIFS/AD authentication fails unless the domain controller is also reachable.
 
-**Option C: Restore the AD domain controller**
-
-Recreate the AD server at the same IP addresses. This is the heaviest option and only necessary if CIFS/SMB access with AD authentication is required.
+Option C: Restore the AD domain controller. Recreate the AD server at the same IP addresses. This is the heaviest option and only necessary if CIFS/SMB access with AD authentication is required.
 
 ### Verified Behavior (2026-05-24)
 
-| Test | SVM | DNS Config | CIFS/AD | S3 AP Result |
+| Test | SVM | DNS Config | CIFS/AD | S3 Access Points Result |
 |------|-----|-----------|---------|-------------|
-| Before fix | FSxN_OnPre | `<DNS-IP-1>, <DNS-IP-2>` (both DOWN) | FPOLICY.LOCAL domain | ❌ ReadTimeout |
-| Before fix | verification-svm | None | None | ✅ Instant success |
-| After fix (Option A) | FSxN_OnPre | Removed | Removed | ✅ Instant success |
+| Before fix | ad-joined-svm | `<DNS-IP-1>, <DNS-IP-2>` (both DOWN) | AD domain join | ReadTimeout |
+| Before fix | verification-svm | None | None | Instant success |
+| After fix (Option A) | ad-joined-svm | Removed | Removed | Instant success |
 
 ### Prevention
 
-- **Do not leave orphaned DNS/AD configurations.** If an AD domain controller is decommissioned, remove the CIFS server and DNS settings from the SVM.
-- **Monitor DNS health.** Periodically run `vserver services dns check` to verify DNS servers are reachable.
-- **Separate concerns.** If S3 AP access is the primary use case, consider using a dedicated SVM without CIFS/AD dependencies. This eliminates the DNS dependency entirely.
-- **Document AD server lifecycle.** Track which SVMs depend on which AD servers, so decommissioning an AD server triggers SVM configuration cleanup.
+- Do not leave orphaned DNS/AD configurations. If an AD domain controller is decommissioned, remove the CIFS server and DNS settings from the SVM.
+- Monitor DNS health. Periodically run `vserver services dns check` to verify DNS servers are reachable.
+- Separate concerns. If S3 Access Points access is the primary use case, consider using a dedicated SVM without CIFS/AD dependencies. This eliminates the DNS dependency entirely.
+- Document AD server lifecycle. Track which SVMs depend on which AD servers, so decommissioning an AD server triggers SVM configuration cleanup.
 
 ---
 

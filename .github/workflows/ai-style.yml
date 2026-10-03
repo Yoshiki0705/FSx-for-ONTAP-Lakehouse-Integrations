@@ -1,9 +1,10 @@
-name: AI Style (report-only)
+name: AI Style
 
-# Report-only writing-style gate. The detector is vendored byte-for-byte from the Hub
+# Writing-style gate. The detector is vendored byte-for-byte from the Hub
 # (scripts/ai_style_rules.py). This workflow proves the detector can fail (selftest),
-# runs the vendored tests, and reports a summary over the corpus WITHOUT --fail, so it
-# counts findings without gating a merge yet. Flipping to --fail is a later feature.
+# runs the vendored tests, and then GATES the merge with --fail: a fail-tier finding
+# (D1, D2, D5, D14) makes the run exit 1. All other rules stay warning-only (reported
+# in the summary, never gating).
 
 on:
   push:
@@ -25,7 +26,7 @@ permissions:
 
 jobs:
   ai-style:
-    name: AI Style Checks (report-only)
+    name: AI Style Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -43,7 +44,7 @@ jobs:
       - name: Prove the detector can tell a broken detector from a working one
         run: |
           # A passing selftest is the only evidence that the vendored rules can both
-          # fire and stay silent. Run it before trusting any clean report below.
+          # fire and stay silent. Run it before trusting any report below.
           python3 scripts/ai_style_rules.py --selftest
 
       - name: Run the vendored detector tests
@@ -51,9 +52,15 @@ jobs:
           python3 scripts/tests/test_ai_style_rules.py
           python3 scripts/tests/test_ai_style_strong_fixtures.py
 
-      - name: Report writing-style findings (report-only, no --fail)
+      - name: Report writing-style findings (summary, non-gating)
         run: |
-          # Report-only on purpose: --summary counts findings and does not gate. The
-          # fail tier (D1, D2, D5, D14) is NOT enforced here yet; that flip is a later
-          # feature once the corpus is clean.
+          # The summary counts every finding, including warning-tier rules that never
+          # gate. It runs before the gate so the full picture is in the log on a failure.
           python3 scripts/ai_style_rules.py docs/ja docs/en README-ja.md README.md --summary
+
+      - name: Gate on fail-tier findings (--fail)
+        run: |
+          # Gating step: --fail exits 1 on a fail-tier finding (D1, D2, D5, D14). The
+          # corpus is clean of those, so this passes today and bites the moment one is
+          # introduced. Warning-tier rules are reported above but do not fail the build.
+          python3 scripts/ai_style_rules.py docs/ja docs/en README-ja.md README.md --fail

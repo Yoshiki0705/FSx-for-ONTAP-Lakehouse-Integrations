@@ -180,11 +180,15 @@ Each platform accesses FSx for ONTAP via S3 API.
 
 ### Security Layers
 
-1. **VPC Endpoint Policy** — Allow access only from within VPC
-2. **S3 AP Policy** — IAM Principal + VPC conditions
-3. **IAM Role Policy** — Principle of least privilege
-4. **ONTAP Export Policy** — Volume-level access control
-5. **Security Group** — Network-level filtering
+Defense in depth is built from five layers.
+
+| Layer | Role |
+|---|---|
+| VPC Endpoint Policy | Allow access only from within the VPC |
+| S3 Access Points Policy | IAM Principal + VPC conditions |
+| IAM Role Policy | Principle of least privilege |
+| ONTAP Export Policy | Volume-level access control |
+| Security Group | Network-level filtering |
 
 ---
 
@@ -196,8 +200,8 @@ Each platform accesses FSx for ONTAP via S3 API.
 |--------|------|-------|-------------|:---------------:|
 | Parquet | ✅ | ✅ | Analytics queries (columnar) | ✅ Append |
 | Apache Iceberg | ✅ | ⚠️ | ACID tables (vendor-neutral) | Experimental (external catalog) |
-| Delta Lake | ✅ | ❌ | ACID tables (Databricks) | Not Supported (no atomic rename) |
-| Apache Hudi | ✅ | ❌ | CDC + Upsert | Not Supported (no atomic rename) |
+| Delta Lake | ✅ | Not supported | ACID tables (Databricks) | Not Supported (no atomic rename) |
+| Apache Hudi | ✅ | Not supported | CDC + Upsert | Not Supported (no atomic rename) |
 | CSV | ✅ | ✅ | Legacy data ingestion | ✅ Append |
 | JSON / NDJSON | ✅ | ✅ | Semi-structured data | ✅ Append |
 | ORC | ✅ | ✅ | Hive compatible | ✅ Append |

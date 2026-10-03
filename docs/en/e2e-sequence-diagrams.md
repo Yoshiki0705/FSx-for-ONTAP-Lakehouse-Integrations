@@ -1,4 +1,4 @@
-🌐 **English** | [日本語](../ja/e2e-sequence-diagrams.md)
+**English** | [日本語](../ja/e2e-sequence-diagrams.md)
 
 # End-to-End Data Flow Sequence Diagrams
 

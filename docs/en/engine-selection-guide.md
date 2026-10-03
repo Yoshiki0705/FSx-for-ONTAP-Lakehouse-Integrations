@@ -1,6 +1,6 @@
 # Engine Selection Guide
 
-🌐 **English** | [日本語](../ja/engine-selection-guide.md)
+**English** | [日本語](../ja/engine-selection-guide.md)
 
 > Choose the right analytics engine for your FSx for ONTAP S3 Access Point use case based on cost, governance needs, and AI readiness.
 
@@ -87,9 +87,11 @@ FSx for ONTAP → OpenSharing Server → Catalog → Lakehouse Compute
 
 FSx for ONTAP S3 Access Points do **not** support conditional writes (`If-None-Match`). This means:
 
-- **Delta Lake**: Read works. Write returns HTTP 501.
-- **Apache Iceberg**: Read of pre-existing tables expected to work. Write fails (S3FileIO cannot handle AP alias for metadata).
-- **Apache Hudi**: Expected to have similar write limitations.
+| Format | Read | Write |
+|---|---|---|
+| Delta Lake | Works | Returns HTTP 501 |
+| Apache Iceberg | Read of pre-existing tables expected to work | Fails (S3FileIO cannot handle AP alias for metadata) |
+| Apache Hudi | Expected to work | Expected to have similar write limitations |
 
 **Recommended approach**: Read source data from FSx for ONTAP via S3 AP, write managed tables to native S3.
 
