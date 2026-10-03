@@ -49,6 +49,7 @@ Enforced by pre-commit hooks (`.githooks/pre-commit`) and CI workflows:
 ## Agent Output Standards
 
 > Full rules in global Kiro steering. Summary enforced by `.github/workflows/agent-output-audit.yml`.
+> Writing-quality criteria (Hub): https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/agent/writing-quality.md
 
 - **Naming**: "Amazon FSx for NetApp ONTAP" first, then "FSx for ONTAP" (never `FSxN`, bare `FSx`, `FSx ONTAP`). Access points: "S3 Access Points" in full; `S3 AP` is not a form AWS sanctions. Existing uses are grandfathered.
 - **Neutrality**: No vendor-versus framing. Present trade-offs symmetrically.
