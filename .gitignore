@@ -24,6 +24,11 @@ blog/
 .kiro/
 
 # =============================================================================
+# Agent task artifacts (per-session plans/features/verdicts, not for public repo)
+# =============================================================================
+.agents/
+
+# =============================================================================
 # Private directories (account details, screenshots with PII, credentials refs)
 # These contain environment-specific information not suitable for public repo.
 # To publish content, move to docs/ with sensitive values redacted.

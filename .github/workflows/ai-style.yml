@@ -1,0 +1,59 @@
+name: AI Style (report-only)
+
+# Report-only writing-style gate. The detector is vendored byte-for-byte from the Hub
+# (scripts/ai_style_rules.py). This workflow proves the detector can fail (selftest),
+# runs the vendored tests, and reports a summary over the corpus WITHOUT --fail, so it
+# counts findings without gating a merge yet. Flipping to --fail is a later feature.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.md'
+      - 'scripts/ai_style_rules.py'
+      - 'scripts/tests/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.md'
+      - 'scripts/ai_style_rules.py'
+      - 'scripts/tests/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ai-style:
+    name: AI Style Checks (report-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Prove the detector can tell a broken detector from a working one
+        run: |
+          # A passing selftest is the only evidence that the vendored rules can both
+          # fire and stay silent. Run it before trusting any clean report below.
+          python3 scripts/ai_style_rules.py --selftest
+
+      - name: Run the vendored detector tests
+        run: |
+          python3 scripts/tests/test_ai_style_rules.py
+          python3 scripts/tests/test_ai_style_strong_fixtures.py
+
+      - name: Report writing-style findings (report-only, no --fail)
+        run: |
+          # Report-only on purpose: --summary counts findings and does not gate. The
+          # fail tier (D1, D2, D5, D14) is NOT enforced here yet; that flip is a later
+          # feature once the corpus is clean.
+          python3 scripts/ai_style_rules.py docs/ja docs/en README-ja.md README.md --summary
