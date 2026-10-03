@@ -61,7 +61,7 @@ Snowflake → External Stage (AWS_ACCESS_POINT_ARN) → S3 AP → FSx for ONTAP
 ```
 
 - Requires explicit AP ARN in stage configuration
-- Full SELECT + External Table support verified
+- Full SELECT + External Table support verified ([evidence](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml), ap-northeast-1)
 
 ### Pattern D: Sync-Based (Databricks)
 

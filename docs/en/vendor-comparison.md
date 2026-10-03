@@ -25,7 +25,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | Vendor | Integration Method | Use Case | Status |
 |--------|-------------------|----------|--------|
 | Databricks | Unity Catalog External Location / S3 External Table | Delta Lake on FSx for ONTAP, ML Feature Store | ⚠️ Blocked (session policy; UC table creation fails) |
-| Snowflake | External Stage + `AWS_ACCESS_POINT_ARN` / External Table | Governed analytics, Cortex AI, Data Sharing, Managed Iceberg | ✅ Verified (May 2026) |
+| Snowflake | External Stage + `AWS_ACCESS_POINT_ARN` / External Table | Governed analytics, Cortex AI, Data Sharing, Managed Iceberg | ✅ Verified (May 2026). [Evidence](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml) (ap-northeast-1) |
 
 ### Databricks
 
@@ -50,9 +50,9 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | Network | Internet network origin (PrivateLink optional) |
 | Formats | Parquet, CSV, JSON, Avro, ORC, Iceberg |
 | Unstructured | Directory Table + Pre-signed URLs + Cortex AI (PARSE_DOCUMENT for OCR, multimodal vision via staging) |
-| AI Capabilities | 8/10 Cortex AI functions verified on FSx for ONTAP data (SUMMARIZE, TRANSLATE, SENTIMENT, COMPLETE, EXTRACT_ANSWER, PARSE_DOCUMENT, Cortex Search 198ms, Vision AI via staging) |
-| Governance | Object Tags, Row Access Policy, Column Masking, Data Sharing (all verified on External Table) |
-| Advanced Patterns | Dynamic Table (confirmed, FULL refresh, min 60s TARGET_LAG), Managed Iceberg Table (confirmed, open format on user-owned S3) |
+| AI Capabilities | 8/10 Cortex AI functions verified on FSx for ONTAP data (SUMMARIZE, TRANSLATE, SENTIMENT, COMPLETE, EXTRACT_ANSWER, PARSE_DOCUMENT, Cortex Search 198ms, Vision AI via staging). [Verification results](../../integrations/snowflake/README.md) |
+| Governance | Object Tags, Row Access Policy, Column Masking, Data Sharing (all verified on External Table). [Evidence](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml) |
+| Advanced Patterns | Dynamic Table (confirmed, FULL refresh, min 60s TARGET_LAG), Managed Iceberg Table (confirmed, open format on user-owned S3). [Evidence](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml) |
 | ONTAP Value | Snapshot (beyond Time Travel retention), FlexClone (test env), multi-protocol (NFS/SMB/S3 on same data) |
 | Data Sharing | Governed distribution to partners/suppliers via Snowflake Data Sharing (External Table shareable) |
 | Known Limitation | AUTO_REFRESH not available (no S3 Event Notifications); use Task + ALTER EXTERNAL TABLE REFRESH |
@@ -69,7 +69,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | Trino / Starburst | ✅ Read Verified (5M rows, 1.5s) | Not supported (same limitations) | N/A | Part 0 verified |
 | Dremio | Planned | Planned | N/A | NetApp/Dremio joint solution (not independently validated) |
 
-Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hudi) fail to write on FSx for ONTAP S3 Access Points because of S3 API limitations: no conditional writes (`If-None-Match` returns 501) and no atomic rename. Reading pre-existing tables is theoretically possible, but only Delta read has been verified.
+Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hudi) fail to write on FSx for ONTAP S3 Access Points because of S3 API limitations: no conditional writes (`If-None-Match` returns 501) and no atomic rename. Reading pre-existing tables is theoretically possible, but only Delta read has been verified. Evidence: [Delta](../../verification-pack/delta-lake-oss-read/evidence/2026-05-23/evidence-record.yaml), [Iceberg](../../verification-pack/iceberg/evidence/2026-05-24/evidence-record.yaml), [Hudi](../../verification-pack/hudi/evidence/2026-05-24/evidence-record.yaml) (ap-northeast-1).
 
 ### Apache Iceberg
 
@@ -85,7 +85,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 
 | Item | Detail |
 |---|---|
-| Read | Verified with delta-rs (Rust). Spark Delta reader also works for pre-existing tables |
+| Read | Verified with delta-rs (Rust). Spark Delta reader also works for pre-existing tables. [Evidence](../../verification-pack/delta-lake-oss-read/evidence/2026-05-23/evidence-record.yaml) (ap-northeast-1, 2026-05-23) |
 | Write | Not supported. Delta commit protocol requires an `If-None-Match` conditional write for `_delta_log/`, and FSx for ONTAP S3 Access Points returns 501 Not Implemented |
 | Working alternative | DataSync → S3 → Delta Table (Databricks UC or OSS Spark). FSx for ONTAP S3 Access Points as read-only source |
 | Databricks path | DataSync → S3 → UC Managed Delta Table (full governance, lineage, Time Travel) |
@@ -102,7 +102,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 
 | Item | Detail |
 |---|---|
-| Read | Verified. Trino 481 + Glue Catalog + `hive.s3.path-style-access=true` + explicit `hive.s3.endpoint`. 5M rows in 1.5s |
+| Read | Verified. Trino 481 + Glue Catalog + `hive.s3.path-style-access=true` + explicit `hive.s3.endpoint`. 5M rows in 1.5s. [Evidence](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml) (ap-northeast-1, 2026-05-26) |
 | Write | Not tested (same S3 Access Points limitations apply for transactional writes) |
 | Configuration | Requires `hive.s3.path-style-access=true` and explicit `hive.s3.endpoint` to resolve S3 Access Points aliases. Same pattern as DuckDB |
 | Catalog | Glue Catalog (shared with Athena, Redshift, EMR) |
@@ -145,7 +145,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 | Governance | Lake Formation (table/column/row/tag). Same permissions apply to Athena and Redshift Spectrum |
 | Write-back | CTAS writes Parquet back to FSx for ONTAP S3 Access Points (verified, 3.7s) |
 | Characteristics | Zero infrastructure, shared Glue Catalog with all AWS engines, Lake Formation governance automatic |
-| Benchmark | 54.8 MB/s peak (5M rows in 2.2s) |
+| Benchmark | 54.8 MB/s peak (5M rows in 2.2s). [Evidence](../../verification-pack/athena-parquet-read/evidence/2026-05-22/benchmark-result.yaml) (ap-northeast-1, 2026-05-23) |
 | Reference | [AWS Tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html) |
 
 ### AWS Glue
@@ -157,7 +157,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 | Features | Crawler (schema discovery), ETL Job (PySpark/Python Shell/Ray), Data Quality |
 | AI Integration | Glue + Bedrock (AI-powered transforms), Glue Data Quality (automated validation) |
 | Governance | Glue Data Catalog is the foundation for Lake Formation. All permissions defined here |
-| Write-back | ETL write-back to FSx for ONTAP S3 Access Points (verified, 64s for 10K row medallion pipeline) |
+| Write-back | ETL write-back to FSx for ONTAP S3 Access Points (verified, 64s for 10K row medallion pipeline). [Evidence](../../verification-pack/glue-etl/evidence/2026-05-23/evidence-record.yaml) (ap-northeast-1, 2026-05-23) |
 | Characteristics | Schema discovery (Crawler), visual ETL (Studio), serverless Spark, Data Quality rules |
 | Reference | [AWS Tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html) |
 
@@ -171,7 +171,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 | AI Integration | Governs data accessed by Bedrock KB, SageMaker, EMR ML workloads |
 | Governance | Fine-grained (column/row/tag), multi-engine (Athena + Redshift + EMR + Glue all share the same permissions), zero data movement |
 | Characteristics | Single governance definition applies to all AWS analytics engines simultaneously. No per-engine configuration needed. Cross-account table sharing without data copy |
-| Verified capabilities (May 2026) | Column-level permission (deny specific columns), Row Filter (Data Cells Filter with expression), LF-Tag (sensitivity classification + tag-based grants) |
+| Verified capabilities (May 2026) | Column-level permission (deny specific columns), Row Filter (Data Cells Filter with expression), LF-Tag (sensitivity classification + tag-based grants). [Evidence](../../verification-pack/lake-formation/evidence/2026-05-26/fine-grained-evidence.yaml) (ap-northeast-1) |
 
 ### Amazon Redshift Spectrum
 
@@ -184,7 +184,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 | Governance | Lake Formation (same permissions as Athena; configure once, apply everywhere) |
 | Write-back | Not possible (query results stay in Redshift; use EMR for write-back) |
 | Characteristics | JOIN NAS data with local DWH tables, materialized views on external data, same Glue Catalog as Athena |
-| Benchmark | 5M rows in 4.3s (Serverless 8 RPU) |
+| Benchmark | 5M rows in 4.3s (Serverless 8 RPU). [Evidence](../../verification-pack/redshift-spectrum/evidence/2026-05-23/evidence-record.yaml) (ap-northeast-1, 2026-05-23) |
 | Reference | [AWS re:Post](https://repost.aws/articles/AR7E4oxFvtR5GgajAQT7X1xQ) |
 
 ### Amazon EMR Serverless (Spark)
@@ -198,7 +198,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 | Governance | IAM-based (pair with Lake Formation for governed reads on output) |
 | Write-back | Flat Parquet to FSx for ONTAP S3 Access Points (verified, 16s total ETL) |
 | Characteristics | No session policy issues (direct IAM), full Spark power, write-back to FSx, Iceberg table creation on S3 |
-| Benchmark | 10K rows read+transform+write in 16s, $0.05/job |
+| Benchmark | 10K rows read+transform+write in 16s, $0.05/job. [Evidence](../../verification-pack/emr-spark/evidence/2026-05-23/evidence-record.yaml) (ap-northeast-1, 2026-05-23) |
 | Note | Use `s3://` (EMRFS); `s3a://` cannot parse the AP alias |
 
 ### Amazon Bedrock Knowledge Bases
@@ -224,7 +224,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 | Governance | IAM + S3 Access Points policy only (no table-level governance) |
 | Write-back | COPY TO Parquet (verified, 304ms) |
 | Characteristics | Low-cost path ($0.00001/query), zero idle cost, sub-second warm latency (452ms) |
-| Benchmark | 10K rows in 452ms (warm), 5M rows in 779ms |
+| Benchmark | 10K rows in 452ms (warm), 5M rows in 779ms. [Evidence](../../verification-pack/duckdb-local/evidence/2026-05-23/evidence-record.yaml) (ap-northeast-1, 2026-05-23) |
 
 ### Characteristics of the AWS-native path
 

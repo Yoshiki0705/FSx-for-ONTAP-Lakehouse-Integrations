@@ -24,7 +24,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | ベンダー | 統合方式 | ユースケース | ステータス |
 |---------|---------|-------------|----------|
 | Databricks | Unity Catalog External Location / S3 External Table | Delta Lake on FSx for ONTAP, ML Feature Store | ⚠️ ブロック（セッションポリシー; UC テーブル作成失敗） |
-| Snowflake | External Stage + `AWS_ACCESS_POINT_ARN` / External Table | ガバナンス付き分析、Cortex AI、Data Sharing、Managed Iceberg | ✅ 検証済み（2026年5月） |
+| Snowflake | External Stage + `AWS_ACCESS_POINT_ARN` / External Table | ガバナンス付き分析、Cortex AI、Data Sharing、Managed Iceberg | ✅ 検証済み（2026年5月）。[実測記録](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml)（ap-northeast-1） |
 
 ### Databricks
 
@@ -49,9 +49,9 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | ネットワーク | Internet network origin（PrivateLink オプション） |
 | データ形式 | Parquet, CSV, JSON, Avro, ORC, Iceberg |
 | 非構造化データ | Directory Table + Pre-signed URL + Cortex AI（PARSE_DOCUMENT で OCR、ステージング経由でマルチモーダル Vision） |
-| AI 機能 | FSx for ONTAP データ上で 8/10 Cortex AI 関数検証済み（SUMMARIZE, TRANSLATE, SENTIMENT, COMPLETE, EXTRACT_ANSWER, PARSE_DOCUMENT, Cortex Search 198ms, Vision AI ステージング経由） |
-| ガバナンス | Object Tags, Row Access Policy, Column Masking, Data Sharing（External Table 上で全て検証済み） |
-| 高度なパターン | Dynamic Table（確認済み、FULL refresh、最小 60秒 TARGET_LAG）、Managed Iceberg Table（確認済み、ユーザー所有の S3 上のオープン形式） |
+| AI 機能 | FSx for ONTAP データ上で 8/10 Cortex AI 関数検証済み（SUMMARIZE, TRANSLATE, SENTIMENT, COMPLETE, EXTRACT_ANSWER, PARSE_DOCUMENT, Cortex Search 198ms, Vision AI ステージング経由）。[検証結果](../../integrations/snowflake/docs/ja/README.md) |
+| ガバナンス | Object Tags, Row Access Policy, Column Masking, Data Sharing（External Table 上で全て検証済み）。[実測記録](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml) |
+| 高度なパターン | Dynamic Table（確認済み、FULL refresh、最小 60秒 TARGET_LAG）、Managed Iceberg Table（確認済み、ユーザー所有の S3 上のオープン形式）。[実測記録](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml) |
 | ONTAP 活用 | Snapshot（Time Travel 超過分）、FlexClone（テスト環境）、マルチプロトコル（NFS/SMB/S3 同一データ） |
 | Data Sharing | Snowflake Data Sharing 経由でパートナー/サプライヤーへのガバナンス付き配布（External Table 共有可能） |
 | 既知の制限 | AUTO_REFRESH 利用不可（S3 Event Notifications なし）。Task + ALTER EXTERNAL TABLE REFRESH を使用 |
@@ -68,7 +68,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | Trino / Starburst | ✅ 読み取り検証済み（5M 行、1.5秒） | 非対応（同じ制限） | N/A | Part 0 検証済み |
 | Dremio | 計画中 | 計画中 | N/A | NetApp/Dremio ジョイントソリューション（独自検証未実施） |
 
-主要な発見（Part 7）: 3つのトランザクショナルテーブルフォーマット（Delta, Iceberg, Hudi）は全て FSx for ONTAP S3 Access Points への書き込みに失敗した。根本原因は S3 API の制限で、conditional writes がなく（`If-None-Match` が 501）、atomic rename もない。既存テーブルの読み取りは理論的に可能だが、Delta read のみ検証済み。
+主要な発見（Part 7）: 3つのトランザクショナルテーブルフォーマット（Delta, Iceberg, Hudi）は全て FSx for ONTAP S3 Access Points への書き込みに失敗した。根本原因は S3 API の制限で、conditional writes がなく（`If-None-Match` が 501）、atomic rename もない。既存テーブルの読み取りは理論的に可能だが、Delta read のみ検証済み。実測記録: [Delta](../../verification-pack/delta-lake-oss-read/evidence/2026-05-23/evidence-record.yaml)、[Iceberg](../../verification-pack/iceberg/evidence/2026-05-24/evidence-record.yaml)、[Hudi](../../verification-pack/hudi/evidence/2026-05-24/evidence-record.yaml)（ap-northeast-1）。
 
 ### Apache Iceberg
 
@@ -84,7 +84,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 
 | 項目 | 内容 |
 |---|---|
-| 読み取り | delta-rs（Rust）で検証済み。Spark Delta reader も既存テーブルで動作 |
+| 読み取り | delta-rs（Rust）で検証済み。Spark Delta reader も既存テーブルで動作。[実測記録](../../verification-pack/delta-lake-oss-read/evidence/2026-05-23/evidence-record.yaml)（ap-northeast-1、2026-05-23） |
 | 書き込み | 非サポート。Delta コミットプロトコルが `_delta_log/` に `If-None-Match` conditional write を要求するが、FSx for ONTAP S3 Access Points は 501 Not Implemented を返す |
 | 動作する代替パス | DataSync → S3 → Delta Table（Databricks UC または OSS Spark）。FSx for ONTAP S3 Access Points は読み取り専用ソース |
 | Databricks パス | DataSync → S3 → UC Managed Delta Table（フルガバナンス、リネージ、Time Travel） |
@@ -101,7 +101,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 
 | 項目 | 内容 |
 |---|---|
-| 読み取り | 検証済み。Trino 481 + Glue Catalog + `hive.s3.path-style-access=true` + 明示的 `hive.s3.endpoint`。5M 行を 1.5秒 |
+| 読み取り | 検証済み。Trino 481 + Glue Catalog + `hive.s3.path-style-access=true` + 明示的 `hive.s3.endpoint`。5M 行を 1.5秒。[実測記録](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml)（ap-northeast-1、2026-05-26） |
 | 書き込み | 未テスト（トランザクショナル書き込みには同じ S3 Access Points 制限が適用） |
 | 設定 | S3 Access Points のエイリアス解決に `hive.s3.path-style-access=true` と明示的 `hive.s3.endpoint` が必要。DuckDB と同じパターン |
 | カタログ | Glue Catalog（Athena、Redshift、EMR と共有） |
@@ -144,7 +144,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | ガバナンス | Lake Formation（テーブル/カラム/行/タグ）。Athena と Redshift Spectrum に同じ権限が自動適用 |
 | 書き戻し | CTAS で FSx for ONTAP S3 Access Points に Parquet 書き戻し（検証済み、3.7秒） |
 | 特徴 | ゼロインフラ、全 AWS エンジンと Glue Catalog 共有、Lake Formation ガバナンス自動適用 |
-| ベンチマーク | 54.8 MB/s ピーク（5M 行を 2.2秒） |
+| ベンチマーク | 54.8 MB/s ピーク（5M 行を 2.2秒）。[実測記録](../../verification-pack/athena-parquet-read/evidence/2026-05-22/benchmark-result.yaml)（ap-northeast-1、2026-05-23） |
 | 参考 | [AWS チュートリアル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html) |
 
 ### AWS Glue
@@ -156,7 +156,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | 機能 | Crawler（スキーマ発見）、ETL Job（PySpark/Python Shell/Ray）、Data Quality |
 | AI 統合 | Glue + Bedrock（AI 駆動変換）、Glue Data Quality（自動バリデーション） |
 | ガバナンス | Glue Data Catalog が Lake Formation の基盤。全権限はここで定義 |
-| 書き戻し | ETL 書き戻し（検証済み、10K 行メダリオンパイプライン 64秒） |
+| 書き戻し | ETL 書き戻し（検証済み、10K 行メダリオンパイプライン 64秒）。[実測記録](../../verification-pack/glue-etl/evidence/2026-05-23/evidence-record.yaml)（ap-northeast-1、2026-05-23） |
 | 特徴 | スキーマ発見（Crawler）、ビジュアル ETL（Studio）、サーバーレス Spark、Data Quality ルール |
 | 参考 | [AWS チュートリアル](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-transform-data-with-glue.html) |
 
@@ -170,7 +170,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | AI 統合 | Bedrock KB、SageMaker、EMR ML ワークロードがアクセスするデータをガバナンス |
 | ガバナンス | 細粒度（カラム/行/タグ）、マルチエンジン（Athena + Redshift + EMR + Glue が同じ権限を共有）、データ移動なし |
 | 特徴 | 単一のガバナンス定義が全 AWS 分析エンジンに同時適用。エンジンごとの設定不要。データコピーなしのクロスアカウントテーブル共有 |
-| 検証済み機能（2026年5月） | カラムレベル権限（特定カラム拒否）、Row Filter（式によるフィルタ）、LF-Tag（sensitivity 分類 + タグベース grants） |
+| 検証済み機能（2026年5月） | カラムレベル権限（特定カラム拒否）、Row Filter（式によるフィルタ）、LF-Tag（sensitivity 分類 + タグベース grants）。[実測記録](../../verification-pack/lake-formation/evidence/2026-05-26/fine-grained-evidence.yaml)（ap-northeast-1） |
 
 ### Amazon Redshift Spectrum
 
@@ -183,7 +183,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | ガバナンス | Lake Formation（Athena と同じ権限。一度設定すれば全エンジンに適用） |
 | 書き戻し | 不可（クエリ結果は Redshift に残る。書き戻しには EMR を使用） |
 | 特徴 | NAS データとローカル DWH テーブルの JOIN、外部データ上のマテリアライズドビュー、Athena と同じ Glue Catalog |
-| ベンチマーク | 5M 行を 4.3秒（Serverless 8 RPU） |
+| ベンチマーク | 5M 行を 4.3秒（Serverless 8 RPU）。[実測記録](../../verification-pack/redshift-spectrum/evidence/2026-05-23/evidence-record.yaml)（ap-northeast-1、2026-05-23） |
 
 ### Amazon EMR Serverless (Spark)
 
@@ -196,7 +196,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | ガバナンス | IAM ベース（出力のガバナンス読み取りには Lake Formation と組み合わせ） |
 | 書き戻し | FSx for ONTAP S3 Access Points にフラット Parquet（検証済み、16秒 ETL 合計） |
 | 特徴 | セッションポリシー問題なし（直接 IAM）、フル Spark パワー、FSx for ONTAP への書き戻し、S3 上の Iceberg テーブル作成 |
-| ベンチマーク | 10K 行 読み取り+変換+書き込み 16秒、$0.05/ジョブ |
+| ベンチマーク | 10K 行 読み取り+変換+書き込み 16秒、$0.05/ジョブ。[実測記録](../../verification-pack/emr-spark/evidence/2026-05-23/evidence-record.yaml)（ap-northeast-1、2026-05-23） |
 | 注意 | `s3://`（EMRFS）を使用する。`s3a://` は AP エイリアスをパースできない |
 
 ### Amazon Bedrock Knowledge Bases
@@ -222,7 +222,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | ガバナンス | IAM + S3 Access Points ポリシーのみ（テーブルレベルガバナンスなし） |
 | 書き戻し | COPY TO Parquet（検証済み、304ms） |
 | 特徴 | 低コストなパス（$0.00001/クエリ）、ゼロアイドルコスト、サブ秒ウォームレイテンシ（452ms） |
-| ベンチマーク | 10K 行 452ms（ウォーム）、5M 行 779ms |
+| ベンチマーク | 10K 行 452ms（ウォーム）、5M 行 779ms。[実測記録](../../verification-pack/duckdb-local/evidence/2026-05-23/evidence-record.yaml)（ap-northeast-1、2026-05-23） |
 
 ### AWS ネイティブ構成の特徴
 

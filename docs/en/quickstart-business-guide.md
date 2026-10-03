@@ -172,9 +172,9 @@ It depends on what you need:
 | Platform | Characteristics and fit |
 |---|---|
 | Amazon Athena | Serverless SQL, no infrastructure, pay per query. Works immediately with zero-copy reads from the file server. The simplest starting point |
-| Snowflake | If you already use it. Supports External Tables on the file server + AI features (Cortex). Zero-copy reads verified |
+| Snowflake | If you already use it. Supports External Tables on the file server + AI features (Cortex). Zero-copy reads verified ([evidence](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml), ap-northeast-1) |
 | Databricks | Advanced ML/AI, Unity Catalog governance. Requires a small data extract (indirect path) due to a current platform constraint with file server access points |
-| Amazon EMR | Spark-based ETL, read + write verified. Suits large-scale data transformation |
+| Amazon EMR | Spark-based ETL, read + write verified ([evidence](../../verification-pack/emr-spark/evidence/2026-05-23/evidence-record.yaml), ap-northeast-1). Suits large-scale data transformation |
 | DuckDB (Lambda) | Lightest option. Serverless, ~$0.00001/query. Suits ad-hoc exploration |
 
 Multiple platforms can access the same file server data simultaneously — they are not mutually exclusive.

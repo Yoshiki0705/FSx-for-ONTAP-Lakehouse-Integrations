@@ -61,7 +61,7 @@ Snowflake → External Stage (AWS_ACCESS_POINT_ARN) → S3 AP → FSx for ONTAP
 ```
 
 - ステージ設定で明示的に AP ARN を指定
-- SELECT + External Table の完全サポートを確認済み
+- SELECT + External Table の完全サポートを確認済み（[実測記録](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml)、ap-northeast-1）
 
 ### パターン D: 同期ベース (Databricks)
 

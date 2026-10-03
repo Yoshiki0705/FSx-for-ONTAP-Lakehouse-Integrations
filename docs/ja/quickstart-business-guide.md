@@ -172,9 +172,9 @@
 | プラットフォーム | 特性と適する用途 |
 |---|---|
 | Amazon Athena | サーバーレス SQL、インフラ不要、クエリごとの課金。ファイルサーバーからのゼロコピー読み取りが即座に動作。シンプルな出発点 |
-| Snowflake | 既に利用中の場合。ファイルサーバー上の External Tables + AI 機能 (Cortex) をサポート。ゼロコピー読み取り検証済み |
+| Snowflake | 既に利用中の場合。ファイルサーバー上の External Tables + AI 機能 (Cortex) をサポート。ゼロコピー読み取り検証済み（[実測記録](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml)、ap-northeast-1） |
 | Databricks | 高度な ML/AI、Unity Catalog ガバナンス。ファイルサーバーアクセスポイントの現行制約により小規模データ抽出（間接パス）が必要 |
-| Amazon EMR | Spark ベースの ETL、読み取り + 書き戻し検証済み。大規模データ変換に適する |
+| Amazon EMR | Spark ベースの ETL、読み取り + 書き戻し検証済み（[実測記録](../../verification-pack/emr-spark/evidence/2026-05-23/evidence-record.yaml)、ap-northeast-1）。大規模データ変換に適する |
 | DuckDB (Lambda) | 軽量。サーバーレス、~$0.00001/クエリ。アドホック探索に適する |
 
 複数のプラットフォームが同じファイルサーバーデータに同時にアクセスできます。相互排他ではありません。
