@@ -70,6 +70,16 @@ number to another context without carrying its conditions.
 - [AGENTS.md](AGENTS.md) — conventions, prohibitions and quality gates for coding agents
   working in this repository.
 
+## Related repositories
+
+This repository is the analytics and lakehouse slice. For cross-cutting Amazon FSx for
+NetApp ONTAP adoption knowledge — assessment, design, migration, build, operate and
+optimize — start at the Adoption Playbook Hub, then use its workload entry map to reach the
+right note from a workload or technical-report starting point.
+
+- [FSx for ONTAP Adoption Playbook — llms.txt](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/llms.txt) — the cross-cutting FSx for ONTAP adoption knowledge base (lifecycle × domain), the Hub this repository's analytics findings sit downstream of.
+- [Workload entry map](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/reference/workload-entry-map.md) — maps workloads and technical reports to the Playbook note that covers each, so an agent can route from a workload to the relevant knowledge.
+
 ## What not to assume
 
 These are the mistakes that cost the most time, each already established here:
