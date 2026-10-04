@@ -1,4 +1,4 @@
-🌐 **English** | [日本語](../ja/reading-path-guide.md)
+**English** | [日本語](../ja/reading-path-guide.md)
 
 # Document Reading Path Guide
 

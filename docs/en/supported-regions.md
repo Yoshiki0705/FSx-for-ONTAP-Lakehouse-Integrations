@@ -1,6 +1,6 @@
 # Supported Regions
 
-🌐 [日本語](../ja/supported-regions.md)
+[日本語](../ja/supported-regions.md)
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # 対応リージョン
 
-🌐 [English](../en/supported-regions.md)
+[English](../en/supported-regions.md)
 
 ## 概要
 

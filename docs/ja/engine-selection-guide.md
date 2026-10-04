@@ -1,6 +1,6 @@
 # エンジン選定ガイド
 
-🌐 [English](../en/engine-selection-guide.md) | **日本語**
+[English](../en/engine-selection-guide.md) | **日本語**
 
 > FSx for ONTAP S3 Access Point のユースケースに応じて、コスト・ガバナンス・AI 対応度から適切な分析エンジンを選択するためのガイド。
 
@@ -61,7 +61,7 @@ Snowflake → External Stage (AWS_ACCESS_POINT_ARN) → S3 AP → FSx for ONTAP
 ```
 
 - ステージ設定で明示的に AP ARN を指定
-- SELECT + External Table の完全サポートを確認済み
+- SELECT + External Table の完全サポートを確認済み（[実測記録](../../verification-pack/snowflake/evidence/2026-05-24/evidence-record.yaml)、ap-northeast-1）
 
 ### パターン D: 同期ベース (Databricks)
 
@@ -85,13 +85,15 @@ FSx for ONTAP → OpenSharing Server → Catalog → Lakehouse Compute
 
 ## オープンテーブルフォーマットの考慮事項
 
-FSx for ONTAP S3 Access Points は条件付き書き込み (`If-None-Match`) を**サポートしていません**。これにより:
+FSx for ONTAP S3 Access Points は条件付き書き込み (`If-None-Match`) をサポートしていません。これによる各フォーマットの挙動は次のとおりです。
 
-- **Delta Lake**: 読み取りは動作。書き込みは HTTP 501 を返す。
-- **Apache Iceberg**: 既存テーブルの読み取りは動作見込み。書き込みは失敗（S3FileIO が AP エイリアスでメタデータを処理できない）。
-- **Apache Hudi**: 同様の書き込み制限が予想される。
+| フォーマット | 読み取り | 書き込み |
+|---|---|---|
+| Delta Lake | 動作 | HTTP 501 を返す |
+| Apache Iceberg | 既存テーブルの読み取りは動作見込み | 失敗（S3FileIO が AP エイリアスでメタデータを処理できない） |
+| Apache Hudi | 動作見込み | 同様の書き込み制限が予想される |
 
-**推奨アプローチ**: FSx for ONTAP から S3 AP 経由でソースデータを読み取り、マネージドテーブルはネイティブ S3 に書き込む。
+推奨アプローチは、FSx for ONTAP から S3 Access Points 経由でソースデータを読み取り、マネージドテーブルはネイティブ S3 に書き込むことです。
 
 ### Iceberg によるマルチプラットフォームブリッジ
 

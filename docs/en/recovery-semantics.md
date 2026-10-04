@@ -51,11 +51,11 @@ This document clarifies the relationship between ONTAP Snapshot (storage-level p
 
 ## Important Caveats for FSx for ONTAP S3 Access Point Context
 
-1. **Lakehouse time travel requires write access**: Delta Lake and Iceberg time travel depend on transaction logs/metadata being written alongside data. Since FSx for ONTAP S3 AP has limitations on atomic rename (required by Delta) and conditional writes, **time travel is only available for tables whose transaction logs are managed externally** (e.g., Iceberg with Glue Catalog as metadata store) or for read-only access to pre-existing versioned tables.
+Lakehouse time travel requires write access. Delta Lake and Iceberg time travel depend on transaction logs/metadata being written alongside data. Since FSx for ONTAP S3 Access Points have limitations on atomic rename (required by Delta) and conditional writes, time travel is only available for tables whose transaction logs are managed externally (for example, Iceberg with Glue Catalog as metadata store) or for read-only access to pre-existing versioned tables.
 
-2. **ONTAP Snapshot works regardless of access method**: Snapshots capture the volume state at the block level, independent of whether data was written via NFS, SMB, or S3 API. This makes Snapshot the **primary recovery mechanism** for data accessed through S3 Access Points.
+ONTAP Snapshot works regardless of access method. Snapshots capture the volume state at the block level, independent of whether data was written via NFS, SMB, or S3 API. This makes Snapshot the primary recovery mechanism for data accessed through S3 Access Points.
 
-3. **Snapshot does not understand table semantics**: Restoring a snapshot restores all files, including potentially in-progress writes. For Lakehouse tables, this means the table's transaction log and data files are restored together, which may leave the table in a state that requires repair (e.g., orphaned data files referenced by a rolled-back commit).
+Snapshot does not understand table semantics. Restoring a snapshot restores all files, including potentially in-progress writes. For Lakehouse tables, this means the table's transaction log and data files are restored together, which may leave the table in a state that requires repair (for example, orphaned data files referenced by a rolled-back commit).
 
 ## Recovery Decision Matrix
 

@@ -1,4 +1,4 @@
-🌐 [English](../en/industry-solution-catalog.md) | **日本語**
+[English](../en/industry-solution-catalog.md) | **日本語**
 
 > 📖 **技術ガイドとセット**: 本カタログは [FSx for ONTAP → Databricks UC 接続総合ガイド](./fsx-ontap-to-databricks-unity-catalog-guide.md)（接続パスの技術詳細）と対になる**業界別ソリューションカタログ**です。技術ガイドが「どう繋ぐか（How）」を扱うのに対し、本カタログは「どの業界で、何のために、どのパスを使うか（Who / Why / Which）」を扱います。
 
@@ -13,12 +13,14 @@
 
 ## エグゼクティブサマリー
 
-- **目的**: FSx for ONTAP に蓄積されたエンタープライズファイルデータ（NFS/SMB/S3/iSCSI）を、業界ごとのユースケースに応じて Databricks Unity Catalog ガバナンス下の分析・AI 基盤に接続する際の、業界別の推奨パターンを提供
-- **共通原則**: UC への直接ゼロコピー接続は非対応（技術ガイド参照）。本番パスは「DataSync → S3 → UC」「Kafka → Structured Streaming → UC」「Glue/EMR ETL → UC」の間接パス
-- **FSx for ONTAP の業界共通機能**: マルチプロトコル（同一データへ NFS/SMB/S3 同時アクセス）、Snapshot/FlexClone（一貫性のある時点コピー・瞬時クローン）、SnapMirror（DR）、SnapLock（WORM コンプライアンス）、ストレージ効率（重複排除/圧縮）
-- **規制業界の注意点**: 金融（BCBS 239 等）、医療（HIPAA/GxP）、公共（データ主権）では、データ分類・監査ログ・暗号化チェーン・データ越境制約を設計の前提に含める
-- **本カタログの使い方**: 自業界のセクションで「ユースケース → 推奨パス → ガバナンス → 注意点」を確認し、技術ガイドの該当パス詳細にリンクで遷移
-- **カバレッジ**: 26 業界を収録（製造・自動車・金融・医療・半導体・メディア・小売・エネルギー・通信・公共に加え、農業・物流・観光・法務・建設・教育・防衛・スマートシティ・広告・運輸・ESG・不動産・HR・化学・ゲーミング・SAP/ERP）。サーバーレス自動化パターンの実装例は [FSx for ONTAP S3 Access Points Serverless Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)（同一著者）の業界別ユースケース（UC1-UC30）を参照
+| 観点 | 内容 |
+|---|---|
+| 目的 | FSx for ONTAP に蓄積されたエンタープライズファイルデータ（NFS/SMB/S3/iSCSI）を、業界ごとのユースケースに応じて Databricks Unity Catalog ガバナンス下の分析・AI 基盤に接続する際の、業界別の推奨パターンを提供する |
+| 共通原則 | UC への直接ゼロコピー接続は非対応（技術ガイド参照）。本番パスは「DataSync → S3 → UC」「Kafka → Structured Streaming → UC」「Glue/EMR ETL → UC」の間接パス |
+| FSx for ONTAP の業界共通機能 | マルチプロトコル（同一データへ NFS/SMB/S3 同時アクセス）、Snapshot/FlexClone（一貫性のある時点コピー・瞬時クローン）、SnapMirror（DR）、SnapLock（WORM コンプライアンス）、ストレージ効率（重複排除/圧縮） |
+| 規制業界の注意点 | 金融（BCBS 239 等）、医療（HIPAA/GxP）、公共（データ主権）では、データ分類・監査ログ・暗号化チェーン・データ越境制約を設計の前提に含める |
+| 本カタログの使い方 | 自業界のセクションで「ユースケース → 推奨パス → ガバナンス → 注意点」を確認し、技術ガイドの該当パス詳細にリンクで遷移する |
+| カバレッジ | 26 業界を収録（製造・自動車・金融・医療・半導体・メディア・小売・エネルギー・通信・公共に加え、農業・物流・観光・法務・建設・教育・防衛・スマートシティ・広告・運輸・ESG・不動産・HR・化学・ゲーミング・SAP/ERP）。サーバーレス自動化パターンの実装例は [FSx for ONTAP S3 Access Points Serverless Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)（同一著者）の業界別ユースケース（UC1-UC30）を参照 |
 
 ## 業界横断クイックリファレンス
 
@@ -63,7 +65,7 @@
 
 ### ガバナンスの二者択一ではなく適材適所
 
-> 本カタログは UC ガバナンスを中心に記載していますが、AWS ネイティブなワークロード（Athena/EMR/Glue 中心、特に半導体・メディア）では **AWS Lake Formation / Amazon DataZone（SageMaker Unified Studio）** が AWS 側のガバナンス層として機能します。UC と AWS ネイティブガバナンスは排他ではなく、用途に応じて選択または併用してください（優劣ではなく適材適所）。
+> 本カタログは UC ガバナンスを中心に記載していますが、AWS ネイティブなワークロード（Athena/EMR/Glue 中心、特に半導体・メディア）では AWS Lake Formation / Amazon DataZone（SageMaker Unified Studio）が AWS 側のガバナンス層になります。UC と AWS ネイティブガバナンスは排他ではなく、用途に応じて選択または併用してください（優劣ではなく適材適所）。
 
 > UC のガバナンスは **ABAC（属性ベースアクセス制御）+ governed tags** が現代的なパターンです（[公式](https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/tutorial)）。業界ごとに一貫したタグ分類体系（例: `pii`, `ephi`, `ip`, `payment`, `classification`）を先に定義し、それに基づいてポリシーを適用すると大規模環境で管理しやすくなります。規制業界（金融・医療・公共）は**中央集権型**ガバナンス、大規模で多様な事業を持つ組織は**カタログ単位のフェデレーション型**が適合します。
 
@@ -159,7 +161,7 @@
 
 **注意点**: 規制報告データは UC の lineage で「ソースから報告値までの系譜」を証明可能にする。マルチクラウド規制要件（[**Public**](https://www.databricks.com/blog/multi-cloud-architecture-portable-data-and-ai-processing-financial-services)）がある場合、UC のクロスクラウドガバナンスを活用。
 
-> BCBS 239 は集計の正確性だけでなく**適時性（timeliness）**を要求します。DataSync の RPO（データ鮮度）が報告要件を満たすか確認してください。また、このデータで学習するリスクモデルは**モデルリスク管理**（米国 SR 11-7 等）の対象となるため、UC lineage に加えてモデルのバージョン管理・検証記録（MLflow）を統合してください。
+> BCBS 239 は集計の正確性に加えて適時性（timeliness）を要求します。DataSync の RPO（データ鮮度）が報告要件を満たすか確認してください。また、このデータで学習するリスクモデルはモデルリスク管理（米国 SR 11-7 等）の対象となるため、UC lineage に加えてモデルのバージョン管理・検証記録（MLflow）を統合してください。
 
 > SnapLock には **Compliance モード**（管理者でも保持期間内は削除不可）と **Enterprise モード**（管理者は削除可能）があります。規制報告・取引記録の改ざん防止には Compliance モードを使用し、Compliance Clock の設定を確認してください。
 
@@ -832,12 +834,14 @@ Q: あなたの業界のデータ鮮度要件は？
 
 製造・自動車に加え、**農業・物流・観光・スマートシティ・運輸**もエッジ機器（センサー/カメラ）からデータが発生します。これらに共通する設計原則:
 
-1. **エッジで推論・集約、クラウドで分析**: 低帯域・低レイテンシ要件のため、エッジ（AWS IoT Greengrass / SageMaker Edge / オンプレ CV アプライアンス）で一次処理し、結果・集約値・代表データのみをクラウドへ送る
-2. **生データの全件アップロードを避ける**: 帯域・コスト・プライバシーの観点で、生映像/生センサーストリームの全件クラウド転送は非推奨
-3. **FSx for ONTAP は IT 側の集約点**: エッジ → ゲートウェイ → FSx for ONTAP（IT ネットワーク）→ DataSync/FPolicy → UC のパターン。OT/IT 境界を尊重
-4. **プライバシー保護**: 人物が写る映像（物流の作業者、観光の来訪者、スマートシティの市民）は、個人を特定しない集計をエッジで行い、生映像はエッジで処理・破棄
-5. **安全制御との分離**: 運輸・エネルギー・スマートシティの安全制御は OT 側で完結。UC 分析を制御ループに組み込まない
-6. **季節性・需要変動への対応**: 農業（作付け/収穫）・観光（繁忙期）・小売（セール期）など季節変動の大きい業界では、FSx for ONTAP のスループットをピークに合わせて計画するか、エラスティックスループット + S3 Intelligent-Tiering で弾力的に対応する
+| 原則 | 内容 |
+|---|---|
+| エッジで推論・集約、クラウドで分析 | 低帯域・低レイテンシ要件のため、エッジ（AWS IoT Greengrass / SageMaker Edge / オンプレ CV アプライアンス）で一次処理し、結果・集約値・代表データのみをクラウドへ送る |
+| 生データの全件アップロードを避ける | 帯域・コスト・プライバシーの観点で、生映像/生センサーストリームの全件クラウド転送は非推奨 |
+| FSx for ONTAP は IT 側の集約点 | エッジ → ゲートウェイ → FSx for ONTAP（IT ネットワーク）→ DataSync/FPolicy → UC のパターン。OT/IT 境界を尊重する |
+| プライバシー保護 | 人物が写る映像（物流の作業者、観光の来訪者、スマートシティの市民）は、個人を特定しない集計をエッジで行い、生映像はエッジで処理・破棄する |
+| 安全制御との分離 | 運輸・エネルギー・スマートシティの安全制御は OT 側で完結。UC 分析を制御ループに組み込まない |
+| 季節性・需要変動への対応 | 農業（作付け/収穫）・観光（繁忙期）・小売（セール期）など季節変動の大きい業界では、FSx for ONTAP のスループットをピークに合わせて計画するか、エラスティックスループット + S3 Intelligent-Tiering で弾力的に対応する |
 
 > **補足**: AWS Panorama は 2026 年 5 月でサポート終了。エッジ CV は AWS IoT Greengrass + 汎用カメラ、またはサードパーティのエッジアプライアンスで設計してください。
 

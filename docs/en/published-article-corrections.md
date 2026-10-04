@@ -1,4 +1,4 @@
-🌐 **English** | [日本語](../ja/published-article-corrections.md)
+**English** | [日本語](../ja/published-article-corrections.md)
 
 # Corrections to Published Articles
 
@@ -6,7 +6,7 @@ Articles in this series are published on external platforms and are edited in pl
 
 **Why this page exists.** A reader who found a claim through a search engine will not know that a later verification overturned it. Recording the correction only in an evidence record fixes the repository and leaves the article wrong. This page also means the correction has a citable URL that can be linked from the article itself.
 
-**How to use it.** Anything marked ⬜ has not been applied to the published article. Do not cite the article for a corrected claim until the row shows ✅.
+How to use it. Each correction records its "applied to the article" state. Where a correction is not yet applied, do not cite the article for that corrected claim until it is.
 
 **Current state.** Every correction on this page has been applied to the live articles, verified by re-fetching each body after the update rather than by trusting the API's success response. Each edited article carries the correction inline, next to the claim it replaces, so a reader who arrives from a search engine sees it without coming here first.
 

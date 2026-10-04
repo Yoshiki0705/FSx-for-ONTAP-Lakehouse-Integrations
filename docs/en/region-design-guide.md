@@ -1,6 +1,6 @@
 # Region Design Guide
 
-🌐 [日本語](../ja/region-design-guide.md)
+[日本語](../ja/region-design-guide.md)
 
 ## Overview
 
@@ -48,14 +48,14 @@ design guidelines for users deploying in other regions.
 
 ### Principle 1: Co-locate FSx for ONTAP and Analytics Platform in Same Region
 
-```
-✅ Recommended: Same region
+```text
+Recommended: Same region
 ┌──────────────────────────────────┐
 │  Region X                         │
 │  FSx for ONTAP + S3 AP + Platform │
 └──────────────────────────────────┘
 
-❌ Not recommended: Cross-region
+Not recommended: Cross-region
 ┌──────────────┐         ┌──────────────┐
 │  Region A    │ ──────▶ │  Region B    │
 │  FSx for ONTAP│  High latency │  Platform    │
@@ -75,10 +75,10 @@ design guidelines for users deploying in other regions.
 | Databricks | ✅ Recommended | Possible (not recommended) |
 | EMR / Spark | ✅ Recommended | Possible |
 | Lambda | ✅ Recommended | Possible |
-| Snowflake | ❌ Not possible | ✅ Required |
-| Athena | ❌ Not possible | ✅ Required |
-| Glue | ❌ Not possible | ✅ Required |
-| Redshift Spectrum | ❌ Not possible | ✅ Required |
+| Snowflake | Not possible | ✅ Required |
+| Athena | Not possible | ✅ Required |
+| Glue | Not possible | ✅ Required |
+| Redshift Spectrum | Not possible | ✅ Required |
 
 ### Principle 3: Data Residency Requirements Take Priority
 

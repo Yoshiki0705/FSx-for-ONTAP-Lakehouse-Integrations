@@ -1,4 +1,4 @@
-> 🌐 Language: [日本語](../ja/s3ap-flexcache-snapmirror-considerations.md) | **English**
+> [日本語](../ja/s3ap-flexcache-snapmirror-considerations.md) | **English**
 
 # S3 Access Points + FlexCache / SnapMirror — Additional Design Considerations
 
@@ -16,7 +16,7 @@
 
 ## 1. Directory Design Impact on FlexCache / SnapMirror
 
-S3 AP directory design affects not only standalone performance but also FlexCache / SnapMirror efficiency.
+S3 AP directory design affects standalone performance and FlexCache / SnapMirror efficiency alike.
 
 ### Impact on FlexCache
 
@@ -84,8 +84,8 @@ SnapMirror transfers volume data (files/directories) only. The following must be
 | File data | ✅ | — |
 | UNIX permissions (uid/gid/mode) | ✅ | — |
 | NTFS ACLs | ✅ | — |
-| S3 Access Point | ❌ | Create new via `aws fsx create-and-attach-s3-access-point` |
-| S3 AP IAM policy | ❌ | Configure in destination region |
+| S3 Access Point | No | Create new via `aws fsx create-and-attach-s3-access-point` |
+| S3 AP IAM policy | No | Configure in destination region |
 | S3 user metadata (x-amz-meta-*) | ⚠️ | May persist as ONTAP stream attributes (version-dependent) |
 | S3 Object Tags | ⚠️ | Same as above |
 
@@ -101,9 +101,9 @@ SnapMirror transfers volume data (files/directories) only. The following must be
 
 | Destination-side subject | S3 AP Attachment | Reads | Writes | Notes |
 |---|:---:|:---:|:---:|---|
-| DP volume, junction path attempted via the **FSx API** | ❌ | — | — | `CreateVolume` refuses the field by name; `UpdateVolume` returns 200 and silently discards it. Attachment fails with `the volume is not mounted` |
-| **DP volume, mounted via ONTAP** | ✅ | ✅ | ❌ `AccessDenied` | Replication stays `snapmirrored`/healthy. New data from a later transfer appeared through the same access point in **15 s**, with no access point change |
-| **FlexClone of a destination Snapshot** | ✅ | ✅ | ✅ | Relationship unaffected. Frozen at the cloned Snapshot — a later transfer does not advance it |
+| DP volume, junction path attempted via the FSx API | No | — | — | `CreateVolume` refuses the field by name; `UpdateVolume` returns 200 and silently discards it. Attachment fails with `the volume is not mounted` |
+| DP volume, mounted via ONTAP | ✅ | ✅ | Denied (`AccessDenied`) | Replication stays `snapmirrored`/healthy. New data from a later transfer appeared through the same access point in 15 s, with no access point change |
+| FlexClone of a destination Snapshot | ✅ | ✅ | ✅ | Relationship unaffected. Frozen at the cloned Snapshot; a later transfer does not advance it |
 | DP → break → RW | ✅ | ✅ | ✅ | The DR failover path. SM-005, SM-VAL-008/010 |
 
 Evidence: [S3AP-DP-ATTACH-002](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml), on ONTAP 9.18.1P5. The FSx-API-only rows come from [S3AP-DP-ATTACH-001](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13/evidence-record.yaml).
@@ -121,7 +121,7 @@ Three samples, one file system, same day. Two of them — 665 s and 2298 s — a
 
 **An analytics engine cannot tell the difference.** Amazon Athena was pointed at a DP-backed access point and at an RW-backed control built from identical Parquet files, in one session: identical rows, identical aggregates, 7493 ms against 7804 ms. Partition discovery and partition pruning both worked against the read-only volume, and `INSERT` failed cleanly with S3 403 surfaced as `PERMISSION_DENIED`. A partition added by a later transfer became queryable after a catalog refresh, with no change to the access point or the table. Evidence: [S3AP-DP-ATHENA-001](../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-athena-on-dp/evidence-record.yaml).
 
-> **Why this section was wrong until 2026-09-13.** The original row asserted ❌ for a DP volume with the reason "read-only; junction path cannot be set", carrying no evidence record. A first pass tested it from outside the VPC, reproduced the FSx API's refusal, and confirmed the ❌ — which looked like verification but had only measured the FSx API. The ONTAP management endpoint is a private address, so the layer that actually decides was never reached. **Testing the reachable API is not testing the claim.**
+> Why this section was wrong until 2026-09-13. The original row asserted "not supported" for a DP volume with the reason "read-only; junction path cannot be set", carrying no evidence record. A first pass tested it from outside the VPC, reproduced the FSx API's refusal, and confirmed that verdict, which looked like verification but had only measured the FSx API. The ONTAP management endpoint is a private address, so the layer that actually decides was never reached. Testing the reachable API is not testing the claim.
 
 #### Serving replica data without breaking the relationship
 

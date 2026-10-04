@@ -1,6 +1,6 @@
 # Reading FSx for ONTAP files from Snowflake and writing Iceberg tables
 
-🌐 **English** | [日本語](../ja/snowflake-iceberg-setup.md)
+**English** | [日本語](../ja/snowflake-iceberg-setup.md)
 
 > Verified end to end on 2026-08-06 ([evidence](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml)).
 > Every command here was run against a real account and a real FSx for ONTAP file system.

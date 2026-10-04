@@ -1,4 +1,4 @@
-🌐 [English](../en/databricks-standard-s3-reproduction.md) | **日本語**
+[English](../en/databricks-standard-s3-reproduction.md) | **日本語**
 
 # 標準 S3 × Databricks 非構造化 AI PoC の再現手順
 

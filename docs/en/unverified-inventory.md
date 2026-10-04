@@ -1,12 +1,12 @@
 # Unverified Item Inventory
 
-🌐 **English** | [日本語](../ja/unverified-inventory.md)
+**English** | [日本語](../ja/unverified-inventory.md)
 
 > Compiled 2026-08-06. Every claim in this repository that is **not** backed by a recorded run, with what blocks it.
 
-This exists so the gaps are countable. A claim marked ⚠️ or 🔲 in the [compatibility matrix](./compatibility-matrix.md) should appear here; if it does not, the matrix is ahead of this page and this page is wrong.
+This exists so the gaps are countable. A claim marked unverified or planned in the [compatibility matrix](./compatibility-matrix.md) should appear here; if it does not, the matrix is ahead of this page and this page is wrong.
 
-Things that are known **not** to work are tracked separately in the [blocker tracker](./blocker-tracker.md). This page is about the unknown, not the broken.
+Things that are known not to work are tracked separately in the [blocker tracker](./blocker-tracker.md). This page is about the unknown, not the broken.
 
 **Total: 24 items.** Two were added and closed the same day on 2026-09-13 (UNV-031, UNV-032 — serving a live SnapMirror destination through an access point). One closed on 2026-08-12 (UNV-030, FILE-column sharing). Five were closed on 2026-08-06 — see Recently closed.
 

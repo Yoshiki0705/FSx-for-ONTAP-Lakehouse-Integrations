@@ -180,24 +180,28 @@ FSx for ONTAP と Lakehouse プラットフォーム間の接続レイヤーで�
 
 ### セキュリティレイヤー
 
-1. **VPC Endpoint Policy** — VPC 内からのみアクセス許可
-2. **S3 AP Policy** — IAM Principal + VPC 条件
-3. **IAM Role Policy** — 最小権限の原則
-4. **ONTAP Export Policy** — ボリュームレベルのアクセス制御
-5. **Security Group** — ネットワークレベルのフィルタリング
+多層防御は次の 5 層で構成します。
+
+| レイヤー | 役割 |
+|---|---|
+| VPC Endpoint Policy | VPC 内からのみアクセス許可 |
+| S3 Access Points Policy | IAM Principal + VPC 条件 |
+| IAM Role Policy | 最小権限の原則 |
+| ONTAP Export Policy | ボリュームレベルのアクセス制御 |
+| Security Group | ネットワークレベルのフィルタリング |
 
 ---
 
 ## データフォーマット対応
 
-> **重要**: 以下のテーブルは S3 API レベルでのフォーマット対応を示しています。FSx for ONTAP S3 Access Points では、トランザクショナルフォーマット（Delta Lake、Apache Hudi）の書き込み操作はアトミック rename と条件付き書き込みの欠如により**非サポート**です。検証済みのプラットフォーム × フォーマット × モードの組み合わせは[互換性マトリクス](compatibility-matrix.md)を参照してください。
+> 以下のテーブルは S3 API レベルでのフォーマット対応を示しています。FSx for ONTAP S3 Access Points では、トランザクショナルフォーマット（Delta Lake、Apache Hudi）の書き込み操作はアトミック rename と条件付き書き込みの欠如により非サポートです。検証済みのプラットフォーム × フォーマット × モードの組み合わせは[互換性マトリクス](compatibility-matrix.md)を参照してください。
 
 | フォーマット | 読み取り | 書き込み | 主な用途 | FSx for ONTAP S3 AP 書き込み |
 |-------------|---------|---------|---------|:------------------:|
 | Parquet | ✅ | ✅ | 分析クエリ（列指向） | ✅ Append |
 | Apache Iceberg | ✅ | ⚠️ | ACID テーブル（ベンダー中立） | 実験的（外部カタログ） |
-| Delta Lake | ✅ | ❌ | ACID テーブル（Databricks） | 非サポート（アトミック rename なし） |
-| Apache Hudi | ✅ | ❌ | CDC + Upsert | 非サポート（アトミック rename なし） |
+| Delta Lake | ✅ | 非対応 | ACID テーブル（Databricks） | 非サポート（アトミック rename なし） |
+| Apache Hudi | ✅ | 非対応 | CDC + Upsert | 非サポート（アトミック rename なし） |
 | CSV | ✅ | ✅ | レガシーデータ取り込み | ✅ Append |
 | JSON / NDJSON | ✅ | ✅ | セミ構造化データ | ✅ Append |
 | ORC | ✅ | ✅ | Hive 互換 | ✅ Append |

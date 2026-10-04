@@ -1,4 +1,4 @@
-🌐 **English** | [日本語](../ja/industry-solution-catalog.md)
+**English** | [日本語](../ja/industry-solution-catalog.md)
 
 > 📖 **Paired with the technical guide**: This catalog is the **industry solution catalog** that pairs with the [FSx for ONTAP → Databricks UC Connection Guide](./fsx-ontap-to-databricks-unity-catalog-guide.md) (technical detail of connection paths). While the technical guide covers "How to connect," this catalog covers "Who / Why / Which path" per industry.
 
@@ -13,12 +13,14 @@
 
 ## Executive Summary
 
-- **Purpose**: Provides industry-specific recommended patterns for connecting enterprise file data accumulated in FSx for ONTAP (NFS/SMB/S3/iSCSI) to Databricks Unity Catalog-governed analytics/AI platforms per industry use case
-- **Common principle**: Direct zero-copy UC connection is not supported (see technical guide). Production paths are the indirect paths "DataSync → S3 → UC," "Kafka → Structured Streaming → UC," and "Glue/EMR ETL → UC"
-- **Cross-industry FSx for ONTAP capabilities**: Multiprotocol (simultaneous NFS/SMB/S3 access to same data), Snapshot/FlexClone (consistent point-in-time copies, instant clones), SnapMirror (DR), SnapLock (WORM compliance), storage efficiency (dedup/compression)
-- **Regulated industry caveats**: Finance (BCBS 239, etc.), healthcare (HIPAA/GxP), public sector (data sovereignty) must include data classification, audit logs, encryption chains, and cross-border constraints as design prerequisites
-- **How to use this catalog**: Check your industry's section for "use case → recommended path → governance → caveats," then navigate to the relevant path detail in the technical guide via links
-- **Coverage**: 26 industries (manufacturing, automotive, finance, healthcare, semiconductor, media, retail, energy, telecom, public sector, plus agriculture, logistics, tourism, legal, construction, education, defense, smart city, AdTech, transportation, ESG, real estate, HR, chemical, gaming, SAP/ERP). For serverless automation pattern implementations, see the industry use cases (UC1-UC30) in [FSx for ONTAP S3 Access Points Serverless Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) (same author)
+| Aspect | Detail |
+|---|---|
+| Purpose | Provides industry-specific recommended patterns for connecting enterprise file data accumulated in FSx for ONTAP (NFS/SMB/S3/iSCSI) to Databricks Unity Catalog-governed analytics/AI platforms per industry use case |
+| Common principle | Direct zero-copy UC connection is not supported (see technical guide). Production paths are the indirect paths "DataSync → S3 → UC," "Kafka → Structured Streaming → UC," and "Glue/EMR ETL → UC" |
+| Cross-industry FSx for ONTAP capabilities | Multiprotocol (simultaneous NFS/SMB/S3 access to same data), Snapshot/FlexClone (consistent point-in-time copies, instant clones), SnapMirror (DR), SnapLock (WORM compliance), storage efficiency (dedup/compression) |
+| Regulated industry caveats | Finance (BCBS 239, etc.), healthcare (HIPAA/GxP), public sector (data sovereignty) must include data classification, audit logs, encryption chains, and cross-border constraints as design prerequisites |
+| How to use this catalog | Check your industry's section for "use case → recommended path → governance → caveats," then navigate to the relevant path detail in the technical guide via links |
+| Coverage | 26 industries (manufacturing, automotive, finance, healthcare, semiconductor, media, retail, energy, telecom, public sector, plus agriculture, logistics, tourism, legal, construction, education, defense, smart city, AdTech, transportation, ESG, real estate, HR, chemical, gaming, SAP/ERP). For serverless automation pattern implementations, see the industry use cases (UC1-UC30) in [FSx for ONTAP S3 Access Points Serverless Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) (same author) |
 
 ## Cross-Industry Quick Reference
 
@@ -63,7 +65,7 @@ Regardless of industry, consider these three points early in design.
 
 ### Governance: Right-Tool-for-the-Job, Not Either/Or
 
-> This catalog centers on UC governance, but for AWS-native workloads (Athena/EMR/Glue-centric, especially semiconductor and media), **AWS Lake Formation / Amazon DataZone (SageMaker Unified Studio)** serves as the AWS-side governance layer. UC and AWS-native governance are not mutually exclusive; choose or combine based on use case (right-tool-for-the-job, not superiority).
+> This catalog centers on UC governance, but for AWS-native workloads (Athena/EMR/Glue-centric, especially semiconductor and media), AWS Lake Formation / Amazon DataZone (SageMaker Unified Studio) is the AWS-side governance layer. UC and AWS-native governance are not mutually exclusive; choose or combine based on use case (right-tool-for-the-job, not superiority).
 
 > The modern UC governance pattern is **ABAC (attribute-based access control) + governed tags** ([official](https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/tutorial)). Define a consistent tag taxonomy per industry first (e.g., `pii`, `ephi`, `ip`, `payment`, `classification`), then apply policies based on it for easier management at scale. Regulated industries (finance, healthcare, public) suit **centralized** governance; large diversified organizations suit **federated (catalog-per-domain)** governance.
 
@@ -159,7 +161,7 @@ Each industry section uses a common template: **Data characteristics → Key use
 
 **Caveats**: Make regulatory reporting data provable "from source to reported value" via UC lineage. For multi-cloud regulatory requirements ([**Public**](https://www.databricks.com/blog/multi-cloud-architecture-portable-data-and-ai-processing-financial-services)), leverage UC's cross-cloud governance.
 
-> BCBS 239 requires not just aggregation accuracy but **timeliness**. Verify that DataSync's RPO (data freshness) meets reporting requirements. Also, risk models trained on this data fall under **model risk management** (e.g., US SR 11-7), so integrate model version management / validation records (MLflow) in addition to UC lineage.
+> BCBS 239 requires timeliness as well as aggregation accuracy. Verify that DataSync's RPO (data freshness) meets reporting requirements. Also, risk models trained on this data fall under model risk management (for example, US SR 11-7), so integrate model version management / validation records (MLflow) in addition to UC lineage.
 
 > SnapLock has a **Compliance mode** (cannot be deleted within retention even by admin) and an **Enterprise mode** (admin can delete). Use Compliance mode for tamper-proofing regulatory reports / transaction records, and verify the Compliance Clock setting.
 
@@ -832,12 +834,14 @@ Document-centric industries (Legal/Education/HR/Chemical SDS/AdTech/SAP-EDI):
 
 In addition to manufacturing/automotive, **agriculture, logistics, tourism, smart city, and transportation** also generate data from edge devices (sensors/cameras). Common design principles:
 
-1. **Infer/aggregate at the edge, analyze in the cloud**: Due to low-bandwidth/low-latency requirements, perform primary processing at the edge (AWS IoT Greengrass / SageMaker Edge / on-prem CV appliances) and send only results/aggregates/representative data to the cloud
-2. **Avoid uploading all raw data**: For bandwidth/cost/privacy reasons, transferring all raw footage/sensor streams to the cloud is not recommended
-3. **FSx for ONTAP as the IT-side aggregation point**: The pattern edge → gateway → FSx for ONTAP (IT network) → DataSync/FPolicy → UC. Respect the OT/IT boundary
-4. **Privacy protection**: For footage capturing people (logistics workers, tourism visitors, smart city citizens), perform non-identifying aggregation at the edge and process/discard raw footage at the edge
-5. **Separation from safety control**: Safety control for transportation/energy/smart city completes on the OT side. Do not embed UC analytics in the control loop
-6. **Handling seasonality / demand fluctuation**: For industries with large seasonal variation (agriculture: planting/harvest, tourism: peak seasons, retail: sale periods), plan FSx for ONTAP throughput for peaks or respond elastically with elastic throughput + S3 Intelligent-Tiering
+| Principle | Detail |
+|---|---|
+| Infer/aggregate at the edge, analyze in the cloud | Due to low-bandwidth/low-latency requirements, perform primary processing at the edge (AWS IoT Greengrass / SageMaker Edge / on-prem CV appliances) and send only results/aggregates/representative data to the cloud |
+| Avoid uploading all raw data | For bandwidth/cost/privacy reasons, transferring all raw footage/sensor streams to the cloud is not recommended |
+| FSx for ONTAP as the IT-side aggregation point | The pattern edge → gateway → FSx for ONTAP (IT network) → DataSync/FPolicy → UC. Respect the OT/IT boundary |
+| Privacy protection | For footage capturing people (logistics workers, tourism visitors, smart city citizens), perform non-identifying aggregation at the edge and process/discard raw footage at the edge |
+| Separation from safety control | Safety control for transportation/energy/smart city completes on the OT side. Do not embed UC analytics in the control loop |
+| Handling seasonality / demand fluctuation | For industries with large seasonal variation (agriculture: planting/harvest, tourism: peak seasons, retail: sale periods), plan FSx for ONTAP throughput for peaks or respond elastically with elastic throughput + S3 Intelligent-Tiering |
 
 > **Note**: AWS Panorama reaches end-of-support in May 2026. Design edge CV with AWS IoT Greengrass + general-purpose cameras, or third-party edge appliances.
 
