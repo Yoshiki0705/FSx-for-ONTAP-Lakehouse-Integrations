@@ -30,6 +30,7 @@ for f in cfn-params/*.json shared/params/*.json; do python3 -c "import json; jso
 - Property-based tests with Hypothesis
 - CloudFormation parameter files: `[{"ParameterKey":"X","ParameterValue":"Y"}]` format
 - Example IPs: RFC 5737 range (`198.51.100.x`) — never use real IPs
+- Documentation prose criteria: [Hub writing-quality](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/agent/writing-quality.md); `scripts/ai_style_rules.py` enforces the fail tier (`.github/workflows/ai-style.yml`)
 
 ## Supply-Chain Security
 
