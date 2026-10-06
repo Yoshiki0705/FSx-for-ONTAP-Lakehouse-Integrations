@@ -1,7 +1,7 @@
 # Snowflake + FSx for ONTAP S3 AP Validation Evidence
 test_id: "SNOWFLAKE-S3AP-002"
 date_tested: "2026-05-24"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 environment:
   snowflake_edition: "Standard"

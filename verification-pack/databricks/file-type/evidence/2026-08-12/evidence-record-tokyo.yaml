@@ -1,7 +1,7 @@
 # Verification Evidence Record — FILE type and _object_metadata over an FSx for ONTAP S3 Access Point
 test_id: "DBX-FILE-TYPE-002"
 date_tested: "2026-08-12"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 supersedes_partially: "DBX-FILE-TYPE-001 (trial workspace, us-west-2) — see blocker_status"
 purpose: |
   DBX-FILE-TYPE-001 could not answer DBX-FILE-041 (_object_metadata reading object tags

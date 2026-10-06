@@ -19,7 +19,7 @@
 
 test_id: "ONTAP-RECOVERY-QUEUE-001"
 date_tested: "2026-09-13"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 corrects: "TD-04 in S3AP-DP-ATTACH-002"
 settles: "FC-002 JA/EN divergence in integrations/snapmirror-flexcache-multicloud/docs/{en,ja}/research.md"
 

@@ -1,7 +1,7 @@
 # ONTAP Feature Verification Status
 test_id: "ONTAP-FEATURES-001"
 date_tested: "2026-05-24"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Environment
 region: "ap-northeast-1"

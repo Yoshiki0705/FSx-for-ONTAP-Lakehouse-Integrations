@@ -26,7 +26,7 @@
 # =============================================================================
 test_id: "FPOLICY-EVENT-SOURCE-001"
 date_tested: "2026-09-14"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 corrects: >
   The claim in docs/{en,ja}/published-article-corrections.md C-01, and the
   correction notice published in the Part 3 article, that FPolicy "has never

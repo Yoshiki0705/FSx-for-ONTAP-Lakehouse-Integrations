@@ -24,7 +24,7 @@
 
 test_id: "S3AP-DP-ATTACH-002"
 date_tested: "2026-09-13"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 supersedes: "S3AP-DP-ATTACH-001 (conclusion only; its FSx-API measurements stand)"
 
 purpose: |

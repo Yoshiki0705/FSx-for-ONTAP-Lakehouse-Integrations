@@ -1,7 +1,7 @@
 # Verification Evidence Record — Athena CTAS Write-back
 test_id: "ATHENA-CTAS-WRITEBACK-001"
 date_tested: "2026-05-23"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Test Description
 description: |

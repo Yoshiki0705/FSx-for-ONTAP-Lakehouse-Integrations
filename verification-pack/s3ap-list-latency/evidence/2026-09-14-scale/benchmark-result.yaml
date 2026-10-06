@@ -18,7 +18,7 @@
 benchmark_id: "BENCH-S3AP-LIST-002"
 date_tested: "2026-09-14"
 measured_at_utc: "2026-09-14T03:46:25Z"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 extends: "BENCH-S3AP-LIST-001 (2026-08-05), same harness, same client location"
 closes: >
   The "above 5,000 objects is untested" caveat, up to 20,000 objects. Above

@@ -1,7 +1,7 @@
 # Verification Evidence Record — Redshift Spectrum
 test_id: "REDSHIFT-SPECTRUM-001"
 date_tested: "2026-05-23"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Infrastructure
 region: "ap-northeast-1"

@@ -1,7 +1,7 @@
 # Verification Evidence Record — ClickHouse
 test_id: "CLICKHOUSE-001"
 date_tested: "2026-05-26"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Result
 result: "BLOCKED (STS session token not supported in s3() function)"

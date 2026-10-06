@@ -4,7 +4,7 @@
 
 test_suite: "Negative Test Matrix"
 date_executed: "2026-05-22"
-executor: "Yoshiki Fujiwara"
+executor: "repository maintainer"
 region: "ap-northeast-1"
 ap_name_rw: "verification-test-ap"
 ap_alias_rw: "verification-tes-fpg5t76dgh3xchkrudk6yc4jhgzz1apn1b-ext-s3alias"

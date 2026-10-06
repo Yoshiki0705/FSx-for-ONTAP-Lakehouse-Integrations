@@ -1,7 +1,7 @@
 # Verification Evidence Record — Lake Formation Fine-Grained Access Control
 test_id: "LAKE-FORMATION-FINE-GRAINED-001"
 date_tested: "2026-05-26"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Infrastructure
 region: "ap-northeast-1"

@@ -28,7 +28,7 @@
 
 test_id: "S3AP-DP-ATTACH-001"
 date_tested: "2026-09-13"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 purpose: |
   Establish, with commands rather than inference, whether an FSx for ONTAP S3
