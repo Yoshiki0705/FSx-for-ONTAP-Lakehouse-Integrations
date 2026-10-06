@@ -307,7 +307,7 @@ engine sections above.
 
 | Platform | Images | Video | Audio | Documents | Method |
 |----------|--------|-------|-------|-----------|--------|
-| SageMaker | ✅ | ✅ | ✅ | ✅ | Direct S3 AP read |
+| SageMaker | Not verified | Not verified | Not verified | Not verified | Direct S3 Access Points read (no verification record in this repository) |
 | Bedrock | ✅ | Not supported | Not supported | ✅ | Knowledge Base (RAG) |
 | Rekognition | ✅ | ✅ | Not supported | Not supported | Direct S3 AP read |
 | Transcribe | Not supported | Not supported | ✅ | Not supported | Direct S3 AP read |
@@ -319,7 +319,7 @@ engine sections above.
 | Athena | Not supported | Not supported | Not supported | Not supported | Structured data only |
 | BigQuery Omni | ✅ | ✅ | Not supported | Not supported | Object Table |
 
-Legend: ✅ = direct processing / metadata only / not supported.
+Legend: ✅ = direct processing / metadata only / not supported. Not verified = no verification record in this repository.
 
 ---
 

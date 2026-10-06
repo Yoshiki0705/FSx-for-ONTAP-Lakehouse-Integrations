@@ -18,11 +18,11 @@ This research systematically evaluates the feasibility of distributing data coll
 
 | Classification | Count | Description |
 |---------------|:-----:|-------------|
-| **supported** | 32 | Confirmed via official documentation or Phase 3 validation |
-| **partially_supported** | 3 | Supported under specific conditions or platform-dependent |
+| **supported** | 31 | Confirmed via official documentation or Phase 3 validation |
+| **partially_supported** | 2 | Supported under specific conditions or platform-dependent |
 | **works_with_caveats** | 2+4 | Validated as working but with important operational constraints (original 2 + 4 cross-region validation findings) |
 | **version_gated** | 1 | Supported from ONTAP 9.18.1; not supported on tested version (9.17.1) |
-| **undocumented** | 1 | Not documented; requires hands-on validation to confirm |
+| **undocumented** | 3 | Not documented; requires hands-on validation to confirm |
 | **unsupported** | 2 | Explicitly confirmed as unsupported |
 | **Total** | **41** | |
 
@@ -47,7 +47,7 @@ FSx for ONTAP S3 AP is based on ONTAP's "S3 NAS bucket (S3 multiprotocol)" mecha
 | SVM-DR unsupported with S3 NAS bucket SVMs | SM-004 | Volume-level SnapMirror only. No automatic SVM config replication |
 | ANF SnapMirror unsupported | XC-007 | Azure delivery requires CVO on Azure |
 | SnapMirror Synchronous unsupported for S3 NAS bucket | SM-001 | RPO=0 not achievable. Async only (minimum 5-min intervals) |
-| GCNV cannot be FlexCache Origin (Cache only) | FCXC-005 | Read distribution from GCNV requires SnapMirror |
+| GCNV can be a FlexCache Origin only for ONTAP-mode volumes (Google documentation); other GCNV volumes are Cache only | FCXC-005 | Read distribution from a non-ONTAP-mode GCNV volume requires SnapMirror. FSx for ONTAP paired with GCNV is not confirmed |
 | GCNV FlexCache does not support NFSv4 | FCXC-005 | NFSv3 access only to GCNV Cache Volumes |
 | FlexCache write-back not recommended for RTT > 200ms | FCXC-006 | Write-around mode recommended for cross-cloud |
 
@@ -69,10 +69,10 @@ FSx for ONTAP S3 AP is based on ONTAP's "S3 NAS bucket (S3 multiprotocol)" mecha
 | FSx for ONTAP | FSx for ONTAP (same region) | Yes | Yes | Simplest configuration |
 | FSx for ONTAP | FSx for ONTAP (cross-region) | Yes | Yes | VPC Peering / Transit Gateway |
 | FSx for ONTAP | On-premises ONTAP | Yes | Yes | Direct Connect / VPN |
-| FSx for ONTAP | CVO on GCP | Yes | Yes | Cross-cloud VPN |
-| FSx for ONTAP | CVO on Azure | Yes | Yes | Cross-cloud VPN |
-| FSx for ONTAP | GCNV | Yes | Yes (Cache only) | External Replication / FlexCache Cache |
-| FSx for ONTAP | ANF | No | No | Unsupported. Use CVO on Azure |
+| FSx for ONTAP | CVO on GCP | Yes | Not confirmed | Cross-cloud VPN. FlexCache: FCXC-003 |
+| FSx for ONTAP | CVO on Azure | Yes | Not confirmed | Cross-cloud VPN. FlexCache: FCXC-003 |
+| FSx for ONTAP | GCNV | Yes | Not confirmed | External Replication. FlexCache: FCXC-005 |
+| FSx for ONTAP | ANF | No | Not confirmed | SnapMirror unsupported (XC-007). Use CVO on Azure. FlexCache: FCXC-005 |
 
 ### S3 NAS Bucket Compatibility with FlexCache / SnapMirror
 
@@ -497,15 +497,16 @@ Cross-region and cross-cloud SnapMirror transfers move data to different geograp
 |:----------:|-------|:--------------:|-----------|
 | FCXC-001 | FSx for ONTAP inter-region FlexCache | supported (validated) | Same as intra-region; VPC Peering/TGW required. Validated 2026-07-22: ap-northeast-1 → us-west-2, data propagation <3s |
 | FCXC-002 | FSx for ONTAP → On-premises (DX/VPN) | supported | Direct Connect or VPN; RTT impacts performance |
-| FCXC-003 | FSx for ONTAP → CVO (GCP/Azure) | supported | Cross-cloud VPN; write-around recommended for high RTT |
+| FCXC-003 | FSx for ONTAP → CVO (GCP/Azure) | undocumented | Not confirmed. AWS's [supported FlexCache configurations](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-flexcache.html) list only on-premises ONTAP ↔ FSx for ONTAP and FSx for ONTAP ↔ FSx for ONTAP; an AWS blog mentions CVO, which is not service documentation ([S3-Burst-on-ONTAP-Files review, 2026-09-20](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification-status.md)). Not validated in this repository. If built: cross-cloud VPN; write-around recommended for high RTT |
 | FCXC-004 | Intercluster LIF requirements | supported | TCP 11104/11105 + ICMP; auto-configured on FSx for ONTAP |
-| FCXC-005 | GCNV/ANF FlexCache support | partially_supported | GCNV: Cache only (not Origin), NFSv3 only. ANF: unsupported |
+| FCXC-005 | GCNV/ANF FlexCache support | undocumented | Not confirmed for a pairing with FSx for ONTAP. GCNV: Google documents that ONTAP-mode volumes can be an Origin or a Cache and other volumes only a Cache. ANF: Microsoft documents ANF as a Cache of an external ONTAP origin (source cluster ONTAP 9.15.1 or later) and states nothing about ANF as an Origin. Neither side names FSx for ONTAP, and AWS's supported-configurations list names neither ([S3-Burst-on-ONTAP-Files review, 2026-09-20](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification-status.md)) |
 | FCXC-006 | Network latency impact | supported | Read-heavy: tolerant to high RTT. Write-back: <= 200ms recommended |
 | FCXC-007 | FlexCache disconnect mode | supported | Write-back: hung I/O until reconnect. Write-around: Origin reads continue |
 
 ### FCXC-005 Detail: GCNV FlexCache Constraints
 
-- GCNV supports FlexCache as **Cache only** (cannot serve as Origin)
+- GCNV ONTAP-mode volumes can be an Origin or a Cache; all other GCNV volumes can only be a Cache ([Google Cloud: create a FlexCache volume](https://cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/create-flexcache-volume))
+- FSx for ONTAP ↔ GCNV in either direction is not confirmed: AWS's supported-configurations list does not name it, and this repository has not validated it
 - NFSv3 access only to GCNV FlexCache Cache Volumes (NFSv4 not supported on GCNV FlexCache)
 - If GCNV is the desired data access point, use SnapMirror (External Replication) rather than FlexCache for NFSv4 requirements
 
@@ -724,8 +725,8 @@ A FlexClone of the destination Snapshot is the alternative and differs in one pr
 ### Pattern C: Multi-Cloud (FSx for ONTAP to GCP/Azure)
 
 - **Use case**: Access AWS-collected data from GCP or Azure workloads
-- **GCP options**: GCNV External Replication (SnapMirror), GCNV FlexCache Cache, CVO on GCP
-- **Azure options**: CVO on Azure (SnapMirror/FlexCache). ANF is not supported
+- **GCP options**: GCNV External Replication (SnapMirror), CVO on GCP. FlexCache to GCNV or CVO is not confirmed (FCXC-003, FCXC-005)
+- **Azure options**: CVO on Azure (SnapMirror). ANF SnapMirror is not supported (XC-007). FlexCache to CVO or ANF is not confirmed (FCXC-003, FCXC-005)
 - **Constraints**: Cross-cloud VPN latency (20-100ms typical); write-around mode recommended
 
 ---

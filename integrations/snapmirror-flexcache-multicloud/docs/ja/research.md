@@ -15,11 +15,11 @@
 
 | 分類 | 件数 | 説明 |
 |------|:----:|------|
-| **supported**（サポート確認済み） | 32 | 公式ドキュメントまたは技術的根拠・検証エビデンスによりサポートが確認された項目 |
-| **partially_supported**（条件付きサポート） | 3 | 特定条件下でのみサポート、またはプラットフォーム依存の制約あり |
+| **supported**（サポート確認済み） | 31 | 公式ドキュメントまたは技術的根拠・検証エビデンスによりサポートが確認された項目 |
+| **partially_supported**（条件付きサポート） | 2 | 特定条件下でのみサポート、またはプラットフォーム依存の制約あり |
 | **works_with_caveats**（動作するが注意事項あり） | 2+4 | 動作確認済みだが重要な注意事項・リスクが存在する項目（原 2 件 + cross-region 検証 4 件） |
 | **version_gated**（バージョン依存） | 1 | ONTAP 9.18.1 以降でサポート。検証環境（9.17.1）では非サポート |
-| **undocumented — validation required**（未文書化、検証必要） | 1 | 公式ドキュメントに記載なし、実機検証で確定が必要な項目 |
+| **undocumented — validation required**（未文書化、検証必要） | 3 | 公式ドキュメントに記載なし、実機検証で確定が必要な項目 |
 | **unsupported**（非サポート） | 2 | 明示的に非サポートが確認された項目 |
 | **合計** | **41** | |
 
@@ -48,7 +48,7 @@ FlexCache についても、ONTAP 9.12.1 以降で S3 NAS bucket が Origin Volu
 | SVM-DR は S3 NAS bucket 搭載 SVM で非サポート | SM-004 | Volume-level SnapMirror のみ。SVM 構成の自動複製不可 |
 | ANF への SnapMirror 非サポート | XC-007 | Azure 配信は CVO on Azure 経由が必須 |
 | SnapMirror Synchronous は S3 NAS bucket で非サポート | SM-001 | RPO=0 は達成不可。Async（最短5分間隔）のみ |
-| GCNV は FlexCache Origin 不可（Cache のみ） | FCXC-005 | GCNV からの読み取り配信には SnapMirror が必要 |
+| GCNV が FlexCache Origin になれるのは ONTAP モードのボリュームだけ（Google のドキュメント）。それ以外の GCNV ボリュームは Cache のみ | FCXC-005 | ONTAP モード以外の GCNV ボリュームからの読み取り配信には SnapMirror が必要。FSx for ONTAP と GCNV の組み合わせは未確認 |
 | GCNV FlexCache は NFSv4 非サポート | FCXC-005 | GCNV Cache Volume へは NFSv3 アクセスのみ |
 | FlexCache write-back は RTT > 200ms で非推奨 | FCXC-006 | クロスクラウド構成では write-around mode を推奨 |
 
@@ -71,10 +71,10 @@ FlexCache についても、ONTAP 9.12.1 以降で S3 NAS bucket が Origin Volu
 | FSx for ONTAP | FSx for ONTAP（同一リージョン） | ✅ | ✅ | 最もシンプルな構成 |
 | FSx for ONTAP | FSx for ONTAP（別リージョン） | ✅ | ✅ | VPC Peering / Transit Gateway 必要 |
 | FSx for ONTAP | On-premises ONTAP | ✅ | ✅ | Direct Connect / VPN 必要 |
-| FSx for ONTAP | CVO on GCP | ✅ | ✅ | Cross-cloud VPN 必要 |
-| FSx for ONTAP | CVO on Azure | ✅ | ✅ | Cross-cloud VPN 必要 |
-| FSx for ONTAP | GCNV | ✅ | ✅（Cache のみ） | External Replication / FlexCache Cache |
-| FSx for ONTAP | ANF | ❌ | ❌ | 非サポート。CVO on Azure 経由で代替 |
+| FSx for ONTAP | CVO on GCP | ✅ | 未確認 | Cross-cloud VPN 必要。FlexCache は FCXC-003 |
+| FSx for ONTAP | CVO on Azure | ✅ | 未確認 | Cross-cloud VPN 必要。FlexCache は FCXC-003 |
+| FSx for ONTAP | GCNV | ✅ | 未確認 | External Replication。FlexCache は FCXC-005 |
+| FSx for ONTAP | ANF | ❌ | 未確認 | SnapMirror は非サポート（XC-007）。CVO on Azure 経由で代替。FlexCache は FCXC-005 |
 
 ### S3 NAS Bucket と FlexCache / SnapMirror の互換性
 
@@ -1558,14 +1558,16 @@ FSx for ONTAP と On-premises ONTAP 間の FlexCache は双方向でサポート
 |------|------|
 | **Finding ID** | FCXC-003 |
 | **Requirement Ref** | Requirement 9, AC 9.3 |
-| **分類** | `supported` |
+| **分類** | `undocumented`（未確認） |
 | **公開分類** | publicly verifiable |
 
 #### 調査結果
 
-Cloud Volumes ONTAP (CVO) は完全な ONTAP バイナリを実行するため、標準の FlexCache inter-cluster 構成が利用可能である。FSx for ONTAP を Origin として CVO on GCP/Azure を Cache（またはその逆）とする構成がサポートされる。
+**FSx for ONTAP と CVO の FlexCache は未確認。** AWS の[FlexCache の対応構成](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-flexcache.html)が挙げるのは、オンプレミス ONTAP と FSx for ONTAP の組み合わせ（両方向）と FSx for ONTAP どうしの 3 通りだけで、CVO は含まれない。CVO が Origin になりうると書いているのは AWS のブログで、サービスのドキュメントではない（[S3-Burst-on-ONTAP-Files の調査、2026-09-20](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification-status.md)）。このリポジトリでも実機では確かめていない。
 
-**サポートされる構成:**
+以下は、CVO が完全な ONTAP を実行することから想定した構成で、組み合わせとしての対応は確認していない。
+
+**想定する構成（未確認）:**
 
 | Origin | Cache | ネットワーク |
 |--------|-------|-------------|
@@ -1644,23 +1646,25 @@ FlexCache の Intercluster LIF 構成要件を各クロスバウンダリパス�
 
 ---
 
-### FCXC-005: GCNV/ANF での FlexCache 非サポート状況と代替手段
+### FCXC-005: GCNV/ANF との FlexCache の対応状況と代替手段
 
 | 項目 | 内容 |
 |------|------|
 | **Finding ID** | FCXC-005 |
 | **Requirement Ref** | Requirement 9, AC 9.5 |
-| **分類** | `partially_supported`（GCNV: Cache のみ対応 / ANF: 非サポート） |
+| **分類** | `undocumented`（FSx for ONTAP との組み合わせは GCNV・ANF とも未確認） |
 | **公開分類** | publicly verifiable |
 
 #### 調査結果
 
-**Google Cloud NetApp Volumes (GCNV) — Cache Volume のみサポート:**
+AWS の[対応構成](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-flexcache.html)は GCNV も ANF も挙げていない。相手側のドキュメントは「外部の ONTAP Origin」として要件を書き、FSx for ONTAP を名指ししていない（[S3-Burst-on-ONTAP-Files の調査、2026-09-20](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification-status.md)）。このリポジトリでも実機では確かめていない。
 
-GCNV は FlexCache の **Cache Volume としてのみ**動作可能であり、Origin Volume にはなれない。GCP ドキュメントに明記: "Volumes in NetApp Volumes can only serve as cache volumes" (Flex Unified ONTAP-mode を除く)。
+**Google Cloud NetApp Volumes (GCNV):**
 
-- FSx for ONTAP (Origin) → GCNV (Cache): **サポート**（write-around のみ、write-back は要件確認）
-- GCNV (Origin) → FSx for ONTAP (Cache): **非サポート**（GCNV は Origin 不可）
+Google の[FlexCache の作成](https://cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/create-flexcache-volume)は、ONTAP モードのボリュームは Origin にも Cache にもなり、それ以外のボリュームは Cache にしかなれないと書いている。
+
+- FSx for ONTAP (Origin) → GCNV (Cache): **未確認**（GCNV 側の要件は FSx for ONTAP が満たせる形だが、組み合わせの記載はない）
+- GCNV (Origin) → FSx for ONTAP (Cache): **未確認**（Origin にできるのは ONTAP モードの GCNV ボリュームだけ）
 
 GCNV FlexCache の制約:
 - **NFSv4 非サポート**: GCNV の FlexCache は NFSv3 のみ対応（プラットフォーム固有の制限）
@@ -1668,21 +1672,24 @@ GCNV FlexCache の制約:
 - Global file locking はオプション（有効化するとパフォーマンスに影響）
 - GCNV が Cache の場合、Origin への接続断時に disconnected mode で既にキャッシュされたデータへの read は継続可能
 
-**Azure NetApp Files (ANF) — FlexCache 非サポート:**
+**Azure NetApp Files (ANF) — FSx for ONTAP との組み合わせは未確認:**
 
-ANF は FlexCache をサポートしていない。ANF は Azure 基盤上に独自実装された NetApp ストレージサービスであり、外部 ONTAP クラスターとの Cluster Peering（FlexCache の前提条件）を公開していない。
+Microsoft の [Cache の要件](https://learn.microsoft.com/en-us/azure/azure-netapp-files/cache-requirements)は、ANF を外部 ONTAP の Cache として記述し、source cluster に ONTAP 9.15.1 以降、Origin ボリュームの暗号化、cluster peering を要求する。ANF が Origin になれるかの記載は見つかっていない。FSx for ONTAP を source とする組み合わせの記載もない。
 
 **代替手段:**
 
 | ターゲット | FlexCache | 代替手段 |
 |-----------|:---------:|---------|
-| GCNV (Cache) | ✅ Cache のみ | FSx for ONTAP を Origin とする FlexCache 構成 |
-| GCNV (Origin) | ❌ | SnapMirror External Replication (XC-006) で GCNV にデータ配置 → GCNV から NFS 提供 |
-| ANF | ❌ | SnapMirror → CVO on Azure → ANF (CVR) の多段構成、または CVO on Azure を直接利用 |
+| GCNV (Cache) | 未確認 | 組み合わせを確認するまでは SnapMirror External Replication (XC-006) |
+| GCNV (Origin) | 未確認（ONTAP モードのボリュームのみ対象） | SnapMirror External Replication (XC-006) で GCNV にデータ配置 → GCNV から NFS 提供 |
+| ANF | 未確認 | SnapMirror → CVO on Azure → ANF (CVR) の多段構成、または CVO on Azure を直接利用 |
 
 #### エビデンス
 
-- [GCP Docs: FlexCache overview — "Volumes in NetApp Volumes can only serve as cache volumes"](https://docs.cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/overview)
+- [GCP Docs: FlexCache overview](https://docs.cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/overview)
+- [GCP Docs: Create a FlexCache volume（ONTAP モードのボリュームは Origin にも Cache にもなる）](https://cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/create-flexcache-volume)
+- [Microsoft Learn: Azure NetApp Files cache requirements](https://learn.microsoft.com/en-us/azure/azure-netapp-files/cache-requirements)
+- [S3-Burst-on-ONTAP-Files: 検証状況（2026-09-20 の調査）](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/ja/verification-status.md)
 - [GCP Blog: Announcing enhancements to GCNV（FlexCache GA 発表）](https://cloud.google.com/blog/products/storage-data-transfer/announcing-enhancements-to-google-cloud-netapp-volumes/)
 - [NetApp Community: Introducing FlexCache for GCNV](https://community.netapp.com/t5/Tech-ONTAP-Blogs/Introducing-FlexCache-for-Google-Cloud-NetApp-Volumes/ba-p/464229)
 
@@ -1823,22 +1830,22 @@ GCP ドキュメントによると、GCNV FlexCache でも「Enhanced availabili
 |:----------:|---------|:----:|:-----------:|
 | FCXC-001 | FSx for ONTAP 間 Inter-Region FlexCache | `supported` | なし |
 | FCXC-002 | FSx for ONTAP ↔ On-Premises ONTAP (DX/VPN) | `supported` | なし |
-| FCXC-003 | FSx for ONTAP ↔ CVO (GCP/Azure) | `supported` | なし |
+| FCXC-003 | FSx for ONTAP ↔ CVO (GCP/Azure) | `undocumented` | 実機検証（AWS の対応構成に記載なし） |
 | FCXC-004 | Intercluster LIF 構成要件（パス別/RTT 閾値） | `supported` | なし |
-| FCXC-005 | GCNV/ANF FlexCache 対応状況と代替手段 | `partially_supported` | なし（ドキュメント調査完了） |
+| FCXC-005 | GCNV/ANF FlexCache 対応状況と代替手段 | `undocumented` | 実機検証（FSx for ONTAP との組み合わせの記載なし） |
 | FCXC-006 | ネットワークレイテンシの FlexCache パフォーマンス影響 | `supported` | なし |
 | FCXC-007 | FlexCache Disconnect Mode（WAN 切断時動作） | `supported` | なし |
 
 **サマリー:**
-- **supported（明確にサポート確認済み）**: 6件（FCXC-001〜004, 006, 007）
-- **partially_supported（条件付き）**: 1件（FCXC-005 — GCNV は Cache のみ、ANF は非サポート）
+- **supported（明確にサポート確認済み）**: 5件（FCXC-001, 002, 004, 006, 007）
+- **partially_supported（条件付き）**: 0件
 - **unsupported**: 0件
-- **undocumented — validation required**: 0件
+- **undocumented — validation required**: 2件（FCXC-003 — CVO、FCXC-005 — GCNV・ANF。いずれも FSx for ONTAP との組み合わせが未確認）
 
 **主要な設計判断ポイント:**
 1. **Write mode 選択**: WAN RTT ≤ 200ms かつ大ファイル中心のワークロードであれば write-back が有効。それ以外は write-around を推奨
-2. **GCNV 利用時**: GCNV は Cache としてのみ動作可能。Origin は FSx for ONTAP または On-premises ONTAP に配置する必要あり。NFSv4 非サポートに注意
-3. **ANF へのデータ配信**: FlexCache 不可。SnapMirror → CVO on Azure 経由、または CVO on Azure を直接利用
+2. **GCNV 利用時**: FSx for ONTAP との FlexCache は未確認。Google のドキュメントでは、Origin にできるのは ONTAP モードのボリュームだけで、それ以外は Cache のみ。NFSv4 非サポートに注意
+3. **ANF へのデータ配信**: FSx for ONTAP との FlexCache は未確認。確認するまでは SnapMirror → CVO on Azure 経由、または CVO on Azure を直接利用
 4. **Disconnect 耐性**: Write-around mode はキャッシュ済みデータの read 継続が可能で耐障害性が高い。Write-back mode は disconnect 時にファイルレベルで I/O ブロックが発生するリスクがある
 
 ---
@@ -1914,7 +1921,7 @@ GCP ドキュメントによると、GCNV FlexCache でも「Enhanced availabili
 |------|------|
 | **バージョン管理** | Google マネージド。ユーザーによる選択不可 |
 | **External Replication 互換性** | 互換バージョンが自動的に適用される（現行バージョンを前提） |
-| **FlexCache 対応** | Cache Volume としてのみ動作（Origin 不可） |
+| **FlexCache 対応** | ONTAP モードのボリュームは Origin にも Cache にもなる。それ以外は Cache のみ（Google のドキュメント）。FSx for ONTAP との組み合わせは未確認（FCXC-005） |
 | **プロトコル制約** | FlexCache 経由のアクセスは NFSv3 のみ（NFSv4 非サポート） |
 | **SnapMirror 互換性** | External Replication はソース側が SnapMirror 互換性マトリクスに適合する必要あり |
 
@@ -2092,7 +2099,7 @@ SnapMirror は異なる ONTAP バージョン間のレプリケーションを�
 │  AWS                │◄──────────────────────▶ │  Microsoft Azure            │
 │  FSx for ONTAP      │── SnapMirror ─────────▶ │  CVO on Azure (Full ONTAP)  │
 │  S3 AP (Source)     │── FlexCache Origin ───▶ │  CVO on Azure (Cache Vol)   │
-│                     │           ❌            │  ANF（非サポート）          　 │
+│                     │           ？            │  ANF（FlexCache 未確認）    　 │
 └─────────────────────┘                         └─────────────────────────────┘
 ```
 
@@ -2101,15 +2108,15 @@ SnapMirror は異なる ONTAP バージョン間のレプリケーションを�
 | 宛先 | 方式 | 制約 |
 |------|------|------|
 | GCNV（External Replication） | SnapMirror | NFS/SMB アクセス可。S3 AP はなし。GCP マネージド |
-| GCNV（FlexCache Cache） | FlexCache | Cache のみ。NFSv3 限定。write-around 推奨 |
-| CVO on GCP | SnapMirror / FlexCache | Full ONTAP。全機能利用可。運用コストはユーザー負担 |
+| GCNV（FlexCache Cache） | FlexCache | FSx for ONTAP との組み合わせは未確認（FCXC-005）。NFSv3 限定。write-around 推奨 |
+| CVO on GCP | SnapMirror / FlexCache | Full ONTAP。運用コストはユーザー負担。FlexCache は未確認（FCXC-003） |
 
 **Azure 宛ての選択肢:**
 
 | 宛先 | 方式 | 制約 |
 |------|------|------|
-| CVO on Azure | SnapMirror / FlexCache | Full ONTAP。全機能利用可 |
-| ANF | — | **非サポート**。Cluster Peering 不可 |
+| CVO on Azure | SnapMirror / FlexCache | Full ONTAP。FlexCache は未確認（FCXC-003） |
+| ANF | — | SnapMirror は**非サポート**（XC-007）。FlexCache は未確認（FCXC-005） |
 | ANF（間接経由） | CVO on Azure → ANF (CVR) | 多段構成で複雑。ユースケースが限定的 |
 
 **制約:**
