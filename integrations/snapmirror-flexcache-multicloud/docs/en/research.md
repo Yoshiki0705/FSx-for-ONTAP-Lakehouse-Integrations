@@ -21,9 +21,9 @@ This research systematically evaluates the feasibility of distributing data coll
 | **supported** | 31 | Confirmed via official documentation or Phase 3 validation |
 | **partially_supported** | 2 | Supported under specific conditions or platform-dependent |
 | **works_with_caveats** | 2+4 | Validated as working but with important operational constraints (original 2 + 4 cross-region validation findings) |
-| **version_gated** | 1 | Supported from ONTAP 9.18.1; not supported on tested version (9.17.1) |
+| **version_gated** | 0 | None. FC-002 was listed here until measurement showed the FSx API refuses it on ONTAP 9.18.1; now counted under unsupported |
 | **undocumented** | 3 | Not documented; requires hands-on validation to confirm |
-| **unsupported** | 2 | Explicitly confirmed as unsupported |
+| **unsupported** | 3 | Explicitly confirmed as unsupported. Includes FC-002: the FSx API refuses S3 Access Points on a FlexCache volume (measured 2026-07-24 on ONTAP 9.18.1P3D1 and 2026-09-13 on ONTAP 9.18.1P5) |
 | **Total** | **41** | |
 
 ### Key Conclusions
@@ -440,9 +440,11 @@ All paths use standard Cluster Peering with TLS 1.2 encryption (default enabled 
 | **Classification** | `unsupported` |
 | **Disclosure** | publicly verifiable |
 
-**Finding:** ANF supports only Cross-Volume Replication (CVR) — an ANF-to-ANF mechanism. External ONTAP systems (including FSx for ONTAP) cannot establish SnapMirror relationships with ANF because ANF does not expose Cluster Peering interfaces.
+**Finding:** ANF supports only Cross-Volume Replication (CVR) — an ANF-to-ANF mechanism. External ONTAP systems (including FSx for ONTAP) cannot establish SnapMirror relationships with ANF.
 
 **Technical reason:** ANF is built on Azure infrastructure and does not currently expose Intercluster LIF endpoints or Cluster Peering passphrase authentication to external systems. Its replication model is limited to ANF-to-ANF (Cross-Volume Replication).
+
+**Scope of the peering statement:** it applies to SnapMirror and CVR only. Microsoft's [cache requirements](https://learn.microsoft.com/en-us/azure/azure-netapp-files/cache-requirements) list cluster peering with the external ONTAP origin as a requirement when ANF is a FlexCache Cache (FCXC-005). How peering is exposed in that case has not been checked in this repository.
 
 **Alternatives:**
 1. FSx for ONTAP → CVO on Azure (SnapMirror) → NFS/SMB from CVO
@@ -695,7 +697,7 @@ A FlexClone of the destination Snapshot is the alternative and differs in one pr
 | S3 Access Point (basic) | 9.14.1 | FSx for ONTAP feature |
 | S3 NAS bucket (multiprotocol) | 9.12.1 | Underlying ONTAP mechanism |
 | S3 NAS bucket on FlexCache Origin | 9.12.1 | Origin volume with S3 AP as FlexCache source |
-| S3 NAS bucket on FlexCache Cache | **9.18.1** | Cache Volume S3 AP attachment (FC-002) |
+| S3 NAS bucket on FlexCache Cache | **9.18.1** | ONTAP native S3 NAS bucket only. FSx for ONTAP S3 Access Points cannot be attached to a FlexCache volume on any tested version (FC-002) |
 | SnapMirror Async | 9.11.1 | FSx for ONTAP baseline |
 | FlexCache (read-only) | 9.5 | Long-standing feature |
 | FlexCache write-back | 9.15.1 | Both Origin and Cache |
@@ -858,7 +860,7 @@ References:
 
 | # | Question | Finding ID | Priority | Resolution Path |
 |---|---------|:----------:|:--------:|----------------|
-| ~~1~~ | ~~Can Cache Volume have independent S3 AP attachment?~~ | FC-002 | ~~P2~~ | **Resolved**: Supported from ONTAP 9.18.1. Not supported on 9.17.1 (tested). |
+| ~~1~~ | ~~Can Cache Volume have independent S3 AP attachment?~~ | FC-002 | ~~P2~~ | **Resolved**: not attachable. The FSx API refuses with `the volume is a FlexCache` (2026-07-24, ONTAP 9.18.1P3D1, us-west-2; re-confirmed 2026-09-13, ONTAP 9.18.1P5, ap-northeast-1). |
 | 2 | GCNV External Replication minimum source ONTAP version? | XC-006 | P2 | GCP docs or validation |
 | 3 | FlexGroup + S3 AP + FlexCache Origin stability? | FC-007 | P2 | Hands-on validation |
 | 4 | ANF alternative path (via CVO on Azure) practicality? | XC-007 | P3 | Architecture + cost eval |

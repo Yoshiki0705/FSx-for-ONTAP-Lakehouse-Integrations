@@ -24,7 +24,7 @@ Destinations provide secure file-level authenticated access via NFS/SMB protocol
 
 | Phase | Status | Description |
 |:-----:|:------:|-------------|
-| 1. Research | ✅ Complete | 41 findings (31 supported, 2 partial, 2+4 caveats, 3 undocumented, 2 unsupported) |
+| 1. Research | ✅ Complete | 41 findings (31 supported, 2 partial, 2+4 caveats, 3 undocumented, 3 unsupported) |
 | 2. Documentation | ✅ Complete | Research Document (JA/EN), Validation Plan, Version Matrix |
 | 3. Validation | ✅ Complete | TC-01–TC-05 (intra-cluster) ALL PASS. Cross-region E2E validated (2026-07-22) |
 | 4. Communication | ✅ Complete | Feature Requests (3), Stakeholder Briefs (4), Classification Matrix |
@@ -82,7 +82,7 @@ cp scripts/validation/cross-region-params.env.example scripts/validation/cross-r
 | 03 | [FlexCache On-Premises](demo-guide-03-flexcache-on-premises.md) | FSx → On-prem ONTAP | DX / VPN | ~90min |
 | 04 | [FlexCache CVO on GCP](demo-guide-04-flexcache-cvo-gcp.md) | FSx → CVO on GCP | HA VPN | ~120min |
 | 05 | [FlexCache CVO on Azure](demo-guide-05-flexcache-cvo-azure.md) | FSx → CVO on Azure | Azure VPN GW | ~120min |
-| 06 | [FlexCache GCNV](demo-guide-06-flexcache-gcnv.md) | FSx → GCNV (Cache only) | HA VPN | ~90min |
+| 06 | [FlexCache GCNV](demo-guide-06-flexcache-gcnv.md) | FSx → GCNV (Cache only; pairing not confirmed, FCXC-005) | HA VPN | ~90min |
 
 ### SnapMirror Patterns
 

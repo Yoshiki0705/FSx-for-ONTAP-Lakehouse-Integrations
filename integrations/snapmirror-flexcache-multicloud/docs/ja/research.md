@@ -18,9 +18,9 @@
 | **supported**（サポート確認済み） | 31 | 公式ドキュメントまたは技術的根拠・検証エビデンスによりサポートが確認された項目 |
 | **partially_supported**（条件付きサポート） | 2 | 特定条件下でのみサポート、またはプラットフォーム依存の制約あり |
 | **works_with_caveats**（動作するが注意事項あり） | 2+4 | 動作確認済みだが重要な注意事項・リスクが存在する項目（原 2 件 + cross-region 検証 4 件） |
-| **version_gated**（バージョン依存） | 1 | ONTAP 9.18.1 以降でサポート。検証環境（9.17.1）では非サポート |
+| **version_gated**（バージョン依存） | 0 | なし。FC-002 をここに数えていたが、ONTAP 9.18.1 でも FSx API が拒否すると実測したため unsupported に移した |
 | **undocumented — validation required**（未文書化、検証必要） | 3 | 公式ドキュメントに記載なし、実機検証で確定が必要な項目 |
-| **unsupported**（非サポート） | 2 | 明示的に非サポートが確認された項目 |
+| **unsupported**（非サポート） | 3 | 明示的に非サポートが確認された項目。FC-002（FlexCache ボリュームへの S3 Access Points のアタッチを FSx API が拒否。2026-07-24 に ONTAP 9.18.1P3D1、2026-09-13 に ONTAP 9.18.1P5 で実測）を含む |
 | **合計** | **41** | |
 
 ### 主要結論
@@ -999,7 +999,7 @@ FlexGroup ボリュームを FlexCache Origin とすることは ONTAP 9.7+ で�
 - **works_with_caveats（動作するが注意事項あり）**: 1件（FC-004）
 - **partially_supported（条件付きサポート）**: 2件（FC-005, FC-007）
 - **undocumented — validation required（未文書化、検証必要）**: 0件（FC-002 は 2026-09-13 に 9.18.1P5 で実測し、FSx レイヤの `unsupported` として確定）
-- **unsupported（明確に非サポート）**: 0件
+- **unsupported（明確に非サポート）**: 1件（FC-002）
 
 **主要な検証ポイント（残）:**
 1. ~~Cache Volume に S3 AP を独立アタッチできること（FC-002）~~ — 2026-09-13 に決着。9.18.1P5 でも FSx API が拒否する
@@ -1200,6 +1200,8 @@ GCNV External Replication は SnapMirror ベースで、外部 ONTAP システ�
 
 **技術的理由:**
 ANF は Azure 基盤上に独自実装された NetApp ストレージサービスであり、外部 ONTAP クラスターとの Cluster Peering 機能を公開していない。SnapMirror の制御プレーン（Cluster/SVM Peering）が ANF では利用者に開放されていないため、FSx for ONTAP → ANF の直接 SnapMirror は技術的に不可能。
+
+**Peering に関する記述の範囲:** SnapMirror と CVR に限る。Microsoft の [Cache の要件](https://learn.microsoft.com/en-us/azure/azure-netapp-files/cache-requirements)は、ANF を FlexCache の Cache にするときの要件として外部 ONTAP origin との cluster peering を挙げている（FCXC-005）。その場合に peering がどう公開されるかは、このリポジトリでは確認していない。
 
 **代替手段:**
 1. FSx for ONTAP → CVO on Azure（SnapMirror）→ ANF（Azure DataSync / AzCopy 等でファイル同期）
@@ -1931,7 +1933,7 @@ GCP ドキュメントによると、GCNV FlexCache でも「Enhanced availabili
 |------|------|
 | **バージョン管理** | Azure マネージド。ユーザーによる選択不可 |
 | **SnapMirror External** | 非サポート（Cross-Volume Replication (CVR) = ANF-to-ANF のみ） |
-| **FlexCache** | 非サポート（Cluster Peering 機能が公開されていない） |
+| **FlexCache** | 未確認。Microsoft は ANF を外部 ONTAP の Cache として記述し、cluster peering を要件に挙げる。FSx for ONTAP との組み合わせの記載はない（FCXC-005） |
 | **本プロジェクトへの影響** | FSx for ONTAP → ANF の直接データ配信は不可。CVO on Azure 経由が代替手段 |
 
 #### Cloud Volumes ONTAP (CVO)
