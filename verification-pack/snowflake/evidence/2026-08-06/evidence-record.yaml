@@ -1,7 +1,7 @@
 # Verification Evidence Record — Snowflake against an FSx for ONTAP S3 Access Point
 test_id: "SNOWFLAKE-S3AP-003"
 date_tested: "2026-08-06"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 purpose: |
   Close the Snowflake items in docs/en/unverified-inventory.md that only needed a

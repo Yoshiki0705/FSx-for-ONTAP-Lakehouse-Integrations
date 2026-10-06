@@ -1,7 +1,7 @@
 # Verification Evidence Record — Dremio
 test_id: "DREMIO-001"
 date_tested: "2026-05-26"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Result
 result: "PARTIALLY TESTED (server started, S3 source creation timed out)"

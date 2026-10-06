@@ -3,7 +3,7 @@
 
 test_id: "ATHENA-PARQUET-READ-001"
 date_tested: "2026-05-22"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Infrastructure
 region: "ap-northeast-1"

@@ -1,7 +1,7 @@
 # Verification Evidence Record — Apache Hudi
 test_id: "HUDI-WRITE-001"
 date_tested: "2026-05-24"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Result
 result: "NOT SUPPORTED (by design)"

@@ -1,7 +1,7 @@
 # Verification Evidence Record — Athena concurrency on FSx for ONTAP S3 Access Point
 test_id: "ATHENA-CONCURRENCY-S3AP-001"
 date_tested: "2026-08-06"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 purpose: |
   The compatibility matrix listed the high-concurrency Athena scenario (many

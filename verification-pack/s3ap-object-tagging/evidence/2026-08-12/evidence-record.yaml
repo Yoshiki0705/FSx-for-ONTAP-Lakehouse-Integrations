@@ -1,7 +1,7 @@
 # Verification Evidence Record — Object tags and user metadata on an FSx for ONTAP S3 Access Point
 test_id: "S3AP-OBJECT-TAGGING-001"
 date_tested: "2026-08-12"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 purpose: |
   Databricks introduced the FILE type (Beta) for multimodal data and, separately,
   the _object_metadata column (DBR 18.2+) which exposes cloud object tags and

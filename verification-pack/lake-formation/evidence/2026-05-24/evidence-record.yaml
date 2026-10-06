@@ -1,7 +1,7 @@
 # Verification Evidence Record — AWS Lake Formation
 test_id: "LAKE-FORMATION-001"
 date_tested: "2026-05-24"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Configuration
 region: "ap-northeast-1"

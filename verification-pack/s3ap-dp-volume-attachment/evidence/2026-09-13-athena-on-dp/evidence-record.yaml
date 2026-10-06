@@ -22,7 +22,7 @@
 
 test_id: "S3AP-DP-ATHENA-001"
 date_tested: "2026-09-13"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 depends_on: "S3AP-DP-ATTACH-002 (same file system, same day)"
 closes: "The 'not established' item in S3AP-DP-ATTACH-002 about analytics engines"
 

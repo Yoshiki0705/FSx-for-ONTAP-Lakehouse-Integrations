@@ -4,7 +4,7 @@
 
 test_id: "DELTA-RS-READ-001"
 date_tested: "2026-05-23"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Infrastructure (same as Athena verification)
 region: "ap-northeast-1"

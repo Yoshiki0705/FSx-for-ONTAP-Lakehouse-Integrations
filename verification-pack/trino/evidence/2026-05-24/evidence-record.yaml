@@ -1,7 +1,7 @@
 # Verification Evidence Record — Trino/Starburst
 test_id: "TRINO-001"
 date_tested: "2026-05-24"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Result
 result: "EXPECTED TO WORK (with path-style S3A configuration)"

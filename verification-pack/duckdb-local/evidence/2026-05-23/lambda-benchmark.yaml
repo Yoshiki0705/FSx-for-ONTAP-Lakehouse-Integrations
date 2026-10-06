@@ -1,7 +1,7 @@
 # Verification Evidence Record — DuckDB Lambda Benchmark
 test_id: "DUCKDB-LAMBDA-001"
 date_tested: "2026-05-23"
-tester: "Yoshiki Fujiwara"
+tester: "repository maintainer"
 
 # Lambda Configuration
 function_name: "fsxn-duckdb-query"
