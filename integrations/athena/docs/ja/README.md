@@ -32,6 +32,16 @@ Athena (サーバーレス SQL)
 
 Athena は **internet ネットワークオリジン** の S3 Access Point が必要です。
 VPC 限定のアクセスポイントは Athena では動作しません。
+### SVM が Active Directory に参加している場合
+ここでの読み取りの検証は、ドメインコントローラに到達できる AD 参加の SVM で行いました。**WINDOWS** タイプのアクセスポイントでは、アクセスポイント経由のデータ操作（ListObjectsV2 / GetObject）に SVM からドメインコントローラへの到達が必要で、到達できないと `HeadBucket` は成功してもこれらの操作は失敗します。AD 非参加の SVM 上の **UNIX** タイプのアクセスポイントは、この依存を避けられます。コントローラが到達不能な場合の挙動はここでは測っていません。ファイルの所有の仕方に合うユーザータイプ（`S3AccessPointName` のマッピング）を選び、WINDOWS の場合はコントローラへの到達性を保ってください。
+
+## 既存の分析エンジンを使っている場合
+再利用の価値があるのは到達の経路です。S3 Access Point を使うと、ONTAP ボリュームを別の S3 バケットへコピーせずに、その場でクエリエンジンから読めます。Athena はその上のエンジンの 1 つで、本リポジトリには他エンジンの統合（`integrations/glue`、`integrations/emr-spark`、`integrations/trino-starburst`、`integrations/redshift-spectrum`、`integrations/snowflake`、`integrations/databricks` など）もあります。どのエンジンが合うかは、すでに運用しているものによります。
+
+- **Athena（この統合）**: サーバーレスで、動かすクラスタがなく、クエリ単位の課金です。internet-origin のアクセスポイントとデータ上の Glue テーブルが要ります。
+- **既存のエンジン（EMR/Spark、Trino、Redshift Spectrum、マネージドのレイクハウス）**: 外部テーブルの場所を同じアクセスポイントのエイリアスに向け、既存のカタログを使います。考慮点: アクセスポイントのネットワークとユーザータイプの制約はエンジンによらず同じで、FSx for ONTAP S3 Access Points が実装しない条件付き・トランザクショナルな書き込み（例: Delta Lake のコミット）は動きません。コミットが Glue カタログを通る Iceberg は動きます（上記）。
+
+いずれの場合も、アクセスポイントはデータをコピーしません。ファイルは ONTAP ボリュームに残り、NFS/SMB からも引き続き読めます。エンジンの選択は「どれが優れているか」ではなく、運用しているものに合わせて決めてください。下のストレージの到達経路はどれも同じです。
 
 ## データフォーマット対応
 
