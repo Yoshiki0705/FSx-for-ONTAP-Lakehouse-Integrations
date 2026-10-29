@@ -1,0 +1,135 @@
+# Verification Evidence Record
+# Athena + Parquet Read on FSx for ONTAP S3 Access Point
+# Reproduction run on a disposable volume and access point; existing resources were left untouched.
+
+test_id: "ATHENA-PARQUET-READ-002"
+date_tested: "2026-10-28"
+tester: ""  # role: Storage/Analytics verification (public-output: no personal name)
+
+# Infrastructure (resource IDs masked per this pack's convention; real IDs in .private)
+region: "ap-northeast-1"
+fsxn_file_system_id: "fs-0EXAMPLE1111aaaaa"   # existing Single-AZ file system, reused
+fsxn_deployment_type: "SINGLE_AZ_1"
+fsxn_throughput_capacity_mbps: 128
+ontap_version: "not retrieved in this run"  # the FSx API does not return it; the 2026-05-22 record carries "9.17.1+"
+svm_id: "svm-0EXAMPLE5555eeeee"               # existing SVM, reused
+svm_name: "ad-joined-svm"                     # pseudonym; the real name is omitted
+svm_ad_joined: true                           # joined to Active Directory (checked with the FSx API after the run)
+svm_security_style: "not retrieved"           # the FSx API returns no root security style for this SVM
+volume_id: "fsvol-0EXAMPLE6666fffff"          # DISPOSABLE volume, created and deleted this run
+volume_name: "evanalysis_tmp_vol"
+volume_junction_path: "/evanalysis_tmp"
+volume_security_style: "not recorded in this run"  # the volume was deleted at teardown
+
+# Access Point Configuration
+ap_name: "evanalysis-tmp-ap"                  # DISPOSABLE AP, created and deleted this run
+ap_alias: "evanalysis-tmp-a-EXAMPLEaliassuffix-ext-s3alias"
+ap_network_origin: "INTERNET"
+ap_file_system_user_type: "UNIX"
+ap_file_system_user_name: "root"
+block_public_access: true  # Enforced by AWS, cannot be changed
+
+# Test Dataset (microsecond-timestamp Parquet, generated this run)
+dataset_format: "Parquet"
+dataset_compression: "Snappy"
+file_count: 1
+total_dataset_size_bytes: 150902
+row_count: 10000
+columns: ["id", "event_time", "category", "region", "amount", "count", "flag"]
+event_time_precision: "microsecond"
+dataset_sha256: "14e291d6dc329791f4546b9bcefe6d64603ca00c23c8a69088a0cadbc066bcca"
+
+# Service Configuration
+service: "Amazon Athena"
+service_version: "engine v3"
+catalog: "AWS Glue Data Catalog"
+database: "evanalysis_tmp_db"
+table: "evanalysis_tmp_tbl"
+workgroup: "primary"
+
+# Functional Test Results
+functional_tests:
+  - test: "PutObject (upload Parquet to an FSx for ONTAP S3 Access Point)"
+    result: "PASS"
+    details: "150,902-byte file uploaded; SSE=aws:fsx"
+  - test: "ListObjectsV2"
+    result: "PASS"
+    details: "Returns file with StorageClass=FSX_ONTAP, Size=150902"
+  - test: "HeadObject"
+    result: "PASS"
+    details: "ContentLength=150902, ETag matches"
+  - test: "CREATE EXTERNAL TABLE via Glue Data Catalog"
+    result: "PASS"
+    details: "Table LOCATION points to AP alias path"
+  - test: "SELECT COUNT(*) via Athena"
+    result: "PASS"
+    details: "Returns 10000, matches source row count"
+  - test: "SELECT with WHERE/GROUP BY/ORDER BY"
+    result: "PASS"
+    details: "Aggregation matches reference computation exactly (see below)"
+
+# Query results (verified against reference computation on the source data)
+query_results:
+  count_star:
+    query: "SELECT COUNT(*) AS n FROM evanalysis_tmp_tbl"
+    result: 10000
+    matches_source: true
+  group_by:
+    query: "SELECT region, COUNT(*) AS cnt, ROUND(SUM(amount),2) AS total_amount FROM evanalysis_tmp_tbl WHERE flag = true GROUP BY region ORDER BY region"
+    result:
+      - { region: "ap-northeast-1", cnt: 1667, total_amount: 833499.0 }
+      - { region: "eu-west-1",      cnt: 1667, total_amount: 832500.0 }
+      - { region: "us-east-1",      cnt: 1666, total_amount: 831501.0 }
+    reference:
+      - { region: "ap-northeast-1", cnt: 1667, total_amount: 833499.0 }
+      - { region: "eu-west-1",      cnt: 1667, total_amount: 832500.0 }
+      - { region: "us-east-1",      cnt: 1666, total_amount: 831501.0 }
+    matches_source: true
+
+# Benchmark Results (small dataset; latency dominated by planning, not I/O)
+benchmark:
+  count_star:
+    engine_execution_ms: 663
+    total_execution_ms: 821
+    data_scanned_bytes: 0        # row count resolved from Parquet metadata
+  group_by:
+    engine_execution_ms: 756
+    total_execution_ms: 942
+    data_scanned_bytes: 12384
+  notes: "Small dataset (~150KB, 10k rows), cache-resident. Numbers are not production-scale."
+
+# Verification Level
+current_level: "Functional Verified"
+scope: "Athena Parquet read via internet-origin FSx for ONTAP S3 Access Point, small/cache-resident"
+out_of_scope:
+  - "Production scale (large Iceberg tables UNV-021, concurrency >25 / beyond-cache UNV-022)"
+  - "Write-back to FSx (results go to a separate S3 bucket)"
+  - "Other engines (Glue/EMR/Redshift/DuckDB/Snowflake verified in separate evidence)"
+  - "Security promotion (CloudTrail data events / exhaustive negative tests)"
+
+# Known Limitations (consistent with prior record)
+known_limitations:
+  - "The SVM is joined to Active Directory. The run does not show how the access point behaves with the domain controller unreachable."
+  - "Athena requires internet-origin AP (cannot use VPC-origin)"
+  - "Query results written to a separate S3 bucket, not back to the FSx volume"
+
+# Teardown (this run created only disposable resources; existing resources untouched)
+teardown:
+  disposable_created: ["evanalysis_tmp_vol", "evanalysis-tmp-ap", "athena-results-bucket", "glue db/table"]
+  existing_untouched: ["file system", "5 SVMs", "8 existing S3 APs"]
+  teardown_order: ["glue table/db", "athena results bucket objects + bucket", "AP-hosted object", "S3 Access Point (AWS API)", "disposable volume"]
+  teardown_verified:
+    glue_db: "GetDatabase -> EntityNotFoundException (gone)"
+    results_bucket: "HeadBucket -> 404 (gone)"
+    ap_object: "ListObjectsV2 prefix KeyCount null (0 objects)"
+    s3_access_point: "describe -> S3AccessPointAttachmentNotFound (gone)"
+    disposable_volume: "describe -> VolumeNotFound (gone)"
+  existing_intact_after_teardown:
+    file_system: "AVAILABLE"
+    svm_count: 5
+    s3_ap_count: 8
+    target_svm_existing_volumes: ["root volume (CREATED)", "one existing data volume (CREATED)"]
+
+reviewer: ""
+review_date: ""
+review_notes: ""
