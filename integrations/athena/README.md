@@ -30,6 +30,18 @@ VPC-only access points will NOT work with Athena.
 
 Reference: [AWS Tutorial - Query files with Athena](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-query-data-with-athena.html)
 
+### If your SVM is joined to Active Directory
+
+The read-path verification here ran against an AD-joined SVM with its domain
+controller reachable. For a **WINDOWS**-type access point, data operations
+(ListObjectsV2/GetObject) through the access point need the SVM to reach its
+domain controller; if the controller is unreachable, those operations fail even
+though `HeadBucket` can still succeed. A **UNIX**-type access point on an
+AD-non-joined SVM avoids this dependency. Behavior when the controller is
+unreachable is not measured here — pick the user type (`S3AccessPointName`
+mapping) that matches how your files are owned, and keep the controller reachable
+for WINDOWS. See the AD-integration notes in the evidence pack.
+
 ## Status: ✅ Security Verified (2026-05-23)
 
 Benchmark: 54.8 MB/s peak throughput, 5M rows queried in 2.2s (103 MB Parquet, 128 MB/s provisioned).
@@ -133,6 +145,30 @@ ORDER BY last_modified DESC;
 - Use **AWS Lambda** for serverless file processing ([AWS tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-process-files-with-lambda.html))
 - Use **Amazon Bedrock** for RAG over documents ([AWS tutorial](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/tutorial-build-rag-with-bedrock.html))
 - Use **Snowflake** (Directory Table + GET_PRESIGNED_URL) for file catalog and secure URL generation
+
+## If you already run an analytics engine
+
+The reusable part here is the access path: an S3 Access Point lets a query engine
+read the ONTAP volume in place, without copying the data into a separate S3
+bucket. Athena is one engine on top of it; this repository has sibling
+integrations for others (`integrations/glue`, `integrations/emr-spark`,
+`integrations/trino-starburst`, `integrations/redshift-spectrum`,
+`integrations/snowflake`, `integrations/databricks`, and more). Which engine fits
+depends on what you already operate, and each has a trade-off:
+
+- **Athena (this integration)**: serverless, no cluster to run, pay per query.
+  Requires an internet-origin access point and a Glue table over the data.
+- **Your existing engine (EMR/Spark, Trino, Redshift Spectrum, a managed
+  lakehouse)**: point its external-table location at the same access point alias
+  and keep your current catalog. Trade-off: the access point has the same network
+  and user-type constraints regardless of engine, and conditional/transactional
+  writes that FSx for ONTAP S3 Access Points do not implement (for example Delta
+  Lake commits) still will not work. Iceberg, whose commit goes through the Glue
+  catalog, does work (see above).
+
+In every case the access point does not copy data; the file stays on the ONTAP
+volume and is still reachable over NFS/SMB. Choose the engine by what you operate,
+not by which is "better", because the storage access path underneath is the same.
 
 ## Reference Implementation
 
