@@ -71,6 +71,12 @@ python scripts/validate_connectivity.py
 python scripts/execute_queries.py
 ```
 
+The sample is a single flat 10,000-row Parquet file with no partitioning. On your
+own data, lay out the files by a **partition key** so Athena prunes what it scans
+— for example `date=YYYY-MM-DD/` for time-series, or `line_id=.../sensor_id=.../`
+for sensor data — and declare those keys as partition columns on the Glue table.
+See `sql/02_partition_pruning.sql` for the pruning check.
+
 ### Iceberg on the Access Point
 
 Iceberg read **and write** work here, unlike Delta Lake. The Glue Data Catalog
@@ -154,7 +160,14 @@ bucket. Athena is one engine on top of it; this repository has sibling
 integrations for others (`integrations/glue`, `integrations/emr-spark`,
 `integrations/trino-starburst`, `integrations/redshift-spectrum`,
 `integrations/snowflake`, `integrations/databricks`, and more). Which engine fits
-depends on what you already operate, and each has a trade-off:
+depends on what you already operate, and each has a trade-off.
+
+The principle to carry to an engine not listed here: **reads work on every
+engine** through the access point, while **write support varies by table
+format**, not by engine. A format whose commit needs the conditional write that
+FSx for ONTAP S3 Access Points do not implement (Delta Lake) cannot write here
+from any engine; a format whose commit goes through the Glue catalog (Iceberg)
+can. Check the table format first, then the engine.
 
 - **Athena (this integration)**: serverless, no cluster to run, pay per query.
   Requires an internet-origin access point and a Glue table over the data.

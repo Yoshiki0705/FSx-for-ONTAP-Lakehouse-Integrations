@@ -38,6 +38,8 @@ VPC 限定のアクセスポイントは Athena では動作しません。
 ## 既存の分析エンジンを使っている場合
 再利用の価値があるのは到達の経路です。S3 Access Point を使うと、ONTAP ボリュームを別の S3 バケットへコピーせずに、その場でクエリエンジンから読めます。Athena はその上のエンジンの 1 つで、本リポジトリには他エンジンの統合（`integrations/glue`、`integrations/emr-spark`、`integrations/trino-starburst`、`integrations/redshift-spectrum`、`integrations/snowflake`、`integrations/databricks` など）もあります。どのエンジンが合うかは、すでに運用しているものによります。
 
+ここに載っていないエンジンにも当てはめられる原則として、**読み取りはアクセスポイント経由でどのエンジンでも可能**で、**書き込みの可否はエンジンではなくテーブル形式で分かれます**。FSx for ONTAP S3 Access Points が実装しない条件付き書き込みをコミットに必要とする形式（Delta Lake）は、どのエンジンからも書けません。コミットが Glue カタログを通る形式（Iceberg）は書けます。まずテーブル形式を、次にエンジンを確認してください。
+
 - **Athena（この統合）**: サーバーレスで、動かすクラスタがなく、クエリ単位の課金です。internet-origin のアクセスポイントとデータ上の Glue テーブルが要ります。
 - **既存のエンジン（EMR/Spark、Trino、Redshift Spectrum、マネージドのレイクハウス）**: 外部テーブルの場所を同じアクセスポイントのエイリアスに向け、既存のカタログを使います。考慮点: アクセスポイントのネットワークとユーザータイプの制約はエンジンによらず同じで、FSx for ONTAP S3 Access Points が実装しない条件付き・トランザクショナルな書き込み（例: Delta Lake のコミット）は動きません。コミットが Glue カタログを通る Iceberg は動きます（上記）。
 
@@ -102,3 +104,5 @@ python scripts/generate_sample_data.py
 # 5. 接続を検証
 python scripts/validate_connectivity.py
 ```
+
+サンプルはパーティションのない 10,000 行のフラットな Parquet ファイル 1 つです。自分のデータでは、Athena がスキャン範囲をプルーニングできるよう、**パーティションキー**でファイルを配置してください。時系列なら `date=YYYY-MM-DD/`、センサーデータなら `line_id=.../sensor_id=.../` のように置き、それらのキーを Glue テーブルのパーティション列として宣言します。プルーニングの確認は `sql/02_partition_pruning.sql` を参照してください。
