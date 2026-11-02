@@ -138,19 +138,24 @@ fi
 #
 # Runs unconditionally. An earlier version ran only when a detector was staged, which
 # introduced a distinction this hook had no way to express: "did not run" and "passed"
-# both printed nothing. Measured cost is 0.26s, so the branch bought nothing and cost
-# the ability to read a clean run. (It is this cheap only because all three selftests
-# are pure functions over in-source case tables -- no fixtures, no network, no ROOT. A
-# selftest that needed any of those would change this calculation.)
+# both printed nothing. Measured cost was 0.26s with 18 mutations over three detectors;
+# with 86 over four it is 0.6s on a 10-core laptop, because the selftests run in
+# parallel (run one after another it was 4s, which would have reopened the question).
+# It is this cheap only because no selftest needs the network or ROOT: each is a
+# function over in-source case tables, apart from the FSx naming one, which also makes a
+# temporary directory of empty files. A selftest that needed more would change this.
 if command -v python3 &> /dev/null; then
   echo "🔍 mutation: 検出器の selftest が壊れ方を識別できるか検査中..."
-  if ! python3 scripts/check-detector-mutations.py; then
+  # 出力は変異 1 件につき 1 行で 80 行を超える。成功時は要約の最終行だけを出し、失敗時は全部出す。
+  if ! MUTATION_OUT=$(python3 scripts/check-detector-mutations.py 2>&1); then
+    echo "$MUTATION_OUT"
     echo ""
     echo "❌ ERROR: 変異が生き残った、または変異が対象テキストを見つけられませんでした"
     echo "   生き残り = その guard はどのテストケースにも守られていません"
     echo "   一致範囲が広がる壊し方は、否定ケース（正当な文字列の部分文字列）だけが止めます"
     exit 1
   fi
+  echo "$MUTATION_OUT" | tail -1
 fi
 
 # === 8. EN/JA docs must agree on unit-bearing quantities ===
@@ -172,6 +177,33 @@ if [ -n "$STAGED_MD" ] && command -v python3 &> /dev/null; then
     echo "   片方の言語にしか無い数量なら <!-- allow:number-parity --> を付与"
     exit 1
   fi
+fi
+
+# === 9. The shortened product name anywhere in the tracked tree ===
+# The agent-output-audit workflow's older step reads only the changed .md files and three
+# literal spellings, so a bare name was never checked and neither was any non-.md file.
+# This reads every tracked .md/.txt/.yml/.yaml/.json/.sh file against a shrink-only
+# per-file debt list (scripts/fsx-naming-debt.txt). Selftest first, same reason as step 6.
+#
+# Runs on every commit, not only when a scanned file is staged: the debt file, the script
+# and the workflow's `paths:` filter can each change the result with no scanned file
+# staged. A scan takes 0.4s on 746 files (10-core laptop).
+FSX_NAMING=scripts/check-fsx-naming.py
+if [ -f "$FSX_NAMING" ] && command -v python3 &> /dev/null; then
+  echo "🔍 product naming: 追跡下の全ファイルで短縮名を検査中..."
+  if ! python3 "$FSX_NAMING" --selftest >/dev/null; then
+    echo "❌ ERROR: check-fsx-naming.py の selftest が落ちました（検査器自体の不具合）"
+    exit 1
+  fi
+  if ! python3 "$FSX_NAMING"; then
+    echo ""
+    echo "❌ ERROR: 短縮された製品名が負債リストの外にあるか、リストの件数が実態と合っていません"
+    echo "   新しい本文は直す（Amazon FSx / FSx for ONTAP）。リストに足す・件数を上げるのは不可"
+    echo "   直して件数が減った場合は scripts/fsx-naming-debt.txt の数字を下げる（--print-debt が現状を出す）"
+    exit 1
+  fi
+else
+  echo "⚠️  $FSX_NAMING が無いため product naming 検査を飛ばしました"
 fi
 
 echo "✅ pre-commit checks passed"

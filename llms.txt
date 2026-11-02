@@ -107,7 +107,7 @@ These are the mistakes that cost the most time, each already established here:
   designed in the index, not assumed from the file system.
 - **An S3 Access Point cannot coexist with an ONTAP object-store server on the same SVM**,
   and `WINDOWS` user type requires the SVM to be AD-joined. Both fail at creation time.
-- **The FSx console and `describe-file-systems` do not expose the ONTAP version.** Query the
+- **The Amazon FSx console and `describe-file-systems` do not expose the ONTAP version.** Query the
   ONTAP REST API. Minimum versions differ per feature.
 
 ## Deployable artifacts
@@ -125,8 +125,10 @@ the CloudFormation `[{"ParameterKey":"X","ParameterValue":"Y"}]` form; those und
 ## Conventions
 
 - **Naming**: "Amazon FSx for NetApp ONTAP" on first mention, "FSx for ONTAP" thereafter, and
-  "FSx for ONTAP S3 AP" for access points. `FSxN`, bare `FSx` and `FSx ONTAP` are not used
-  and are rejected by CI.
+  "FSx for ONTAP S3 Access Points" for access points. Shortened forms of the product name,
+  including a bare `FSx`, are not used in new text, and CI rejects them in every tracked
+  Markdown, text, YAML, JSON and shell file. Occurrences that predate the check are counted per
+  file in `scripts/fsx-naming-debt.txt`, which can only shrink.
 - **Languages**: `docs/en/` and `docs/ja/` hold 40 documents each and are kept at parity in
   section structure and in unit-bearing quantities. Integration docs follow the same
   `docs/en/` and `docs/ja/` split.

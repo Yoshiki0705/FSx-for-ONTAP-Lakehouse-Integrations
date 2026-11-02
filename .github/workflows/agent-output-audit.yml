@@ -7,14 +7,19 @@ name: Agent Output Audit
 # Design: a "ratchet". Style/leak checks run only on files CHANGED in the push/PR, so
 # new work must comply while pre-existing debt does not block the build. Secret and
 # AWS-account-ID scanning is handled separately by gitleaks.
+#
+# The whole-tree naming step near the top is the exception: it reads every tracked file in
+# the tree and keeps what predates it in scripts/fsx-naming-debt.txt, a per-file count that
+# can only shrink. The `paths:` filter above has to list every suffix that script scans;
+# the script checks that on each run.
 
 on:
   push:
     branches: [main]
-    paths: ['**/*.md', '**/*.yaml', '**/*.yml', '**/*.py', '**/*.sql', '**/*.json', '**/*.sh']
+    paths: ['**/*.md', '**/*.txt', '**/*.yaml', '**/*.yml', '**/*.py', '**/*.sql', '**/*.json', '**/*.sh']
   pull_request:
     branches: [main]
-    paths: ['**/*.md', '**/*.yaml', '**/*.yml', '**/*.py', '**/*.sql', '**/*.json', '**/*.sh']
+    paths: ['**/*.md', '**/*.txt', '**/*.yaml', '**/*.yml', '**/*.py', '**/*.sql', '**/*.json', '**/*.sh']
   workflow_dispatch:
 
 permissions:
@@ -75,7 +80,7 @@ jobs:
           [[ -s changed_md.txt ]] || { echo "✓ no changed .md"; exit 0; }
           # The boundaries are explicit character classes, not \b. GNU grep's \b is
           # locale-aware, so in a UTF-8 locale a Japanese character counts as a word
-          # constituent and `\bFSxN\b` does NOT match `FSxNを使う` or `構成でFSxN` —
+          # constituent and `\bFSxN\b` does NOT match `FSxNを使う` or `構成でFSxN` — <!-- allow:naming: examples of the boundary bug -->
           # it matched only the English form while reporting the tree clean. Since this
           # is the most-repeated naming rule in a Japanese-primary tree, that silence
           # covered the majority of the text. Verified on GNU grep and BSD grep, with
@@ -84,13 +89,25 @@ jobs:
           # `FSxN_OnPre` is a configured SVM / AD computer-account name, and a factual
           # identifier is not a prose naming violation. Dropping `_` produced 4 such
           # false positives on the real corpus.
-          # `FSx ONTAP` / `FSx S3 AP` need no guard: the literal space is the boundary.
-          HITS=$(xargs grep -nE '(^|[^A-Za-z0-9_])FSxN([^A-Za-z0-9_]|$)|FSx ONTAP|FSx S3 AP' < changed_md.txt 2>/dev/null | grep -vE 'http|allow:naming' || true)
+          # `FSx ONTAP` / `FSx S3 AP` need no guard: the literal space is the boundary. <!-- allow:naming: names the two literals this step greps for -->
+          HITS=$(xargs grep -nE '(^|[^A-Za-z0-9_])FSxN([^A-Za-z0-9_]|$)|FSx ONTAP|FSx S3 AP' < changed_md.txt 2>/dev/null | grep -vE 'http|allow:naming' || true) # <!-- allow:naming: this step's own pattern -->
           if [[ -n "$HITS" ]]; then
-            echo "::error::Non-standard naming. Use 'Amazon FSx for NetApp ONTAP' / 'FSx for ONTAP' / 'FSx for ONTAP S3 AP'. (Whitelist a verbatim external citation with an inline 'allow:naming' comment.)"
+            echo "::error::Non-standard naming. Use 'Amazon FSx for NetApp ONTAP' / 'FSx for ONTAP' / 'FSx for ONTAP S3 Access Points'. (Whitelist a verbatim external citation with an inline 'allow:naming' comment.)"
             echo "$HITS"; exit 1
           fi
           echo "✓ Naming standardized (changed files)"
+
+      - name: Product naming across the whole tree (shrink-only debt list)
+        run: |
+          # The step above reads only the .md files changed in this push or pull request, and
+          # only three literal spellings. This one reads every tracked .md, .txt, .yml, .yaml,
+          # .json and .sh file for the shortened product name and for the abbreviation, so a
+          # new .sh or .yaml file and an untouched .md file are covered too. What predates it
+          # is counted per file in scripts/fsx-naming-debt.txt; a count that moves in either
+          # direction fails, so the list can only shrink.
+          # The selftest runs first: a check that cannot fail is indistinguishable from no check.
+          python3 scripts/check-fsx-naming.py --selftest
+          python3 scripts/check-fsx-naming.py
 
       - name: Forbidden NetApp tooling
         run: |

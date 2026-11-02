@@ -7,12 +7,16 @@ on:
       - '**/*.md'
       - '**/*.yaml'
       - '**/*.yml'
+      # The detectors in scripts/ are what the mutation step below proves. A change to one
+      # of them with no .md/.yaml in the same push would otherwise skip that proof.
+      - 'scripts/*.py'
   pull_request:
     branches: [main]
     paths:
       - '**/*.md'
       - '**/*.yaml'
       - '**/*.yml'
+      - 'scripts/*.py'
   workflow_dispatch:
 
 permissions:
