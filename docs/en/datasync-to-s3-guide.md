@@ -117,7 +117,7 @@ DataSync implementation in manufacturing environments requires consideration of 
 | OT/IT separation | DataSync requires VPC access to FSx for ONTAP NFS | Place FSx for ONTAP in IT network, OT → IT via edge buffering |
 | Bandwidth limits | Large initial sync consumes bandwidth | Nighttime batch sync, or Snapshot transport → DataSync (staged) |
 
-> **OT/IT separation pattern**: DataSync runs against FSx for ONTAP in the IT network, and OT systems send data to IT FSx for ONTAP via FPolicy or edge gateway. A direct OT-to-DataSync connection is outside the scope of this guide.
+> **OT/IT separation pattern**: DataSync runs against FSx for ONTAP in the IT network, and OT systems send data to IT FSx for ONTAP via FPolicy or edge gateway. In this guide's configuration, OT does not connect to DataSync directly.
 
 ### Edge Buffering Pattern
 

@@ -120,7 +120,7 @@ graph TD
 | OT/IT 分離 | DataSync は FSx for ONTAP NFS への VPC アクセスが必要 | FSx for ONTAP を IT ネットワークに配置、OT → IT はエッジバッファリング経由 |
 | 帯域幅制限 | 大規模初回同期が帯域を消費 | 夜間バッチ同期、または Snapshot 輸送 → DataSync（段階的） |
 
-> **OT/IT 分離パターン**: DataSync は IT ネットワーク内の FSx for ONTAP に対して実行し、OT システムは FPolicy または edge gateway 経由でデータを IT 側の FSx for ONTAP に送信します。OT から DataSync へ直接つなぐ構成は、このガイドの対象外です。
+> **OT/IT 分離パターン**: DataSync は IT ネットワーク内の FSx for ONTAP に対して実行し、OT システムは FPolicy または edge gateway 経由でデータを IT 側の FSx for ONTAP に送信します。このガイドの構成では、OT から DataSync へ直接はつなぎません。
 
 ### エッジバッファリングパターン
 
