@@ -48,7 +48,7 @@ Short answer: **Most analytics platforms don't speak the file server's language 
 
 Your file server uses NFS and SMB (the technology behind shared network drives — what Windows Explorer and Linux use to access files). Analytics platforms expect data in cloud storage formats. It's like trying to plug a Japanese appliance into a US outlet — you need an adapter.
 
-**Good news**: Some platforms (Athena, Snowflake, EMR) can already read directly from the file server via a built-in connector (S3 Access Points) — no adapter needed for read-only analytics. For platforms that need managed tables (like Databricks Unity Catalog), a small pipeline extracts and writes the structured data.
+**Good news**: Some platforms (Athena, Snowflake, EMR) can already read directly from the file server via a built-in connector (S3 Access Points). For read-only analytics, no adapter is needed. For platforms that need managed tables (like Databricks Unity Catalog), a small pipeline extracts and writes the structured data.
 
 The "adapter" pipeline:
 1. **Reads** relevant data from your file server (no files are moved)
@@ -115,7 +115,7 @@ Do you need to analyze the FILE CONTENTS
          when it changed, AI classification) → Way A (Smart Extract)
 ```
 
-**Most organizations start with Way A** because they want to find and categorize their files, not copy them all.
+If you first want to find and categorize your files, start with Way A. The goal is the files' attributes, not a copy of every file.
 
 ---
 

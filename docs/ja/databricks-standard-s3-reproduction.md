@@ -104,7 +104,7 @@ DESCRIBE TABLE workspace.stds3_poc.docs;                     -- file 列の型 =
 SELECT path, ai_parse_document(file) FROM workspace.stds3_poc.docs;  -- FILE 列を直接 OCR
 ```
 
-`file` 列の型が **`file external`** になり、それを `ai_parse_document(file)` に直接渡して OCR が通る。S3 Access Point では `FILE EXTERNAL` が BLK-001 でブロックされるが、標準バケットでは成立する（本 PoC 対比の核心）。
+`file` 列の型が **`file external`** になり、それを `ai_parse_document(file)` に直接渡して OCR が通る。S3 Access Point では `FILE EXTERNAL` が BLK-001 でブロックされるが、標準バケットでは成立する。本 PoC はこの差を比較している。
 
 ### 4.3 シナリオ 1: `ai_query()` による画像の LLM Vision
 

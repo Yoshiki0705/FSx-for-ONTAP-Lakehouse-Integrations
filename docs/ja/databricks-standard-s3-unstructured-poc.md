@@ -56,7 +56,7 @@ Databricks Unity Catalog
 
 **Evidence tier: Public / Verified（該当箇所に明記）。**
 
-IAM / 認証の観点で核心となるのはここである — IAM ロール / ポリシー、presigned URL、S3 バケットの認証挙動が、標準バケットでは S3 Access Point とどう違うか。
+この節では、IAM ロール / ポリシー、presigned URL、S3 バケットの認証挙動が、標準バケットでは S3 Access Point とどう違うかを扱う。
 
 ### 2.1 Databricks が標準 S3 を読むときの認可の連鎖
 
@@ -156,7 +156,7 @@ FSx for ONTAP S3 Access Point の互換性表が `Presign` を「Not supported�
 
 **Evidence tier: Verified**（`ai_parse_document(file)` 8.3s）。
 
-`list_files` で標準バケットのファイルを列挙し、CTAS で `FILE EXTERNAL` 列を持つテーブルを作成した。`DESCRIBE TABLE` は `file` 列の型を **`file external`** と報告した。この `FILE EXTERNAL` 列を `ai_parse_document(file)` に直接渡して OCR に成功した。**S3 Access Point では `FILE EXTERNAL` が BLK-001 でブロックされるが、標準バケット上の UC External Volume では成立する**ことが実証された（本 PoC の対比の核心）。FILE 型のベータ制約（Delta 限定、DBR 18 LTS+、自動 GC なし）は [FILE 型評価 §1](./databricks-file-type-evaluation.md#織り込むべきベータ制約) を参照。
+`list_files` で標準バケットのファイルを列挙し、CTAS で `FILE EXTERNAL` 列を持つテーブルを作成した。`DESCRIBE TABLE` は `file` 列の型を **`file external`** と報告した。この `FILE EXTERNAL` 列を `ai_parse_document(file)` に直接渡して OCR に成功した。**S3 Access Point では `FILE EXTERNAL` が BLK-001 でブロックされるが、標準バケット上の UC External Volume では成立する**ことが実証された。FILE 型のベータ制約（Delta 限定、DBR 18 LTS+、自動 GC なし）は [FILE 型評価 §1](./databricks-file-type-evaluation.md#織り込むべきベータ制約) を参照。
 
 ![DESCRIBE TABLE で file 列が file external 型と表示](../images/databricks-standard-s3-poc/04-file-external-describe.png)
 

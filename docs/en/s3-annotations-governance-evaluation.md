@@ -97,7 +97,7 @@ graph TD
     style L fill:#ccffcc
 ```
 
-> **Two-phase strategy**: Many organizations target Case 3 (UC integration), but the `iceberg_rest` blocker currently exists. A two-phase strategy is recommended: deliver value immediately with Case 1 while awaiting blocker resolution.
+> **Two-phase strategy**: Case 3 (UC integration) cannot run today because the `iceberg_rest` blocker ([BLK-005](./blocker-tracker.md#blk-005-iceberg_rest-connection-type-not-supported)) is unresolved. A two-phase strategy is recommended: deliver value immediately with Case 1 while awaiting blocker resolution.
 
 ## OT/IT Security Considerations
 

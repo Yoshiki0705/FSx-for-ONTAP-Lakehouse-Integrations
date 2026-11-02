@@ -23,7 +23,7 @@
 - **FSx for ONTAP S3 AP 直接パス（同期なし）** → 読み取り専用分析（Athena / Trino / Snowflake External Table / Databricks read-only）
 - **DataSync → S3 パス** → 標準 S3 が必要な機能（UC Managed Tables / Delta Lake 書き込み / Iceberg 書き込み / S3 Event Notifications / AUTO_REFRESH）
 
-> Edge-to-cloud 製造データパイプラインでは、キュレートされたサブセットのみを DataSync 経由で同期し、生データは FSx for ONTAP に残すハイブリッドパターンが一般的です。
+> Edge-to-cloud 製造データパイプラインでは、キュレートされたサブセットだけを DataSync で同期し、生データは FSx for ONTAP に残すハイブリッド構成にできます。
 
 ### Q2: SnapMirror S3 と DataSync のどちらを使うべきか？
 
@@ -104,11 +104,9 @@ graph TD
 - **標準 S3 機能が必要** → DataSync
 - **読み取り専用で十分** → FSx for ONTAP S3 AP 直接
 - **不明な場合** → FSx for ONTAP S3 AP 直接から開始（後で DataSync に切り替え可能）
-- **ハイブリッド（最も一般的な企業パターン）** → 読み取り分析は FSx for ONTAP S3 AP 直接 + 書き込みが必要なキュレート済みサブセットのみ DataSync
+- **ハイブリッド** → 読み取り分析は FSx for ONTAP S3 AP 直接 + 書き込みが必要なキュレート済みサブセットのみ DataSync
 
-> エンタープライズ環境で最も一般的なパターンは「ハイブリッド」です。全データを同期するのではなく、ホットリードパス（直近データの読み取り分析）は FSx for ONTAP S3 AP 直接を使い、コールドパス（キュレート済みサブセットの Delta/Iceberg 変換）のみ DataSync で同期します。
-
-> 多くの組織は「DataSync が必要」と想定しますが、実際には読み取り専用ユースケースが 70-80% を占め、FSx for ONTAP S3 AP 直接で十分です。DataSync は標準 S3 機能が必須の場合にのみ使用してください。
+> ハイブリッド構成では、全データを同期しません。ホットリードパス（直近データの読み取り分析）は FSx for ONTAP S3 AP 直接を使い、コールドパス（キュレート済みサブセットの Delta/Iceberg 変換）のみ DataSync で同期します。
 
 ## OT/IT セキュリティ考慮事項
 
@@ -122,7 +120,7 @@ graph TD
 | OT/IT 分離 | DataSync は FSx for ONTAP NFS への VPC アクセスが必要 | FSx for ONTAP を IT ネットワークに配置、OT → IT はエッジバッファリング経由 |
 | 帯域幅制限 | 大規模初回同期が帯域を消費 | 夜間バッチ同期、または Snapshot 輸送 → DataSync（段階的） |
 
-> **OT/IT 分離パターン**: 多くの工場では、DataSync を IT ネットワーク内の FSx for ONTAP に対して実行し、OT システムは FPolicy または edge gateway 経由でデータを IT FSx for ONTAP に送信します。直接 OT-to-DataSync は一般的ではありません。
+> **OT/IT 分離パターン**: DataSync は IT ネットワーク内の FSx for ONTAP に対して実行し、OT システムは FPolicy または edge gateway 経由でデータを IT 側の FSx for ONTAP に送信します。このガイドの構成では、OT から DataSync へ直接はつなぎません。
 
 ### エッジバッファリングパターン
 

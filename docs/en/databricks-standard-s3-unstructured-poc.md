@@ -56,7 +56,7 @@ Databricks Unity Catalog
 
 **Evidence tier: Public / Verified (marked per item).**
 
-This is the core from an IAM / auth standpoint — how IAM roles / policies, presigned URLs, and S3 bucket authentication behave on a standard bucket versus an S3 Access Point.
+This section covers how IAM roles / policies, presigned URLs, and S3 bucket authentication behave on a standard bucket versus an S3 Access Point.
 
 ### 2.1 The authorization chain when Databricks reads standard S3
 
@@ -156,7 +156,7 @@ An image on the standard S3 bucket was read from the UC External Volume, base64-
 
 **Evidence tier: Verified** (`ai_parse_document(file)` 8.3s).
 
-`list_files` enumerated the files on the standard bucket, and a CTAS created a table with a `FILE EXTERNAL` column. `DESCRIBE TABLE` reported the `file` column type as **`file external`**. That `FILE EXTERNAL` column was passed straight to `ai_parse_document(file)` and OCR succeeded. **`FILE EXTERNAL` is blocked by BLK-001 on an S3 Access Point, but holds on a UC External Volume over a standard bucket** — the core of this PoC's contrast. FILE type beta constraints (Delta only, DBR 18 LTS+, no automatic GC) are in [FILE type evaluation §1](./databricks-file-type-evaluation.md#beta-constraints-to-plan-around).
+`list_files` enumerated the files on the standard bucket, and a CTAS created a table with a `FILE EXTERNAL` column. `DESCRIBE TABLE` reported the `file` column type as **`file external`**. That `FILE EXTERNAL` column was passed straight to `ai_parse_document(file)` and OCR succeeded. **`FILE EXTERNAL` is blocked by BLK-001 on an S3 Access Point, but holds on a UC External Volume over a standard bucket.** FILE type beta constraints (Delta only, DBR 18 LTS+, no automatic GC) are in [FILE type evaluation §1](./databricks-file-type-evaluation.md#beta-constraints-to-plan-around).
 
 ![DESCRIBE TABLE shows the file column as file external type](../images/databricks-standard-s3-poc/04-file-external-describe.png)
 
