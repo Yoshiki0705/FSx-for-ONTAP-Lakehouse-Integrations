@@ -178,6 +178,27 @@ def generate_status_event(
 # ---------------------------------------------------------------------------
 
 
+def resolve_msk_region(bootstrap_servers: str) -> str:
+    """Return the AWS Region for MSK IAM signing.
+
+    AWS_REGION / AWS_DEFAULT_REGION win. Otherwise the Region is the label just before
+    ``amazonaws.com`` in the first bootstrap host, for example
+    ``b-1.<cluster>.<id>.c2.kafka.ap-northeast-1.amazonaws.com:9098``.
+    """
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    if region:
+        return region
+    host = bootstrap_servers.split(",")[0].split(":")[0].strip().lower()
+    labels = host.split(".")
+    if len(labels) >= 3 and labels[-2:] == ["amazonaws", "com"]:
+        return labels[-3]
+    msg = (
+        "Cannot determine the AWS Region for MSK IAM auth from "
+        f"KAFKA_BOOTSTRAP_SERVERS={bootstrap_servers!r}; set AWS_REGION."
+    )
+    raise ValueError(msg)
+
+
 def create_producer_config() -> dict[str, str]:
     """Build Kafka producer configuration from environment variables."""
     config = {
@@ -194,20 +215,24 @@ def create_producer_config() -> dict[str, str]:
     if KAFKA_SASL_MECHANISM:
         config["sasl.mechanism"] = KAFKA_SASL_MECHANISM
         if KAFKA_SASL_MECHANISM == "AWS_MSK_IAM":
-            # MSK IAM auth using OAUTHBEARER with aws-msk-iam-sasl-signer
+            # MSK IAM auth using OAUTHBEARER with aws-msk-iam-sasl-signer.
+            # Do not set sasl.oauthbearer.method=oidc: that method requires
+            # sasl.oauthbearer.token.endpoint.url and fails when the client is created.
+            # With the default method, librdkafka calls oauth_cb for the token.
             config["sasl.mechanism"] = "OAUTHBEARER"
-            config["sasl.oauthbearer.method"] = "oidc"
             # The token provider callback handles IAM signing
             try:
                 from aws_msk_iam_sasl_signer import MSKAuthTokenProvider
 
+                region = resolve_msk_region(KAFKA_BOOTSTRAP_SERVERS)
+
                 def oauth_cb(config_str):
-                    auth_token, _ = MSKAuthTokenProvider.generate_auth_token(
-                        KAFKA_BOOTSTRAP_SERVERS.split(":")[0].split(".")[
-                            -4
-                        ]  # extract region
+                    # The signer returns (token, expiry in epoch milliseconds);
+                    # oauth_cb expects the expiry in epoch seconds.
+                    auth_token, expiry_ms = MSKAuthTokenProvider.generate_auth_token(
+                        region
                     )
-                    return auth_token, time.time() + 900  # 15-min expiry
+                    return auth_token, expiry_ms / 1000
 
                 config["oauth_cb"] = oauth_cb
             except ImportError:
