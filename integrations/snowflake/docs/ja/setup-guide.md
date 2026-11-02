@@ -31,7 +31,7 @@ aws fsx create-and-attach-s3-access-point \
 - **Pre-signed URL は非サポート**
 - **S3 Event Notifications は非サポート**（FPolicy で代替）
 - **レイテンシが高い**（ListObjects に数十秒〜数分）
-- 最大アップロードサイズ: 50 GB
+- 最大アップロードサイズ: 50 GiB
 - StorageClass は常に `FSX_ONTAP`
 
 ## セットアップフロー

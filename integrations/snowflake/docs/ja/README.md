@@ -91,7 +91,7 @@ Amazon FSx for NetApp ONTAP（FSx for ONTAP）の S3 Access Point を Snowflake 
 |-------------|:---:|------|
 | ListObjectsV2 | ✅ | 高レイテンシ（数十秒〜分）の場合あり |
 | GetObject | ✅ | |
-| PutObject | ✅ | 最大 50 GB |
+| PutObject | ✅ | 1 リクエストあたり最大 5 GiB。オブジェクト全体は、マルチパートアップロードで最大 50 GiB |
 | DeleteObject | ✅ | |
 | HeadObject | ✅ | |
 | **Pre-signed URL** | ✅ | AWS ドキュメントでは非サポートと記載されているが実際には動作 |
@@ -403,7 +403,7 @@ cp params.example.json params.json  # 編集: S3AccessPointArn を設定
 1. **FSx for ONTAP S3 AP レイテンシ**: ListObjects に数十秒〜数分かかる場合がある
 2. **Pre-signed URL（FSx for ONTAP S3 AP 側の制限）**: AWS の FSx for ONTAP S3 AP ドキュメントでは Pre-signed URL を「非サポート」と記載しているが、Snowflake の `GET_PRESIGNED_URL()` 関数で実際にはダウンロード可能な URL が生成されることを確認済み。ただし公式サポート外のため、本番利用は自己責任
 3. **S3 Event Notifications 非サポート（FSx for ONTAP S3 AP 側の制限）**: FSx for ONTAP S3 AP が S3 Event Notifications をサポートしないため、Snowpipe の自動取り込みトリガーが不可（FPolicy + Lambda で代替）
-4. **最大アップロードサイズ**: 50 GB（Multipart Upload 対応）
+4. **最大アップロードサイズ**: 50 GiB（Multipart Upload 対応）
 5. **AUTO_REFRESH 不可**: S3 Event Notifications に依存するため利用不可。手動 REFRESH または Snowflake Task でスケジュール実行が必要
 6. **TO_FILE / FILE データ型（Snowflake 側の制限）**: FSx for ONTAP S3 AP 外部ステージでは `TO_FILE()` が "Remote file not found" を返し、Vision AI に直接使用不可。回避策: `COPY FILES` で暗号化なし内部ステージ（SNOWFLAKE_SSE）にコピー後、`TO_FILE(BUILD_SCOPED_FILE_URL(@internal_stage, path))` を使用
 

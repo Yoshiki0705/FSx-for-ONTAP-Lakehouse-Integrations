@@ -163,7 +163,7 @@ Amazon FSx for ONTAP S3 Access Points により、FSx for ONTAP ボリューム�
 |-------------|------------|-------------------|
 | FSx for ONTAP S3 AP 上での Delta Lake write / MERGE / compaction | Delta コミットプロトコルは atomic rename を必要とするが、FSx for ONTAP S3 AP ではサポートされていない（[API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)） | Delta テーブルの読み取り専用分析、または Delta 書き込みパスにはネイティブ S3 を使用 |
 | 規制業界でのデフォルトとしての Internet-origin AP | 規制データにはネットワークレベルの分離が必要。VPC-origin は非 VPC トラフィックに対する明示的 Deny を組み込み提供 | 機密/規制データには VPC-origin AP（注: Athena は internet-origin が必要） |
-| 「S3 完全互換」と主張すること | FSx for ONTAP S3 AP は S3 操作のサブセットをサポート。Object Versioning なし、条件付き書き込みなし、署名付き URL なし、50 GB アップロード制限 | 正確な表現を使用: 「サポートされる操作での S3 API アクセス」+ 互換性マトリクスへのリンク |
+| 「S3 完全互換」と主張すること | FSx for ONTAP S3 AP は S3 操作のサブセットをサポート。Object Versioning なし、条件付き書き込みなし、署名付き URL なし、50 GiB アップロード制限 | 正確な表現を使用: 「サポートされる操作での S3 API アクセス」+ 互換性マトリクスへのリンク |
 | Iceberg の書き込みパスをすべて同等に扱う | Athena + Glue Data Catalog 経由の Iceberg は読み書きとも検証済み（2026-08-06）。コミットのポインタを Glue が保持するため。一方 EMR Serverless 経由の Iceberg は依然失敗し、Delta はコミット自体ができない | エンジン名を明示する。「Iceberg の書き込みは動く」が成り立つのは Athena のみ |
 | FSx for ONTAP スループットプロビジョニングの無視 | S3 のような無制限スループットを期待しがちだが、FSx for ONTAP S3 AP スループットはプロビジョンド容量に制限される | FSx for ONTAP スループットをワークロード要件に合わせてサイジング。PoC 検証に含める |
 | 高並行性・小ファイルワークロードへの FSx for ONTAP S3 AP 提案 | 数十ミリ秒のレイテンシ + プロビジョンドスループット制限により、ネイティブ S3 と比較して最適ではない | 大規模シーケンシャルスキャン、バッチ分析、ドキュメント検索に使用。高頻度 API コールには不向き |

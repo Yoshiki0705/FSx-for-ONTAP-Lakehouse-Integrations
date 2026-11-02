@@ -31,7 +31,7 @@ Key differences from standard S3:
 - **Pre-signed URLs are NOT supported**
 - **S3 Event Notifications are NOT supported** (use FPolicy instead)
 - **Higher latency** than native S3 (tens of seconds for ListObjects)
-- Maximum upload size: 50 GB
+- Maximum upload size: 50 GiB
 - StorageClass is always `FSX_ONTAP`
 
 ## Setup Flow
