@@ -52,7 +52,7 @@ S3 bucket
 
 ### Option B: FSx for ONTAP 移行（推奨）
 
-**S3 コピーを FSx for ONTAP に置き換え、インライン重複排除で唯一のクラウドコピーとする。**
+S3 コピーを FSx for ONTAP に置き換え、インライン重複排除で唯一のクラウドコピーとする。
 
 ```
 汎用ファイルサーバー
@@ -97,7 +97,7 @@ DataSync 継続同期 = 廃止（または新規ファイルのみ最小限）
 
 ### Option C: オンプレ ONTAP + SnapMirror（ハイブリッド）
 
-**汎用ファイルサーバーをオンプレ ONTAP に置き換え、SnapMirror でブロックレベル同期。**
+汎用ファイルサーバーをオンプレ ONTAP に置き換え、SnapMirror でブロックレベル同期。
 
 ```
 オンプレ ONTAP（汎用FS から置き換え）
@@ -130,7 +130,7 @@ S3 フルコピー = 廃止
 
 > **ステータス**: FlexCache S3 Access Points のサポートがまもなく利用可能になる見込み。将来のアーキテクチャとして提案。
 
-**FlexCache により、オンプレ ONTAP が FSx for ONTAP データの読み取りキャッシュとして機能し、S3 AP が分析アクセスレイヤーを提供。**
+FlexCache により、オンプレ ONTAP が FSx for ONTAP データの読み取りキャッシュとして機能し、S3 AP が分析アクセスレイヤーを提供。
 
 ```
 オンプレ ONTAP（正本）

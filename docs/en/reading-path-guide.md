@@ -194,7 +194,7 @@ graph TD
 | 4 | [UC Connection Guide](./fsx-ontap-to-databricks-unity-catalog-guide.md) | Executive summary + phased adoption steps | 10 min |
 | 5 | [KPI and Validation](./kpi-and-validation.md) | Success metrics and progress | 10 min |
 
-**Reading tip**: Start with the Business Guide — it covers everything a decision-maker needs in 5 minutes. The other documents are for deeper dives on specific topics.
+**Reading tip**: Start with the Business Guide. It covers everything a decision-maker needs in 5 minutes. The other documents are for deeper dives on specific topics.
 
 ---
 

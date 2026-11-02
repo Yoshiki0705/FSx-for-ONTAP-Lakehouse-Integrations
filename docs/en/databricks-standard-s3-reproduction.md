@@ -104,7 +104,7 @@ DESCRIBE TABLE workspace.stds3_poc.docs;                     -- file column type
 SELECT path, ai_parse_document(file) FROM workspace.stds3_poc.docs;  -- OCR the FILE column directly
 ```
 
-The `file` column type is **`file external`**, and passing it straight to `ai_parse_document(file)` OCRs successfully. `FILE EXTERNAL` is blocked by BLK-001 on an S3 Access Point but holds on a standard bucket — the core of this PoC's contrast.
+The `file` column type is **`file external`**, and passing it straight to `ai_parse_document(file)` OCRs successfully. `FILE EXTERNAL` is blocked by BLK-001 on an S3 Access Point but holds on a standard bucket. This PoC compares those two cases.
 
 ### 4.3 Scenario 1: LLM Vision on images with `ai_query()`
 
