@@ -23,7 +23,7 @@
 - **FSx for ONTAP S3 AP direct path (no sync)** → Read-only analytics (Athena / Trino / Snowflake External Table / Databricks read-only)
 - **DataSync → S3 path** → Features requiring standard S3 (UC Managed Tables / Delta Lake writes / Iceberg writes / S3 Event Notifications / AUTO_REFRESH)
 
-> In edge-to-cloud manufacturing data pipelines, a hybrid pattern is common where only curated subsets are synced via DataSync while raw data remains on FSx for ONTAP.
+> In edge-to-cloud manufacturing data pipelines, a hybrid configuration is possible: sync only curated subsets via DataSync and leave raw data on FSx for ONTAP.
 
 ### Q2: Should I use SnapMirror S3 or DataSync?
 
@@ -105,8 +105,6 @@ graph TD
 - **Read-only is sufficient** → FSx for ONTAP S3 AP direct
 - **Uncertain** → Start with FSx for ONTAP S3 AP direct (can switch to DataSync later)
 
-> Many organizations assume "DataSync is needed," but in reality read-only use cases account for 70-80%, where FSx for ONTAP S3 AP direct suffices. Use DataSync only when standard S3 features are mandatory.
-
 ## OT/IT Security Considerations
 
 DataSync implementation in manufacturing environments requires consideration of factory network constraints and data governance.
@@ -119,7 +117,7 @@ DataSync implementation in manufacturing environments requires consideration of 
 | OT/IT separation | DataSync requires VPC access to FSx for ONTAP NFS | Place FSx for ONTAP in IT network, OT → IT via edge buffering |
 | Bandwidth limits | Large initial sync consumes bandwidth | Nighttime batch sync, or Snapshot transport → DataSync (staged) |
 
-> **OT/IT separation pattern**: In many factories, DataSync runs against FSx for ONTAP in the IT network, and OT systems send data to IT FSx for ONTAP via FPolicy or edge gateway. Direct OT-to-DataSync is not common.
+> **OT/IT separation pattern**: DataSync runs against FSx for ONTAP in the IT network, and OT systems send data to IT FSx for ONTAP via FPolicy or edge gateway. A direct OT-to-DataSync connection is outside the scope of this guide.
 
 ### Edge Buffering Pattern
 
