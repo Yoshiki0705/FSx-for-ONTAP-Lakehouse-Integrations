@@ -184,6 +184,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | 書き戻し | 不可（クエリ結果は Redshift に残る。書き戻しには EMR を使用） |
 | 特徴 | NAS データとローカル DWH テーブルの JOIN、外部データ上のマテリアライズドビュー、Athena と同じ Glue Catalog |
 | ベンチマーク | 5M 行を 4.3秒（Serverless 8 RPU）。[実測記録](../../verification-pack/redshift-spectrum/evidence/2026-05-23/evidence-record.yaml)（ap-northeast-1、2026-05-23） |
+| 参考 | [AWS re:Post](https://repost.aws/articles/AR7E4oxFvtR5GgajAQT7X1xQ) |
 
 ### Amazon EMR Serverless (Spark)
 
@@ -238,10 +239,20 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | 書き戻し検証済み | EMR、Athena CTAS、DuckDB は FSx for ONTAP S3 Access Points にフラット Parquet を書き戻す。Snowflake と Databricks の経路では書き込みが標準 S3 のステージ経由になる（機構は各節を参照） |
 | S3 上の Iceberg | EMR Spark が標準 S3 に Iceberg テーブル作成 → Glue Catalog に登録 → Athena/Redshift/Snowflake/Databricks からクエリ可能 |
 
-### Microsoft Fabric
+### Google BigQuery Omni
 
 | 項目 | 内容 |
 |---|---|
+| 認証 | S3 Connection（IAM Role） |
+| ネットワーク | Internet network origin |
+| 特徴 | クロスクラウド分析、BigLake テーブル |
+| 非構造化データ | Object Table で画像/動画メタデータ管理 |
+
+### Microsoft Fabric / Synapse
+
+| 項目 | 内容 |
+|---|---|
+| 認証 | S3 Shortcut（Access Key / IAM Role） |
 | ネットワーク | Internet network origin |
 | 特徴 | OneLake 統合、Power BI 連携 |
 | 非構造化データ | OneLake Shortcut 経由でファイルアクセス |
