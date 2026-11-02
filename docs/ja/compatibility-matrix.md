@@ -220,7 +220,7 @@ aws athena start-query-execution \
 |------|------|--------|
 | Rename 操作なし | S3 API にはネイティブの rename がない。CopyObject は同一アクセスポイント内のみサポート。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | マルチパート閾値を超える rename は**マルチパート**コピーになる | rename は常に 1 回の `CopyObject` ではない。`fs.s3a.multipart.threshold` を超えると S3A は `UploadPartCopy` を発行し、同一アクセスポイント内の `UploadPartCopy` は copy-source のキーがパーセントエンコードを要する場合に現時点で `NoSuchKey` を返す。**AWS は不具合として区分し修正が進行中のため、暫定として扱う。**[rename が分岐する 2 つの S3 呼び出し](#rename-が分岐する-2-つの-s3-呼び出し)を参照 | 閾値の意味は Hadoop [core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml)。`UploadPartCopy` の失敗は[Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)での実測で、本リポジトリでは未再現 |
-| 最大アップロードサイズ: 50 GB | 単一オブジェクトのアップロードは 50 GB まで。それを超えるオブジェクトはダウンロードは可能だがアップロードは不可。マルチパートアップロードはサポート。**本リポジトリが設定しているパートサイズは上限を大きく下回る** — [上限に対するパートサイズの余裕](#上限に対するパートサイズの余裕)を参照 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
+| 最大アップロードサイズ: 50 GiB | 単一オブジェクトのアップロードは 50 GiB まで。それを超えるオブジェクトはダウンロードは可能だがアップロードは不可。マルチパートアップロードはサポート。**本リポジトリが設定しているパートサイズは上限を大きく下回る** — [上限に対するパートサイズの余裕](#上限に対するパートサイズの余裕)を参照 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | Object Versioning なし | S3 Object Versioning は非サポート | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | 条件付き書き込みなし | Conditional writes（`If-None-Match`）は非サポート — HTTP 501 `NotImplemented` を返す。2026-05-22 に自環境で 501 を確認。実装予定を述べた公開情報は見つけられておらず `open` です。S3 ネイティブ conditional writes（2024年8月提供開始）との parity を求める機能要望を提出済み。Delta Lake、Iceberg、Hudi のトランザクショナル書き込みをブロック。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | ListObjectsV2 レイテンシ | 2026-08-05 再測定: 10〜5,000 オブジェクトでネイティブ S3 比 **1.3〜1.4 倍**（5,000 件では 0.9 倍）。2026-09-14 に 10,000 件と 20,000 件へ拡張し、いずれも **0.7 倍**。フラット構造・ネスト構造とも同様で、当初の目標（100 ファイル未満で 1 秒未満、1,000 ファイル未満で 3 秒未満）の範囲内。従来引用していた 30-80 倍は再現せず、撤回しました。1 ディレクトリ 20,000 オブジェクトを超える場合の挙動は未測定。 | 2026-08-05 再測定（[エビデンス](../../verification-pack/s3ap-list-latency/evidence/2026-08-05/benchmark-result.yaml)） |
@@ -286,12 +286,17 @@ Hadoop の `fs.s3a.multipart.threshold` はアップロードとコピーの両�
 |---|---|---|
 | `fs.s3a.multipart.size`（`integrations/delta-lake-oss/config/spark-defaults.conf`） | 128 MiB | 1 パート 5 GiB — 約 40 倍の余裕 |
 | 手書きの `part_size`（`integrations/manufacturing-data-platform/poc/synthetic-data-generator/generate_payloads.py`） | 8 MiB | 1 パート 5 GiB |
-| 統合後の目標ファイルサイズ（本ページ [Q4](#q4-fsx-for-ontap-s3-access-point-の-listobjectsv2-は遅いのか)） | 128 MB 以上 | 1 オブジェクト 50 GB |
+| 統合後の目標ファイルサイズ（本ページ [Q4](#q4-fsx-for-ontap-s3-access-point-の-listobjectsv2-は遅いのか)） | 128 MB 以上 | 1 オブジェクト 50 GiB |
 
-1 パートおよびオブジェクト全体の上限は、公開ドキュメントの十進 "GB" 表記ではなく
+本ページのアップロード上限は 2 進接頭辞の GiB で書いています。AWS の
+[Access point compatibility](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)
+が、オブジェクト全体のアップロード上限を 50 GiB（53,687,091,200 バイト）と記載しているためです。
+十進の 50 GB（50,000,000,000 バイト）と読むと、実際の上限より 3,687,091,200 バイト（約 6.9%）
+小さく見積もります。1 パート 5 GiB という上限は AWS のこのページには記載がなく、
 [Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
-でバイナリ単位として実測されています。**このパートサイズでは、その差は答えを変えません。**
-運用に効くのは上限が**いつ**判定されるかです。オブジェクト全体の超過は
+が 2026-08-02 に ap-northeast-1 で実測した値です。その実測では、オブジェクト全体も 53,687,091,200
+バイトちょうどまで成功し、1 バイト超過で失敗しました。**このパートサイズでは単位の違いが結論を変えない**ので、
+パートサイズの設定には影響しません。運用上重要なのは、上限が**いつ**判定されるかです。オブジェクト全体の超過は
 `CompleteMultipartUpload` の時点で初めて検出されます。**全バイトを転送し終えた後です。**
 サーバー側の判定を待たず、クライアント側でサイズを検証してください。
 
@@ -305,7 +310,7 @@ Lakehouse テーブルフォーマット（Delta Lake、Apache Iceberg、Apache 
 | 書き込み後の一貫したリスト | 必須 | 必須 | 必須 | サポート（ONTAP が一貫性を提供） |
 | PutObject | 必須 | 必須 | 必須 | サポート |
 | DeleteObject | vacuum/クリーンアップに必須 | 有効期限切れに必須 | 必須 | サポート |
-| マルチパートアップロード | 大きなファイル用 | 大きなファイル用 | 大きなファイル用 | サポート（アップロード最大 50 GB） |
+| マルチパートアップロード | 大きなファイル用 | 大きなファイル用 | 大きなファイル用 | サポート（アップロード最大 50 GiB） |
 | 条件付き書き込み（If-None-Match） | 一部実装で使用 | 一部実装で使用 | 一部実装で使用 | **非サポート** |
 
 ## プラットフォーム × フォーマット × モード 互換性マトリクス
@@ -330,14 +335,14 @@ Lakehouse テーブルフォーマット（Delta Lake、Apache Iceberg、Apache 
 | **Amazon Athena** | Delta Lake | 読み取り専用（symlink manifest） | ⚠️ 実験的 | Athena Delta Lake コネクタ、symlink_format_manifest の事前生成が必要 | Delta ログの直接読み取り不可。事前生成マニフェストが必要。Write/MERGE 非サポート。 |
 | **Amazon Athena** | Iceberg | 読み取り **および書き込み** | ✅ 検証済み（2026-08-06） | AP エイリアスを `LOCATION` に指定した Athena Iceberg テーブル、Glue Catalog を Iceberg カタログとして使用 | ライフサイクル全体を検証: CREATE TABLE、INSERT、SELECT、UPDATE、DELETE、タイムトラベル（`FOR VERSION AS OF`）、`OPTIMIZE ... REWRITE DATA`、`VACUUM`、および 2 件の同時コミット — すべて成功し、データとメタデータの双方が Access Point 上に配置された。Delta Lake が失敗するのに対し動作する理由は、Iceberg が現行メタデータのポインタを Glue で管理するため、コミット時にオブジェクトストア側の条件付き書き込みやアトミック rename を必要としない点にある。検証は小規模テーブルのみ。[エビデンス](../../verification-pack/athena-iceberg/evidence/2026-08-06/evidence-record.yaml) |
 | **AWS Glue ETL** | Parquet | 読み取り | ✅ 検証済み | AP 権限付き Glue IAM ロール、S3 パスに AP エイリアス | — |
-| **AWS Glue ETL** | Parquet | 書き込み（Append） | ✅ 検証済み | AP に読み書きファイルシステムユーザー | ファイルあたり最大 50 GB |
+| **AWS Glue ETL** | Parquet | 書き込み（Append） | ✅ 検証済み | AP に読み書きファイルシステムユーザー | ファイルあたり最大 50 GiB |
 | **AWS Glue ETL** | Parquet | 上書き (Overwrite) | ⚠️ 実験的 | 読み書きファイルシステムユーザー | DeleteObject + PutObject パターン。アトミックな上書き保証なし |
 | **AWS Glue ETL** | Delta Lake | 読み取り | ⚠️ 実験的 | Glue 4.0+ と Delta Lake ライブラリ | Delta ログの読み取りは動作。書き込みのコミットプロトコルは未テスト |
 | **AWS Glue ETL** | Iceberg | 読み取り | ⚠️ 実験的 | Glue 4.0+ ネイティブ Iceberg サポート、Glue Catalog を Iceberg カタログとして使用 | Glue 4.0 は Iceberg ネイティブ統合を提供。FSx for ONTAP S3 AP 上の Iceberg メタデータ読み取りは外部カタログ（Glue）経由で動作見込み。書き込みコミットは条件付き書き込み非サポートにより制限あり |
 | **AWS Glue ETL** | Delta Lake | 書き込み | ❌ 非サポート | — | Delta コミットプロトコルは _delta_log JSON ファイルのアトミック rename が必要。ネイティブ非サポート |
 | **AWS Glue ETL** | Iceberg | 書き込み | ⚠️ 実験的 | Glue 4.0+ Iceberg ネイティブ + Glue Catalog | Iceberg は外部カタログでポインタ管理するため rename 不要。ただし同時書き込み時の競合解決に条件付き書き込みが使われる実装があり、FSx for ONTAP S3 AP では失敗する可能性。単一ライター構成では動作見込み |
 | **Amazon EMR Serverless** | Parquet | 読み取り | ✅ 検証済み | S3A コネクタ付き Spark、AP エイリアス | — |
-| **Amazon EMR Serverless** | Parquet | 書き込み（Append） | ✅ 検証済み | 読み書きファイルシステムユーザー | ファイルあたり最大 50 GB |
+| **Amazon EMR Serverless** | Parquet | 書き込み（Append） | ✅ 検証済み | 読み書きファイルシステムユーザー | ファイルあたり最大 50 GiB |
 | **Amazon EMR Serverless** | Iceberg | 読み取り | ⚠️ 実験的 | Iceberg Spark ランタイム、Glue Catalog | メタデータ読み取りは動作。書き込みコミットは未テスト |
 | **Amazon EMR Serverless** | Iceberg | 書き込み | ❌ 非サポート | — | S3FileIO が メタデータの書き込み/検証で S3 AP エイリアスを処理できない。コミット時に NullPointerException が発生 |
 | **Amazon EMR Serverless** | Delta Lake | 読み取り | ⚠️ 実験的 | Delta Lake Spark ライブラリ | ログ読み取りは動作 |
@@ -401,7 +406,7 @@ ts_array = pa.array(df['timestamp'].values.astype('datetime64[us]'), type=pa.tim
 | レイテンシ | 数十ミリ秒 | 一桁ミリ秒 |
 | スループット | FSx for ONTAP プロビジョンドスループットに制限 | 事実上無制限（プレフィックスでスケール） |
 | リクエスト/秒 | FSx for ONTAP プロビジョンドスループットに制限 | プレフィックスあたり GET 5,500/s、PUT 3,500/s |
-| 最大オブジェクトサイズ（アップロード） | 50 GB | 50 TB |
+| 最大オブジェクトサイズ（アップロード） | 50 GiB | 50 TB |
 | 同時リーダー | FSx for ONTAP スループット容量に制限 | 高度に並列化可能 |
 
 > **ネイティブ S3 側の数値について**: 2026-09 まで 5 TB と記載していました。Amazon S3 は
@@ -1001,7 +1006,7 @@ recommendation: "Sufficient for this workload"
 | NEG-002 | 読み取り専用ファイルシステムユーザーによる削除試行 | AccessDenied | Critical |
 | NEG-003 | 明示的な許可なしのクロスアカウントアクセス | AccessDenied | Critical |
 | NEG-004 | VPC-origin AP 設定時のインターネットオリジンアクセス | AccessDenied | Critical |
-| NEG-005 | 50 GB 制限を超える PutObject | EntityTooLarge エラー | High |
+| NEG-005 | 50 GiB 制限を超える PutObject | EntityTooLarge エラー | High |
 | NEG-006 | Presigned URL の生成 | Not supported エラー | Medium |
 | NEG-007 | Object Versioning 操作（ListObjectVersions） | Not supported | Medium |
 | NEG-008 | IAM ロール取り消し後のアクセス | AccessDenied | Critical |
