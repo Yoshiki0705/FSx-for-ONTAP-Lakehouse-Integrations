@@ -6,7 +6,7 @@ This README is for readers who found a listing-latency figure and want to see wh
 
 ## The Two Records
 
-The records are called `-001` and `-002` below.
+The records are called `-001` and `-002` below. A reference such as OBS-2 is the `id` of an entry under `observations` in the YAML.
 
 | Record | Date | Object counts | Read first |
 |---|---|---|---|
@@ -32,7 +32,7 @@ Both record `SINGLE_AZ_1` and a client on a local workstation over the public in
 - **Do not quote a single ratio as general behaviour.** `-002` `conclusion.what_to_publish` says not to present the 1.3-1.4x range as a general figure, and OBS-2 gives the reason: the spread of the native S3 trials alone is wide enough that a precise ratio overstates what was measured. The same field lists what can be said instead. The 30-80x figure does not reproduce anywhere from 10 to 20,000 objects, and listing 20,000 objects takes seconds in absolute terms (OBS-4, measured from outside the VPC).
 - Compare the access point with native S3 only inside one run. `-002` OBS-5 says absolute times are not comparable between the two runs, which were taken on different days over the public internet, and gives an example in which the difference exceeds what the object count explains.
 - Both runs measured from outside the VPC, so every figure includes the public-internet round trip (`-001` OBS-4). The records do not show what a client inside the VPC would see.
-- Each record covers one file system, one SVM, one volume, one region and one day (`conclusion.caveats` in both).
+- Each record covers one file system, one storage virtual machine (SVM), one volume, one region and one day (`conclusion.caveats` in both). Every object is 9 bytes, which `-001` treats as irrelevant to listing cost because the call returns metadata only (`methodology.object_body_rationale`).
 - `slowdown_factor` is the access point's median divided by the native S3 median for the same object count. A value below 1 means the access point's median was the lower of the two.
 
 > **Request-count note**: At 1,000 objects and above, the access point needed more `ListObjectsV2` calls than native S3 to return the same keys at `MaxKeys=1000` (OBS-3 in each record). Wall time stayed comparable, so the records treat this as an efficiency detail. A per-request cost estimate, or a client that caps pagination, should not assume the same call count for both targets.
@@ -41,12 +41,14 @@ Both record `SINGLE_AZ_1` and a client on a local workstation over the public in
 
 - Object counts above 20,000.
 - The nested layout above 5,000 objects. `-002` ran the flat layout only.
+- Tail latency. Each count has five trials and no percentile above the median is reported. The YAML gives the median, minimum and maximum per count, and the raw JSON also holds the mean, the standard deviation and all five durations.
+- Other deployment types, other throughput capacities, and ONTAP versions other than the one `-002` records. Both records use `SINGLE_AZ_1`.
 - A client inside the VPC, and an access point with VPC origin. `-002` records Internet origin, and `-001` does not record the origin.
 - Concurrent clients. Both runs were single-threaded.
 
 ## Reproduce
 
-The `conclusion.reproduce` field of each record holds the command line, with placeholders for the access point ARN and the comparison bucket. The `-001` command shows the flat run only. The nested run of `-001` used `--layout nested` with counts 1,000 and 5,000 and fan-out 10, as `raw-nested.json` records. The script creates 9-byte objects under a prefix on both targets and removes them when run with `--teardown`, so point it at a file system and a bucket meant for testing.
+The `conclusion.reproduce` field of each record holds the command line, with placeholders for the access point ARN and the comparison bucket. The `-001` command shows the flat run only. The nested run of `-001` used `--layout nested` with counts 1,000 and 5,000 and fan-out 10, as `raw-nested.json` records. The script creates its benchmark objects under a prefix on both targets and removes them when run with `--teardown`, so point it at a file system and a bucket meant for testing.
 
 ## Cited From
 
