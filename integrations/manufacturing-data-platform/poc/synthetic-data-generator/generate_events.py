@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import random
+import re
 import time
 import uuid
 from datetime import datetime, UTC
@@ -178,20 +179,39 @@ def generate_status_event(
 # ---------------------------------------------------------------------------
 
 
+# A Region label such as ap-northeast-1, us-east-2 or us-gov-west-1.
+_REGION_LABEL = re.compile(r"[a-z]{2}(?:-[a-z]+)+-\d+")
+
+
 def resolve_msk_region(bootstrap_servers: str) -> str:
     """Return the AWS Region for MSK IAM signing.
 
-    AWS_REGION / AWS_DEFAULT_REGION win. Otherwise the Region is the label just before
-    ``amazonaws.com`` in the first bootstrap host, for example
-    ``b-1.<cluster>.<id>.c2.kafka.ap-northeast-1.amazonaws.com:9098``.
+    The signing Region has to be the Region of the cluster, so a Region that the first
+    bootstrap host states wins, for example the ``ap-northeast-1`` in
+    ``b-1.<cluster>.<id>.c2.kafka.ap-northeast-1.amazonaws.com:9098``. AWS_REGION and
+    AWS_DEFAULT_REGION are used only when the host states no Region (a proxy, a custom
+    DNS name, a port-forward to localhost). They are often set for unrelated reasons,
+    so they must not override a Region the host already states.
     """
-    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
-    if region:
-        return region
     host = bootstrap_servers.split(",")[0].split(":")[0].strip().lower()
     labels = host.split(".")
-    if len(labels) >= 3 and labels[-2:] == ["amazonaws", "com"]:
-        return labels[-3]
+    host_region = None
+    if (
+        len(labels) >= 3
+        and labels[-2:] == ["amazonaws", "com"]
+        and _REGION_LABEL.fullmatch(labels[-3])
+    ):
+        host_region = labels[-3]
+    env_region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    if host_region:
+        if env_region and env_region != host_region:
+            logger.warning(
+                f"Signing MSK IAM tokens for {host_region} (from the bootstrap host); "
+                f"ignoring AWS_REGION/AWS_DEFAULT_REGION={env_region}"
+            )
+        return host_region
+    if env_region:
+        return env_region
     msg = (
         "Cannot determine the AWS Region for MSK IAM auth from "
         f"KAFKA_BOOTSTRAP_SERVERS={bootstrap_servers!r}; set AWS_REGION."

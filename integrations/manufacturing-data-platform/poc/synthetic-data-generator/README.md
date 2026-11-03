@@ -41,7 +41,7 @@ pip install -r requirements.txt
 | `KAFKA_SASL_MECHANISM` | (empty) | `SCRAM-SHA-256`, `SCRAM-SHA-512`, `AWS_MSK_IAM` |
 | `KAFKA_SASL_USERNAME` | (empty) | SASL username |
 | `KAFKA_SASL_PASSWORD` | (empty) | SASL password |
-| `AWS_REGION` | (derived from the bootstrap host) | Region used to sign MSK IAM tokens (`AWS_MSK_IAM`). Takes precedence over the host name; `AWS_DEFAULT_REGION` is the fallback |
+| `AWS_REGION` | (derived from the bootstrap host) | Region used to sign MSK IAM tokens (`AWS_MSK_IAM`) when the bootstrap host name states none, for example behind a proxy or a custom DNS name. A Region in an `amazonaws.com` host name takes precedence; `AWS_DEFAULT_REGION` is the next fallback |
 | `PAYLOAD_BASE_URI` | `nfs://svm1.fsxn.local/vol_images` | Base URI for payload references |
 
 ### Commands
