@@ -41,7 +41,7 @@ pip install -r requirements.txt
 | `KAFKA_SASL_MECHANISM` | (空) | `SCRAM-SHA-256`, `SCRAM-SHA-512`, `AWS_MSK_IAM` |
 | `KAFKA_SASL_USERNAME` | (空) | SASL ユーザー名 |
 | `KAFKA_SASL_PASSWORD` | (空) | SASL パスワード |
-| `AWS_REGION` | (bootstrap ホスト名から導出) | MSK IAM トークンの署名に使うリージョン（`AWS_MSK_IAM`）。ホスト名より優先される。`AWS_DEFAULT_REGION` が次の候補 |
+| `AWS_REGION` | (bootstrap ホスト名から導出) | bootstrap ホスト名にリージョンが含まれない場合（プロキシやカスタム DNS 名など）に、MSK IAM トークンの署名に使うリージョン（`AWS_MSK_IAM`）。`amazonaws.com` のホスト名に含まれるリージョンが優先される。`AWS_DEFAULT_REGION` が次の候補 |
 | `PAYLOAD_BASE_URI` | `nfs://svm1.fsxn.local/vol_images` | ペイロード参照のベース URI |
 
 ### コマンド
