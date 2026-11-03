@@ -4,8 +4,19 @@ set -euo pipefail
 # Trino + FSx for ONTAP S3 AP Verification Script
 # Prerequisites:
 #   - Docker installed
-#   - AWS credentials available (env vars or instance profile)
+#   - AWS credentials exported in this shell (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and,
+#     for temporary credentials, AWS_SESSION_TOKEN). docker-compose.yaml passes them through.
+#   - Permission to use the Glue Data Catalog (the fsxn catalog keeps its schemas and
+#     tables there; Test 2 and Test 3 create a database and a table)
 #   - FSx for ONTAP S3 AP alias known
+#   - Parquet files under the sensor-data/ prefix of that access point. With none there,
+#     Test 4 and Test 5 return 0 rows without an error, which is not a data-read check.
+#
+# Side effect: Test 2 and Test 3 create the Glue database sensor_data and its table
+# readings in the account these credentials belong to. cleanup.sh stops the container
+# only; delete them in Glue when you are done:
+#   aws glue delete-table --database-name sensor_data --name readings
+#   aws glue delete-database --name sensor_data
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -21,10 +32,14 @@ echo "=== Trino + FSx for ONTAP S3 AP Verification ==="
 echo "AP Alias: $AP_ALIAS"
 echo ""
 
-# 1. Update catalog config with AP alias
-echo "1. Configuring Trino catalog..."
-sed -i.bak "s|hive.metastore.catalog.dir=.*|hive.metastore.catalog.dir=s3://${AP_ALIAS}/|" \
-    "$PROJECT_DIR/config/etc/catalog/fsxn.properties"
+# 1. Check credentials. The container reads them from the environment; without them the
+#    queries below fail later with errors that do not say why.
+echo "1. Checking AWS credentials in the environment..."
+if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+    echo "   AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not set." >&2
+    echo "   For SSO: eval \"\$(aws configure export-credentials --format env)\"" >&2
+    exit 1
+fi
 
 # 2. Start Trino
 echo "2. Starting Trino container..."
@@ -95,3 +110,4 @@ echo "   Duration: $(( (END - START) / 1000000 ))ms"
 echo ""
 echo "=== Verification Complete ==="
 echo "To stop Trino: docker compose down"
+echo "The Glue database sensor_data (table readings) was created and is still there."

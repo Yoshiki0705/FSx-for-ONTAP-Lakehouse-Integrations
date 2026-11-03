@@ -1,5 +1,13 @@
 -- Write-back test: CTAS to FSx for ONTAP via S3 AP
--- This tests PutObject (flat Parquet write) — expected to WORK
+--
+-- Result on Trino 481 (checked 2026-11-03): with rows in fsxn.sensor_data.readings the
+-- CTAS FAILS with HIVE_WRITER_CLOSE_ERROR. With an empty source it reports "0 rows" and
+-- succeeds, because no object is written; that is not a write test.
+-- Cause: Trino sets x-amz-storage-class on every PutObject and CreateMultipartUpload
+-- (s3.storage-class defaults to STANDARD; none of its 11 values is FSX_ONTAP or "none"),
+-- and an FSx for ONTAP S3 Access Point answers InvalidStorageClass to all 11. The same
+-- PutObject with no storage class, or with FSX_ONTAP, succeeds. No catalog property
+-- works around it. Reading is unaffected. Details: ../README.md, section "Writing".
 
 -- Create output schema
 CREATE SCHEMA IF NOT EXISTS fsxn.analytics_output
