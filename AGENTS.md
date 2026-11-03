@@ -51,7 +51,24 @@ Enforced by pre-commit hooks (`.githooks/pre-commit`) and CI workflows:
 
 > Full rules in global Kiro steering. Summary enforced by `.github/workflows/agent-output-audit.yml`.
 
-- **Naming**: "Amazon FSx for NetApp ONTAP" first, then "FSx for ONTAP" (never `FSxN`, bare `FSx`, `FSx ONTAP`). Access points: "S3 Access Points" in full; `S3 AP` is not a form AWS sanctions. Existing uses are grandfathered.
+- **Naming**: "Amazon FSx for NetApp ONTAP" first, then "FSx for ONTAP" (never `FSxN`, bare `FSx`, `FSx ONTAP`). Access points: "S3 Access Points" in full; `S3 AP` is not a form AWS sanctions. Existing uses are grandfathered. <!-- allow:naming: this line states the rule, so it quotes the forbidden form -->
+  - **Enforced across the whole tree**, not only in changed Markdown: every tracked `.md`, `.txt`,
+    `.yml`, `.yaml`, `.json` and `.sh` file is checked for the spellings above and for bare `FSx`
+    in prose (that includes `FSx S3 Access Point`).
+    `python3 scripts/check-fsx-naming.py --selftest && python3 scripts/check-fsx-naming.py`
+  - Allowed: `Amazon FSx` (write it when the Amazon FSx service is meant, as in "the Amazon FSx
+    API"), `FSx for ONTAP`, `FSx for NetApp ONTAP`, `FSx for Windows|Lustre|OpenZFS`, repository
+    slugs, file names and identifiers such as `AWS::FSx::FileSystem`. Neither is read inside a URL.
+    A code span hides a bare `FSx` (it is usually an identifier) but not the forbidden spellings
+    themselves, which are quotations. A name wrapped across a line break is one name.
+  - Occurrences that predate the gate are listed per file in `scripts/fsx-naming-debt.txt` as
+    `<path> <count>`. The count is exact in both directions: more is new debt and fails; fewer fails
+    until the number is lowered (a line at 0 is deleted). **The list is shrink-only. Fix the new
+    text; do not add or raise a line.** `--print-debt` prints the current counts in that format.
+  - A verbatim quotation that must keep the form takes `<!-- allow:naming: reason -->` on its
+    line. It does nothing inside a code span or a fence, and a marker that suppresses nothing fails.
+  - Runs in `.githooks/pre-commit` step 9 and in `.github/workflows/agent-output-audit.yml`. The
+    older step there (changed `.md` files, three literal forms) stays as the fast check.
 - **Neutrality**: No vendor-versus framing. Present trade-offs symmetrically.
 - **Safety**: No PII, account IDs, internal IPs, persona names in public output.
 - **Bilingual**: JA/EN parity (same section structure/count).
@@ -80,7 +97,7 @@ Enforced by pre-commit hooks (`.githooks/pre-commit`) and CI workflows:
     written in the prose around it. H1 is out of scope: it is the document title.
 - **Detector word boundaries: never `\b`, and the reason is engine-dependent.** In a
   Japanese-primary tree, `\b` silences a detector on the Japanese side while it keeps matching
-  English, so the run reports clean. `\bFSxN\b` matches neither `FSxNを使う` nor `構成でFSxN`.
+  English, so the run reports clean. `\bFSxN\b` matches neither `FSxNを使う` nor `構成でFSxN`. <!-- allow:naming: examples of the boundary bug, which need the forbidden form -->
   **Both ends break independently.**
 
   | Engine | Used by | `\b` semantics | Affected |
@@ -89,14 +106,15 @@ Enforced by pre-commit hooks (`.githooks/pre-commit`) and CI workflows:
   | GNU grep `-E` | `.github/workflows/*` | Locale-aware; CJK is a word constituent in UTF-8 | **Yes** |
   | Go RE2 | `gitleaks` / `.gitleaks.toml` | ASCII-only | No |
 
-  Replacements: Python `(?<![A-Za-z0-9])` / `(?![A-Za-z0-9])`; ERE (no lookaround)
+  Replacements: Python `(?<![A-Za-z0-9_])` / `(?![A-Za-z0-9_])`; ERE (no lookaround)
   `(^|[^A-Za-z0-9_])x([^A-Za-z0-9_]|$)`. **Keep `_` in the class** to match `\b`'s ASCII semantics —
   dropping it flags `FSxN_OnPre`, a configured SVM name, as a prose violation. Test each boundary
   with a **Japanese-adjacent case and an ASCII-with-space case as a pair**, plus a negative case:
   widening a match is invisible to positive cases.
 - **`scripts/check-detector-mutations.py` proves the selftests can fail.** It breaks each detector
   deliberately and requires that detector's `--selftest` to fail; a surviving mutation means the
-  guard is untested. Run unconditionally in `.githooks/pre-commit` and `docs-quality.yml` (0.26s).
+  guard is untested. Run unconditionally in `.githooks/pre-commit` and `docs-quality.yml` (0.6s for
+  86 mutations over four detectors on a 10-core laptop; the selftests run in parallel).
   Rationale and the specific traps live in the script's own comments, not here.
 - **Pre-commit**: `gitleaks detect --config .gitleaks.toml --no-git --source .`
 
@@ -151,7 +169,7 @@ Full details: `docs/en/fsx-ontap-s3ap-networking.md`
 
 ### ONTAP Version Detection
 
-The FSx console and `describe-file-systems` API do NOT expose ONTAP version. Use ONTAP REST API:
+The Amazon FSx console and `describe-file-systems` API do NOT expose ONTAP version. Use ONTAP REST API:
 
 ```bash
 # ONTAP REST API query (authenticate via Secrets Manager — do not inline passwords)
