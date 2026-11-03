@@ -7,9 +7,9 @@
 > 根拠: [`verification-pack/trino/evidence/2026-05-26`](../../../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml)（Trino 481、Docker、Glue Catalog、ネイティブ S3 とパススタイルアクセス、ap-northeast-1）
 >
 > - **読み取り**: FSx for ONTAP S3 Access Points 上で、`SHOW SCHEMAS`、10K / 5M 行 Parquet の `COUNT(*)`、`GROUP BY`、述語プッシュダウン付きのフィルターが成功
-> - **書き戻し (CTAS)**: 481 では未テスト。Trino 438 のファイルベースメタストアでは、メタストアが原因で失敗した（S3 Access Points の問題ではない）
+> - **書き戻し (CTAS)**: 元のテーブルに行があると 481 では失敗する（2026-11-03 に確認）。Trino が書き込みごとにストレージクラスを送り、FSx for ONTAP の S3 Access Points がそれを拒否するため。下の「書き込み」を参照。Trino 438 のファイルベースメタストアでは、別の原因（メタストア）で失敗した
 > - **セッションポリシー問題なし**: 直接 IAM 認証情報、中間ガバナンスレイヤーなし
-> - **481 向けに設定を更新してからは、再実行していない**: 記録の検証では `fs.native-s3.enabled` を使いました。481 はこの名前を `fs.s3.enabled` に置き換え済みと警告します（このリポジトリの `fsxn.properties` は新しい名前を使用）。新しい名前では、サーバーが起動して環境変数の認証情報を受け付けること（偽の認証情報で確認）までは確認しましたが、Glue と S3 Access Points へのクエリは実行していません
+> - **2026-11-03 に、このリポジトリの設定で再確認した**（[実測記録](../../../../verification-pack/trino/evidence/2026-11-03/evidence-record.yaml)。証拠記録の `fs.native-s3.enabled` に代わる `fs.s3.enabled` を使用）: Trino 481 を `docker-compose.yaml` で起動し、SSO の一時認証情報で、Glue Data Catalog のスキーマとテーブルを一覧し、S3 Access Point 上の Parquet を読みました（`SELECT`、`COUNT(*)`、`GROUP BY`、フィルターが期待どおりの行を返した）。そのファイルは 2 行なので、10K 行と 5M 行の実行は繰り返していません。元の Access Point は読めなくなっており、述語プッシュダウンも確認していません
 >
 > **ベンチマーク (Trino 438, シングルノード Docker arm64, ap-northeast-1):** 以前のファイルメタストア構成での測定です。記録しているのはこの README だけで、2026-05-24 の証拠記録は実行前の予測です。481 の結果ではなく、過去の参考値として扱ってください。
 >
@@ -96,7 +96,15 @@ s3.region=ap-northeast-1
 
 ## 期待される動作
 
-Parquet の読み取りは 481 で検証済みです（上のステータスを参照）。Parquet の書き込み（CTAS）は 481 では未テストで、`03_write_back.sql` がそのテストです。Delta と Iceberg の書き込みは、他のエンジンと同じ atomic rename の制約で失敗すると予想しますが、ここでは試していません。認証は直接の IAM 認証情報で、中間のガバナンスレイヤーはないため、セッションポリシーの問題はありません。
+Parquet の読み取りは 481 で検証済みです（上のステータスを参照）。書き込みは、出荷時の Trino 481 では行えません（下の「書き込み」を参照）。Delta と Iceberg の書き込みは、他のエンジンと同じ atomic rename の制約で失敗すると予想しますが、ここでは試していません。認証は直接の IAM 認証情報で、中間のガバナンスレイヤーはないため、セッションポリシーの問題はありません。
+
+## 書き込み
+
+`03_write_back.sql`（CTAS）は、元のテーブルに行があると Trino 481 で `HIVE_WRITER_CLOSE_ERROR` により失敗します。原因は、権限でもメタストアでもなく、ストレージクラスです。元のテーブルが空のときは、オブジェクトを書かないため `CREATE TABLE: 0 rows` で成功します。`sensor-data/` の接頭辞がない Access Point に `scripts/run_verification.sh` を実行し、続けてこのスクリプトを実行すると、この成功になります。2026-11-03 の確認では、`sensor-data/` に 6 行を置くと失敗しました。
+
+Trino のネイティブ S3 ファイルシステムは、PutObject と CreateMultipartUpload のどちらでもストレージクラスを付けて送ります（481 のソースで確認）。`s3.storage-class` の既定は `STANDARD` で、指定できる値は [Trino のドキュメント](https://trino.io/docs/481/object-storage/file-system-s3.html)にある 11 個です。そのどれも `FSX_ONTAP` ではなく、ストレージクラスを送らない指定もありません。FSx for ONTAP の S3 Access Point は、ストレージクラスなし、または `FSX_ONTAP` の PutObject を受け付け、11 個の値すべてに `InvalidStorageClass` を返します。これは 2026-11-03 に `aws s3api put-object` で確認したもので、Trino とは無関係です。`create-multipart-upload` でも `STANDARD` は同じ応答で、`FSX_ONTAP` は受理されました。AWS のドキュメントも、サポートするストレージクラスは `FSX_ONTAP` だけと記載しており（[Object API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）、[互換性マトリクス](../../../../docs/ja/compatibility-matrix.md)も同じ内容です。
+
+481 のソースでは、ストレージクラスは `s3.storage-class` だけから決まるため、カタログのプロパティでは回避できません。読み取りだけの利用には影響しません。
 
 ## Glue Iceberg REST エンドポイント経由の S3 Tables
 
@@ -118,4 +126,4 @@ trino> SELECT COUNT(*) FROM sensor_data;
 trino> SELECT status, AVG(temperature) FROM sensor_data GROUP BY status;
 ```
 
-`scripts/run_verification.sh <エイリアス>` は一連の流れを実行します。Glue にデータベース `sensor_data` とテーブル `readings` を作成し、`scripts/cleanup.sh` はそれらを削除しません。削除するコマンドはスクリプトの冒頭にあります。
+`scripts/run_verification.sh <エイリアス>` は一連の流れを実行します。Glue にデータベース `sensor_data` とテーブル `readings` を作成し、`scripts/cleanup.sh` はそれらを削除しません。削除するコマンドはスクリプトの冒頭にあります。このテーブルが読むのは、Access Point の `sensor-data/` 接頭辞にある Parquet ファイルです。接頭辞が空、または存在しないときは、エラーにならず `COUNT(*)` が 0 を返すので、先に Parquet ファイルを置いてください。

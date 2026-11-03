@@ -9,6 +9,8 @@ set -euo pipefail
 #   - Permission to use the Glue Data Catalog (the fsxn catalog keeps its schemas and
 #     tables there; Test 2 and Test 3 create a database and a table)
 #   - FSx for ONTAP S3 AP alias known
+#   - Parquet files under the sensor-data/ prefix of that access point. With none there,
+#     Test 4 and Test 5 return 0 rows without an error, which is not a data-read check.
 #
 # Side effect: Test 2 and Test 3 create the Glue database sensor_data and its table
 # readings in the account these credentials belong to. cleanup.sh stops the container

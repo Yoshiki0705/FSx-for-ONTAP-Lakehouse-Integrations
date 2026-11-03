@@ -1,0 +1,152 @@
+# Verification Evidence Record — Trino 481 (Docker): re-check of the read path and first write test
+# Re-check with this repository's catalog configuration (fs.s3.enabled), against an existing
+# access point that only holds a 2-row Parquet file. The 2026-05-26 record predicted that a flat
+# Parquet write "should work"; this record shows that it does not.
+# Resource IDs, names and the access point alias are masked; real values are not published.
+test_id: "TRINO-RECHECK-001"
+date_tested: "2026-11-03"
+tester: "repository maintainer"
+
+# Result
+result: "Read: PASS on a 2-row file. Write (CTAS): FAILED, storage class rejected by the access point."
+verification_method: "Docker Trino 481 (this repository's docker-compose.yaml) + Glue Data Catalog + native S3 file system, path-style"
+
+# Infrastructure
+region: "ap-northeast-1"
+trino_version: "481"
+trino_image: "trinodb/trino:481"
+trino_image_digest: "sha256:5b5e0a97f599a30a2e23c7c7061e4e4d546a914b4fad2a2a002998140ceb4006"
+trino_image_created: "2026-05-12"
+deployment: "Docker Desktop 4.79.0 (Docker 29.5.3), macOS arm64, single node"
+metastore: "AWS Glue Data Catalog"
+s3_access: "native S3 file system (fs.s3.enabled=true) with path-style access"
+s3_endpoint: "https://s3.ap-northeast-1.amazonaws.com"
+authentication: "temporary credentials from an IAM Identity Center session, exported with aws configure export-credentials and passed through by docker-compose.yaml"
+
+# FSx for ONTAP (existing resources, reused; nothing was created or changed)
+file_system_deployment_type: "SINGLE_AZ_1"
+file_system_throughput_capacity_mbps: 128
+file_system_storage_type: "SSD"
+ontap_version: "not retrieved in this run"  # the FSx API does not return it
+svm_ad_joined: true                         # checked with the FSx API after the run
+svm_security_style: "not retrieved"         # the FSx API returns no root security style for this SVM
+volume_security_style: "NTFS"
+
+# S3 Access Point (existing, reused)
+ap_alias: "existing-ap-EXAMPLEaliassuffix-ext-s3alias"
+ap_network_origin: "INTERNET"               # the access point has no VPC configuration
+ap_file_system_user_type: "WINDOWS"
+
+# Catalog Configuration (integrations/trino-starburst/config/etc/catalog/fsxn.properties)
+catalog_config: |
+  connector.name=hive
+  hive.metastore=glue
+  hive.metastore.glue.region=ap-northeast-1
+  fs.s3.enabled=true
+  s3.path-style-access=true
+  s3.endpoint=https://s3.ap-northeast-1.amazonaws.com
+  s3.region=ap-northeast-1
+
+# Test data
+datasets:
+  - name: "existing object on the access point root"
+    format: "Parquet"
+    size_bytes: 2191
+    row_count: 2
+    columns: ["id", "name", "department"]
+    sha256: "5f957b8fd7ddcab1b608b7e5013bfc84113c12c83a601d1963da4be94a95349d"  # of a local copy downloaded from the access point
+  - name: "sensor-shaped file staged under sensor-data/ for the write test (generated this run, removed afterwards)"
+    format: "Parquet"
+    size_bytes: 2043
+    row_count: 6
+    columns: ["device_id", "timestamp", "temperature", "humidity", "pressure", "status"]
+    sha256: "748dcaae449bf30f2cc22b7b31412c20c88d3571024bb66b0533ce79156aabaf"
+
+# Trino tests
+tests:
+  - name: "SHOW SCHEMAS FROM fsxn"
+    result: "PASS"
+    output: "default, fsxn_athena_verification, fsxn_iceberg_test, information_schema"
+  - name: "SHOW TABLES FROM fsxn.fsxn_athena_verification"
+    result: "PASS"
+    output: "benchmark, glue_etl_output, gold_status_summary, partitioned_sensors, sensor_benchmark, sensor_data, sensor_readings"
+  - name: "Table over the access point root (external_location = the alias root), SELECT / COUNT(*) / GROUP BY / filter"
+    result: "PASS"
+    output: "SELECT returned (1, Alice, Sales) and (2, Bob, IT); COUNT(*) = 2; GROUP BY department gave IT = 1 and Sales = 1; WHERE id > 1 returned Bob"
+    note: "2 rows only. This repeats the read path; it does not repeat the 10K and 5M row runs or the predicate pushdown check."
+  - name: "scripts/run_verification.sh: readings table over sensor-data/, COUNT(*)"
+    result: "Completed, 0 rows"
+    note: "The sensor-data/ prefix did not exist on the access point, so 0 rows is the expected answer and is not a data-read check."
+  - name: "CTAS from the 2-row table into trino-output/ on the access point"
+    result: "FAILED"
+    error: "HIVE_WRITER_CLOSE_ERROR (error type EXTERNAL): Error committing write to Parquet file"
+    cause_chain: "IOException 'Put failed for bucket [<alias>] key [trino-output/...]' -> S3Exception 'The storage class you specified is not valid (Service: S3, Status Code: 400)'"
+    reproduced: "twice with the same error"
+  - name: "sql/03_write_back.sql, statement text as in the file (table reference and alias substituted), source table empty"
+    result: "Completed, 'CREATE TABLE: 0 rows'"
+    note: "No object is written when the source has no rows, so this is not a write test. The readings table was created with the DDL of run_verification.sh in a second schema."
+  - name: "sql/03_write_back.sql, same statement, source table with 6 rows staged under sensor-data/"
+    result: "FAILED"
+    error: "HIVE_WRITER_CLOSE_ERROR: Error committing write to Parquet file"
+
+# Control: the same access point and the same credentials, without Trino (aws s3api, 2026-11-03)
+storage_class_control:
+  put_object:
+    no_storage_class: "accepted"
+    FSX_ONTAP: "accepted"
+    # The 11 values Trino 481 accepts for s3.storage-class:
+    STANDARD: "InvalidStorageClass"
+    STANDARD_IA: "InvalidStorageClass"
+    INTELLIGENT_TIERING: "InvalidStorageClass"
+    REDUCED_REDUNDANCY: "InvalidStorageClass"
+    ONEZONE_IA: "InvalidStorageClass"
+    GLACIER: "InvalidStorageClass"
+    DEEP_ARCHIVE: "InvalidStorageClass"
+    OUTPOSTS: "InvalidStorageClass"
+    GLACIER_IR: "InvalidStorageClass"
+    SNOW: "InvalidStorageClass"
+    EXPRESS_ONEZONE: "InvalidStorageClass"
+  create_multipart_upload:
+    STANDARD: "InvalidStorageClass"
+    FSX_ONTAP: "accepted (the upload was aborted)"
+  note: "The writes without a storage class and with FSX_ONTAP show that the credentials and the access point accept writes, so the CTAS failure is not a permission problem."
+
+# Source and documentation checked
+sources_checked:
+  - "Trino 481 source, lib/trino-filesystem-s3: S3FileSystemConfig (s3.storage-class defaults to STANDARD; the enum has 11 values, none is FSX_ONTAP or 'none'), S3FileSystemLoader (passes config.getStorageClass() into the S3 context), S3OutputStream (sets storageClass on both PutObjectRequest and CreateMultipartUploadRequest)"
+  - "Trino 481 documentation, S3 file system page: s3.storage-class, default STANDARD, 10 other allowed values"
+  - "Amazon FSx for ONTAP user guide, S3 access point Object API support: FSX_ONTAP is the only supported storage class"
+
+# Key Findings
+key_findings:
+  - "Trino 481 with fs.s3.enabled=true reads Parquet on an FSx for ONTAP S3 Access Point through the Glue Data Catalog, using temporary credentials from the environment (2-row file)."
+  - "A CTAS that writes at least one row fails, because Trino always sends a storage class and the access point accepts only FSX_ONTAP."
+  - "The 2026-05-26 prediction that a flat Parquet write should work did not hold on Trino 481."
+  - "A CTAS from an empty source reports success without writing anything, so a green CTAS needs a check that rows were written."
+
+# Comparison with the 2026-05-26 record
+comparison_with_previous:
+  previous_status: "Write test NOT TESTED; expected: 'Flat Parquet write should work'"
+  current_status: "Write test FAILED (storage class rejected)"
+  delta: "The expectation was wrong. Read path re-checked on a 2-row file only."
+
+# Not verified in this run
+not_verified:
+  - "The 10K and 5M row runs and predicate pushdown. The access point of the 2026-05-26 run could no longer be read (AccessDenied). Of the 8 current access points, 7 were listed and only one holds a Parquet object (the 2-row file); the 8th cannot be listed because a resource policy denies s3:ListBucket."
+  - "The Glue Iceberg REST catalog (s3tables_glue_rest.properties) with valid credentials."
+  - "Other Trino versions. The storage class behaviour was read from the 481 source only."
+  - "Whether Iceberg or Delta Lake writes behave the same. They use the same S3 file system module, but were not run."
+  - "The ONTAP version."
+
+# Teardown (this run created only disposable objects; existing resources untouched)
+teardown:
+  created_this_run: ["three Glue databases with their tables", "objects under sensor-data/ and trino-output/ on the access point", "probe objects and one multipart upload (aborted)", "the local Docker container and network"]
+  teardown_verified:
+    access_point_objects: "list-objects-v2 returns only the original 2191-byte object"
+    multipart_uploads: "list-multipart-uploads returns none"
+    glue_databases: "get-databases lists the same 3 databases as before the run"
+    docker: "no container named trino; the compose network was removed"
+  existing_untouched: ["file system", "SVMs", "volumes", "other S3 Access Points"]
+reviewer: ""
+review_date: ""
+review_notes: ""

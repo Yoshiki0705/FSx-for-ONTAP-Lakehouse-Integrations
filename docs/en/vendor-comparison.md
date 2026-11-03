@@ -66,7 +66,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | Apache Iceberg | ⚠️ Experimental (pre-existing tables) | Not Supported (NullPointerException) | EMR Spark → S3 | Part 7 verified |
 | Delta Lake (OSS) | ✅ Read Verified (delta-rs) | Not Supported (501 Not Implemented) | DataSync → S3 → UC | Part 7 verified |
 | Apache Hudi | ⚠️ Not tested | Not Supported (no atomic rename) | Standard S3 path | Part 7 verified |
-| Trino / Starburst | ✅ Read Verified (5M rows, 1.5s) | Not supported (same limitations) | N/A | Part 0 verified |
+| Trino / Starburst | ✅ Read Verified (5M rows, 1.5s) | Fails on 481 (storage class rejected) | N/A | Part 0 verified |
 | Dremio | Planned | Planned | N/A | NetApp/Dremio joint solution (not independently validated) |
 
 Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hudi) fail to write on FSx for ONTAP S3 Access Points because of S3 API limitations: no conditional writes (`If-None-Match` returns 501) and no atomic rename. Reading pre-existing tables is theoretically possible, but only Delta read has been verified. Evidence: [Delta](../../verification-pack/delta-lake-oss-read/evidence/2026-05-23/evidence-record.yaml), [Iceberg](../../verification-pack/iceberg/evidence/2026-05-24/evidence-record.yaml), [Hudi](../../verification-pack/hudi/evidence/2026-05-24/evidence-record.yaml) (ap-northeast-1).
@@ -103,7 +103,7 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 | Item | Detail |
 |---|---|
 | Read | Verified. Trino 481 + Glue Catalog + `s3.path-style-access=true` + explicit `s3.endpoint` (native S3 file system). 5M rows in 1.5s. [Evidence](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml) (ap-northeast-1, 2026-05-26) |
-| Write | Not tested (same S3 Access Points limitations apply for transactional writes) |
+| Write | Fails on 481 when rows are written (checked 2026-11-03): Trino always sends a storage class, and FSx for ONTAP S3 Access Points accept only `FSX_ONTAP`. [Evidence](../../verification-pack/trino/evidence/2026-11-03/evidence-record.yaml). See the [Trino README](../../integrations/trino-starburst/README.md#writing). Transactional table formats have the separate limitations described above |
 | Configuration | Requires `s3.path-style-access=true` and explicit `s3.endpoint` to resolve S3 Access Points aliases. Same pattern as DuckDB. The legacy `hive.s3.*` properties were removed in Trino 481 |
 | Catalog | Glue Catalog (shared with Athena, Redshift, EMR) |
 

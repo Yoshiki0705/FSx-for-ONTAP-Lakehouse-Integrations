@@ -65,7 +65,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | Apache Iceberg | ⚠️ 実験的（既存テーブル） | 非サポート（NullPointerException） | EMR Spark → S3 | Part 7 検証済み |
 | Delta Lake (OSS) | ✅ 読み取り検証済み（delta-rs） | 非サポート（501 Not Implemented） | DataSync → S3 → UC | Part 7 検証済み |
 | Apache Hudi | ⚠️ 未テスト | 非サポート（atomic rename なし） | 標準 S3 パス | Part 7 検証済み |
-| Trino / Starburst | ✅ 読み取り検証済み（5M 行、1.5秒） | 非対応（同じ制限） | N/A | Part 0 検証済み |
+| Trino / Starburst | ✅ 読み取り検証済み（5M 行、1.5秒） | 481 では失敗（ストレージクラスが拒否される） | N/A | Part 0 検証済み |
 | Dremio | 計画中 | 計画中 | N/A | NetApp/Dremio ジョイントソリューション（独自検証未実施） |
 
 主要な発見（Part 7）: 3つのトランザクショナルテーブルフォーマット（Delta, Iceberg, Hudi）は全て FSx for ONTAP S3 Access Points への書き込みに失敗した。根本原因は S3 API の制限で、conditional writes がなく（`If-None-Match` が 501）、atomic rename もない。既存テーブルの読み取りは理論的に可能だが、Delta read のみ検証済み。実測記録: [Delta](../../verification-pack/delta-lake-oss-read/evidence/2026-05-23/evidence-record.yaml)、[Iceberg](../../verification-pack/iceberg/evidence/2026-05-24/evidence-record.yaml)、[Hudi](../../verification-pack/hudi/evidence/2026-05-24/evidence-record.yaml)（ap-northeast-1）。
@@ -102,7 +102,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | 項目 | 内容 |
 |---|---|
 | 読み取り | 検証済み。Trino 481 + Glue Catalog + `s3.path-style-access=true` + 明示的 `s3.endpoint`（ネイティブ S3 ファイルシステム）。5M 行を 1.5秒。[実測記録](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml)（ap-northeast-1、2026-05-26） |
-| 書き込み | 未テスト（トランザクショナル書き込みには同じ S3 Access Points 制限が適用） |
+| 書き込み | 481 では、行を書く場合に失敗（2026-11-03 に確認）: Trino は必ずストレージクラスを送り、FSx for ONTAP の S3 Access Points は `FSX_ONTAP` しか受け付けない。[実測記録](../../verification-pack/trino/evidence/2026-11-03/evidence-record.yaml)。[Trino の README](../../integrations/trino-starburst/docs/ja/README.md#書き込み)を参照。トランザクショナルなテーブル形式には、上で述べた別の制限がある |
 | 設定 | S3 Access Points のエイリアス解決に `s3.path-style-access=true` と明示的 `s3.endpoint` が必要。DuckDB と同じパターン。旧 `hive.s3.*` は Trino 481 で削除済み |
 | カタログ | Glue Catalog（Athena、Redshift、EMR と共有） |
 

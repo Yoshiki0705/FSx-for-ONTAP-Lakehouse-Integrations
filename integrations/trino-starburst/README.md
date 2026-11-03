@@ -13,9 +13,9 @@ This integration targets **Trino 481** (`trinodb/trino:481`, pinned in `docker-c
 Evidence: [`verification-pack/trino/evidence/2026-05-26`](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml) (Trino 481, Docker, Glue Catalog, native S3 with path-style access, ap-northeast-1).
 
 - **Read**: `SHOW SCHEMAS`, `COUNT(*)` on 10K and 5M row Parquet, `GROUP BY` and a filter with predicate pushdown succeeded on FSx for ONTAP S3 Access Points.
-- **Write-back (CTAS)**: Not tested on 481. On Trino 438 with a file-based metastore it failed because of the metastore, not because of S3 Access Points.
+- **Write-back (CTAS)**: Fails on 481 when the source has rows (checked 2026-11-03). Trino sends a storage class on every write and FSx for ONTAP S3 Access Points reject it; see "Writing" below. On Trino 438 with a file-based metastore it failed for a different reason, the metastore.
 - **No session policy issues**: Direct IAM credentials, no intermediary governance layer
-- **Not re-run since the configuration was updated for 481**: the evidence run used `fs.native-s3.enabled`, which 481 reports as replaced by `fs.s3.enabled` (the name used in this repository's `fsxn.properties`). With the new name the server starts and accepts credentials from the environment (checked with made-up credentials); queries against Glue and S3 Access Points with it have not been run.
+- **Re-checked on 2026-11-03 with this repository's configuration** ([`evidence-record.yaml`](../../verification-pack/trino/evidence/2026-11-03/evidence-record.yaml); `fs.s3.enabled`, the name that replaced the evidence run's `fs.native-s3.enabled`): Trino 481 started through `docker-compose.yaml` with temporary SSO credentials, listed the schemas and tables of the Glue Data Catalog, and read a Parquet file on an S3 Access Point (`SELECT`, `COUNT(*)`, `GROUP BY` and a filter returned the expected rows). That file has 2 rows, so the 10K and 5M row runs were not repeated: the original Access Point can no longer be read, and predicate pushdown was not checked.
 
 **Benchmark (Trino 438, single-node Docker arm64, ap-northeast-1):** measured with the earlier file-metastore configuration. Only this README records it; the 2026-05-24 evidence record is a prediction made before any run. Treat these numbers as a historical reference, not as 481 results.
 
@@ -66,7 +66,15 @@ Properties that no longer work on 481:
 
 ## Expected Behavior
 
-Reading Parquet is verified on 481 (see Status). Writing Parquet with CTAS is not tested on 481; `03_write_back.sql` is that test. Delta and Iceberg writes are expected to fail under the same atomic rename constraint as on the other engines, but were not tried here. Authentication uses direct IAM credentials with no intermediary governance layer, so session policies are not an issue.
+Reading Parquet is verified on 481 (see Status). Writing is not possible with Trino 481 as shipped (see "Writing" below). Delta and Iceberg writes are expected to fail under the same atomic rename constraint as on the other engines, but were not tried here. Authentication uses direct IAM credentials with no intermediary governance layer, so session policies are not an issue.
+
+## Writing
+
+`03_write_back.sql` (CTAS) fails on Trino 481 with `HIVE_WRITER_CLOSE_ERROR` when the source table has rows, and the cause is the storage class, not permissions or the metastore. With an empty source it reports `CREATE TABLE: 0 rows` and succeeds, because no object is written; that happens if you run `scripts/run_verification.sh` against an access point that has no `sensor-data/` prefix and then run the script. In the 2026-11-03 check, 6 rows staged under `sensor-data/` made it fail.
+
+Trino's native S3 file system sets a storage class on every PutObject and CreateMultipartUpload request (checked in the 481 source). `s3.storage-class` defaults to `STANDARD` and accepts the 11 values listed in the [Trino documentation](https://trino.io/docs/481/object-storage/file-system-s3.html). None of them is `FSX_ONTAP`, and none sends no storage class. An FSx for ONTAP S3 Access Point accepts a PutObject with no storage class or with `FSX_ONTAP`, and answers `InvalidStorageClass` to each of the 11 values. That was checked on 2026-11-03 with `aws s3api put-object`, independent of Trino. `create-multipart-upload` gave the same answer for `STANDARD` and accepted `FSX_ONTAP`. AWS documents `FSX_ONTAP` as the only supported storage class ([Object API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)), and the [compatibility matrix](../../docs/en/compatibility-matrix.md) says the same.
+
+In the 481 source the storage class comes only from `s3.storage-class`, so no catalog property works around it. Reading is unaffected.
 
 ## S3 Tables through the Glue Iceberg REST endpoint
 
@@ -118,7 +126,7 @@ trino> SELECT COUNT(*) FROM sensor_data;
 trino> SELECT status, AVG(temperature) FROM sensor_data GROUP BY status;
 ```
 
-`scripts/run_verification.sh <alias>` runs the whole flow. It creates the Glue database `sensor_data` and its table `readings`, and `scripts/cleanup.sh` does not remove them; the commands to delete them are in the script header.
+`scripts/run_verification.sh <alias>` runs the whole flow. It creates the Glue database `sensor_data` and its table `readings`, and `scripts/cleanup.sh` does not remove them; the commands to delete them are in the script header. The table reads Parquet files under the `sensor-data/` prefix of the access point. If the prefix is empty or missing, `COUNT(*)` returns 0 with no error, so stage a Parquet file there first.
 
 ## Directory Structure
 
@@ -151,6 +159,6 @@ integrations/trino-starburst/
 | Deployment | Docker / EC2 / K8s | In-process / Lambda | Serverless | EMR Serverless |
 | S3 AP support | Native S3, path-style + endpoint | path-style + endpoint | Native (EMRFS) | Native (EMRFS) |
 | Session policy risk | None (direct IAM) | None (direct IAM) | None (AWS-native) | None (AWS-native) |
-| Write-back | Not tested on 481 | COPY TO | CTAS | Spark write |
+| Write-back | Fails on 481 (storage class rejected) | COPY TO | CTAS | Spark write |
 | Cost model | Compute (EC2/container) | Per-invocation (Lambda) | Per-scan | Per-job |
 | Best for | Federated SQL, multi-source | Lightweight ad-hoc | Serverless SQL | Large-scale ETL |
