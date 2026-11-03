@@ -101,9 +101,9 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 
 | 項目 | 内容 |
 |---|---|
-| 読み取り | 検証済み。Trino 481 + Glue Catalog + `hive.s3.path-style-access=true` + 明示的 `hive.s3.endpoint`。5M 行を 1.5秒。[実測記録](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml)（ap-northeast-1、2026-05-26） |
+| 読み取り | 検証済み。Trino 481 + Glue Catalog + `s3.path-style-access=true` + 明示的 `s3.endpoint`（ネイティブ S3 ファイルシステム）。5M 行を 1.5秒。[実測記録](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml)（ap-northeast-1、2026-05-26） |
 | 書き込み | 未テスト（トランザクショナル書き込みには同じ S3 Access Points 制限が適用） |
-| 設定 | S3 Access Points のエイリアス解決に `hive.s3.path-style-access=true` と明示的 `hive.s3.endpoint` が必要。DuckDB と同じパターン |
+| 設定 | S3 Access Points のエイリアス解決に `s3.path-style-access=true` と明示的 `s3.endpoint` が必要。DuckDB と同じパターン。旧 `hive.s3.*` は Trino 481 で削除済み |
 | カタログ | Glue Catalog（Athena、Redshift、EMR と共有） |
 
 ### Dremio

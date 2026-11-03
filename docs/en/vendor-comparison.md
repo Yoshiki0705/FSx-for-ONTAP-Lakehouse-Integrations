@@ -102,9 +102,9 @@ Key finding (Part 7): all three transactional table formats (Delta, Iceberg, Hud
 
 | Item | Detail |
 |---|---|
-| Read | Verified. Trino 481 + Glue Catalog + `hive.s3.path-style-access=true` + explicit `hive.s3.endpoint`. 5M rows in 1.5s. [Evidence](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml) (ap-northeast-1, 2026-05-26) |
+| Read | Verified. Trino 481 + Glue Catalog + `s3.path-style-access=true` + explicit `s3.endpoint` (native S3 file system). 5M rows in 1.5s. [Evidence](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml) (ap-northeast-1, 2026-05-26) |
 | Write | Not tested (same S3 Access Points limitations apply for transactional writes) |
-| Configuration | Requires `hive.s3.path-style-access=true` and explicit `hive.s3.endpoint` to resolve S3 Access Points aliases. Same pattern as DuckDB |
+| Configuration | Requires `s3.path-style-access=true` and explicit `s3.endpoint` to resolve S3 Access Points aliases. Same pattern as DuckDB. The legacy `hive.s3.*` properties were removed in Trino 481 |
 | Catalog | Glue Catalog (shared with Athena, Redshift, EMR) |
 
 ### Dremio
