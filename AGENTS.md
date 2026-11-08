@@ -118,6 +118,10 @@ Enforced by pre-commit hooks (`.githooks/pre-commit`) and CI workflows:
   Rationale and the specific traps live in the script's own comments, not here.
 - **Pre-commit**: `gitleaks detect --config .gitleaks.toml --no-git --source .`
 
+## Long-Session Discipline
+
+> Decision-log placement, evidence-tier mapping, auditor cues, and repeat-task checklists specific to this repo: `docs/agent/long-session-discipline.md`. Foundations (Parallel-by-default, Auditor Sub-Agent, benchmark variance) stay in global steering — not duplicated here.
+
 ## Project-Specific Technical Knowledge
 
 ### SSM Domain Join — Correct Pattern (verified failure)
