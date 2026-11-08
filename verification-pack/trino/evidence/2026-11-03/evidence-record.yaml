@@ -27,9 +27,9 @@ authentication: "temporary credentials from an IAM Identity Center session, expo
 file_system_deployment_type: "SINGLE_AZ_1"
 file_system_throughput_capacity_mbps: 128
 file_system_storage_type: "SSD"
-ontap_version: "not retrieved in this run"  # the FSx API does not return it
-svm_ad_joined: true                         # checked with the FSx API after the run
-svm_security_style: "not retrieved"         # the FSx API returns no root security style for this SVM
+ontap_version: "not retrieved in this run"  # the Amazon FSx API does not return it
+svm_ad_joined: true                         # checked with the Amazon FSx API after the run
+svm_security_style: "not retrieved"         # the Amazon FSx API returns no root security style for this SVM
 volume_security_style: "NTFS"
 
 # S3 Access Point (existing, reused)
