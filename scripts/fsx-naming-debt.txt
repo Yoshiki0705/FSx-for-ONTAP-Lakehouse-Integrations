@@ -197,8 +197,8 @@ integrations/snowflake/docs/ja/README.md 14
 integrations/snowflake/docs/ja/ai-demo-guide.md 5
 integrations/snowflake/docs/ja/setup-guide.md 1
 integrations/snowflake/docs/ja/snowpipe-integration.md 1
-integrations/trino-starburst/README.md 2
-integrations/trino-starburst/docs/ja/README.md 2
+integrations/trino-starburst/README.md 1
+integrations/trino-starburst/docs/ja/README.md 1
 poc-templates/03-snowflake-integration/README-ja.md 1
 poc-templates/03-snowflake-integration/README.md 1
 poc-templates/04-databricks-integration/README-ja.md 1
