@@ -62,7 +62,7 @@ Decisions の根拠欄に evidence tier を対応づけるとき、このリポ�
 
 ### 新 CloudFormation パターンの追加
 
-- [ ] 命名を外さない（Amazon FSx for NetApp ONTAP → FSx for ONTAP。FSxN / bare FSx 不可）。pre-commit の命名ゲートで確認
+- [ ] 命名を外さない（Amazon FSx for NetApp ONTAP → FSx for ONTAP。短縮形や bare 形は不可）。pre-commit の命名ゲートで確認
 - [ ] 例 IP は RFC 5737（`198.51.100.x`）。実 IP・アカウント ID を書かない
 - [ ] パラメータファイルは `[{"ParameterKey":...,"ParameterValue":...}]` 形式。`cfn-params/` の実値は gitignored、example だけ追跡
 - [ ] JA/EN parity（同じ節構成・数値の単位一致）。docs-quality / number-parity ゲートで確認
