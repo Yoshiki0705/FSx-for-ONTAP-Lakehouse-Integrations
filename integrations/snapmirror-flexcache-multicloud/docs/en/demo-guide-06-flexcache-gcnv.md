@@ -37,24 +37,26 @@ flowchart LR
         Origin["Origin Volume\n(FSx for ONTAP)"]
     end
     subgraph GCP["Google Cloud"]
-        GCNV["GCNV FlexCache\n(Cache only, NFSv3)"]
+        GCNV["GCNV FlexCache\n(NFSv3, write-around)"]
         GCE["GCE Instance"]
     end
 
     Lambda -->|"S3 API"| S3AP --> Origin
     Origin ===|"FlexCache\nHA VPN"| GCNV
-    GCNV -->|"NFSv3\n(read-only)"| GCE
+    GCNV -->|"NFSv3\n(read/write)"| GCE
 ```
 
 
 **Key Constraints:**
 
+**Key constraints (revised against primary sources on 2026-11-04):**
+
 | Constraint | Details |
 |------|------|
-| GCNV は Cache のみ | GCNV を Origin にすることはできない |
-| NFSv3 のみ | GCNV FlexCache は NFSv4 未対応 |
-| Write-back 非対応 | GCNV FlexCache は read-only |
-| Google-managed | ONTAP CLI/REST API への直接アクセスNot available |
+| Only ONTAP-mode can be an origin | Default-mode GCNV volumes serve as cache only. **Flex Unified ONTAP-mode volumes can also act as origin volumes** ([GCP: FlexCache overview](https://docs.cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/overview)) |
+| NFSv3 is the main line | This demo uses NFSv3. NFSv4 access to a cache is ONTAP 9.10.1 and later |
+| Not read-only (write-around) | **GCNV FlexCache is writable.** With the default write-around, a write to the cache is forwarded to the origin and committed there. Write-back is a separate option (ONTAP 9.15.1 and later). A rejected write is caused not by read-only but by the origin-side UNIX permissions (see below) |
+| Two management paths | ONTAP-mode has no direct SSH / System Manager. Operate it through `gcloud netapp storage-pools execute` (CLI proxy) and the Google proxy API (ONTAP REST) |
 
 **Validation Points:**
 
@@ -273,12 +275,13 @@ cat /mnt/gcnv_cache/demo-data/sensor-001.json | jq .
 }
 ```
 
-> **Note**: GCNV FlexCache is read-only. Write attempts will return `Read-only file system` an error.
+> **Note (corrected)**: GCNV FlexCache is not read-only. With the default write-around, a write to the cache is forwarded to the origin and committed there. If a write returns `Permission denied`, the cause is not read-only but the **origin (AWS) volume's UNIX permissions**: when the origin root is `root:root` `755`, a write from an ordinary user is refused. Align the writing user's UID/GID with the origin owner (see "Cross-cloud build and peering" below).
 
 ```bash
-# Write テスト（失敗することをVerify）
-echo "test" > /mnt/gcnv_cache/demo-data/write-test.json
-# Expected: "Read-only file system"
+# Write test (succeeds when the origin-side permissions allow it)
+echo "FlexCache write test from GCP" > /mnt/gcnv_cache/demo-data/write-test.txt
+cat /mnt/gcnv_cache/demo-data/write-test.txt
+# On Permission denied, check the origin-side owner and permissions
 ```
 
 ---
@@ -342,7 +345,7 @@ gcloud netapp storage-pools delete gcnv-demo-pool \
 |------|------|------|
 | GCNV Volume 作成失敗 | PSA not configured | `vpc-peerings connect` がCompleteしているかVerify |
 | NFSv4 マウントNot available | GCNV FlexCache は NFSv3 のみ | `-o vers=3`  flag |
-| "Read-only file system" | GCNV FlexCache は read-only | Normal behavior. 書き込みは Origin (AWS) 経由 |
+| "Permission denied" (on write) | Origin (AWS) UNIX permissions do not match; not read-only | Align the origin root owner/mode with the writing user (see "Cross-cloud build and peering") |
 | Cache にデータが見えない | VPN 経由の接続問題 | Check VPN tunnel status + Intercluster ports |
 | TTL 後もデータ反映されない | GCNV Cache is managed by Google | GCP Console で Volume  status verified |
 
@@ -353,10 +356,42 @@ gcloud netapp storage-pools delete gcnv-demo-pool \
 > External environment required for full validation — see BACKLOG items 7–12.
 
 
+## Cross-cloud build and peering (supplement)
+
+> **Tier**: `documented`. Paths and constraints are confirmed against public GCP / NetApp / AWS documentation (read in full 2026-11-04). No real IDs, IPs, SVM names, or UID/GIDs; all generalized. Prompted by an external article (a third-party hands-on record, cited at the end of this section) and verified against primary sources; this GCNV configuration was not reproduced in this repository.
+
+When connecting AWS and GCP over HA VPN to build FlexCache, the following matter in addition to the demo steps.
+
+### Network and route propagation
+
+- **Use GLOBAL dynamic routing on the Cloud Router.** Region-scoped routing does not learn routes from other regions' subnets toward the peer (AWS).
+- **Enable custom-route exchange on the PSA peering.** GCNV lives on a Google/NetApp-managed backend reached through PSA. Enable the peering's `--export-custom-routes` / `--import-custom-routes` so the Cloud Router carries AWS-learned routes to the GCNV backend.
+- **Advertise the GCNV intercluster range on the Cloud Router** so the AWS-side origin can return traffic to the GCNV intercluster IPs.
+
+### MTU and fragmentation
+
+- **HA VPN (IPsec) cannot carry jumbo frames.** If the intercluster ports default to MTU 9000/9001, the IPsec overhead triggers IP fragmentation, which cuts throughput and can drop sessions.
+- **Lower both sides' broadcast-domain MTU to a VPN-fitting value (around 1350–1400).** Probe with a fragmentation-forbidden (DF-bit) ping to find the largest size that passes without splitting; a plain ping lets the path fragment silently, so the problem goes unnoticed.
+
+### ONTAP peering (GCNV ONTAP-mode constraints)
+
+- **`cluster peer create` cannot run through the CLI proxy.** It is interactive, so the GCNV side uses the ONTAP REST API ([GCP: Manage ONTAP in ONTAP-mode](https://docs.cloud.google.com/netapp/volumes/docs/ontap/manage-ontap)). The external article shows a CLI-proxy example; Google's documentation directs you to the REST API. Re-check the current documentation before relying on either.
+- **Prefer authenticated peering for production.** Generate a passphrase on the GCNV side with `-generate-passphrase` and accept it on the FSx for ONTAP side; that order avoids the interactive-input limitation.
+- **Unauthenticated peering has a revert constraint.** With `-no-authentication true`, while any unauthenticated relationship remains you cannot return the cluster-wide policy to authenticated-required (`-is-unauthenticated-access-permitted false`) — an ONTAP property ([NetApp: cluster peer policy modify](https://docs.netapp.com/us-en/ontap-cli/cluster-peer-policy-modify.html)). If you run unauthenticated, bound it with HA VPN encryption and a security-group source restriction, and at teardown delete the peer before reverting the policy.
+
+### Writes and origin permissions
+
+- **A write follows the origin (AWS) UNIX permissions.** If the origin volume root stays `root:root` `755`, a write from an ordinary user on the GCP side returns `Permission denied`. Align the writing user's UID/GID with the origin owner. `777` is a temporary triage step; for a durable setting, scope the owner and return to `755`.
+
+Source (third-party article, origin): a Qiita series on building HA VPN / peering / FlexCache for GCNV ONTAP-mode (author handle: lewip, a 3-part series and others). The claims in this section are verified against the primary sources above.
+
 ## References
 
 - [GCP Docs: NetApp Volumes](https://cloud.google.com/netapp/volumes/docs)
+- [GCP Docs: Manage ONTAP in ONTAP-mode](https://docs.cloud.google.com/netapp/volumes/docs/ontap/manage-ontap)
+- [GCP Docs: FlexCache overview (ONTAP-mode)](https://docs.cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/overview)
 - [GCP Docs: HA VPN](https://cloud.google.com/network-connectivity/docs/vpn/concepts/overview)
 - [NetApp Docs: FlexCache](https://docs.netapp.com/us-en/ontap/flexcache/index.html)
+- [NetApp Docs: cluster peer policy modify](https://docs.netapp.com/us-en/ontap-cli/cluster-peer-policy-modify.html)
 - [Demo Guide 04: FlexCache CVO on GCP](../en/demo-guide-04-flexcache-cvo-gcp.md)
 - [Demo Guide 01: FlexCache 同一リージョン](../en/demo-guide-01-flexcache-same-region.md)
