@@ -37,24 +37,24 @@ flowchart LR
         Origin["Origin Volume\n(FSx for ONTAP)"]
     end
     subgraph GCP["Google Cloud"]
-        GCNV["GCNV FlexCache\n(Cache only, NFSv3)"]
+        GCNV["GCNV FlexCache\n(NFSv3, write-around)"]
         GCE["GCE Instance"]
     end
 
     Lambda -->|"S3 API"| S3AP --> Origin
     Origin ===|"FlexCache\nHA VPN"| GCNV
-    GCNV -->|"NFSv3\n(read-only)"| GCE
+    GCNV -->|"NFSv3\n(read/write)"| GCE
 ```
 
 
-**重要な制約:**
+**重要な制約（2026-11-04 に一次資料で見直し）:**
 
 | 制約 | 詳細 |
 |------|------|
-| GCNV は Cache のみ | GCNV を Origin にすることはできない |
-| NFSv3 のみ | GCNV FlexCache は NFSv4 未対応 |
-| Write-back 非対応 | GCNV FlexCache は read-only |
-| Google 管理 | ONTAP CLI/REST API への直接アクセス不可 |
+| Origin になれるのは ONTAP モードのみ | 通常モードの GCNV ボリュームは Cache 専用。**Flex Unified ONTAP モードのボリュームは Origin にもなれる**（[GCP: FlexCache overview](https://docs.cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/overview)） |
+| NFSv3 を本線とする | 本デモは NFSv3。Cache への NFSv4 アクセスは ONTAP 9.10.1 以降 |
+| read-only ではない（write-around） | **GCNV FlexCache は書き込み可能。** 既定の write-around では、Cache への書き込みが Origin に転送されて確定する。write-back は別オプション（ONTAP 9.15.1 以降）。書き込みが拒否される典型原因は read-only ではなく、Origin 側の UNIX パーミッション（後述） |
+| 管理経路は 2 つ | ONTAP モードは SSH / System Manager 直結不可。`gcloud netapp storage-pools execute`（CLI プロキシ）と Google プロキシ API（ONTAP REST）で操作する |
 
 **検証ポイント:**
 
@@ -273,12 +273,13 @@ cat /mnt/gcnv_cache/demo-data/sensor-001.json | jq .
 }
 ```
 
-> **注意**: GCNV FlexCache は read-only です。書き込み試行は `Read-only file system` エラーになります。
+> **注意（訂正）**: GCNV FlexCache は read-only ではありません。既定の write-around で、Cache への書き込みは Origin に転送されて確定します。書き込みが `Permission denied` になる場合、原因は read-only ではなく **Origin（AWS 側）ボリュームの UNIX パーミッション**です。Origin 直下が `root:root` の `755` で、一般ユーザーから書くと拒否されます。書き込ませたいユーザーの UID/GID を Origin 側の所有者に合わせます（詳細は後述の「クロスクラウドの構築とピアリング」）。
 
 ```bash
-# Write テスト（失敗することを確認）
-echo "test" > /mnt/gcnv_cache/demo-data/write-test.json
-# 期待: "Read-only file system"
+# Write テスト（Origin 側のパーミッションが適合していれば成功する）
+echo "FlexCache write test from GCP" > /mnt/gcnv_cache/demo-data/write-test.txt
+cat /mnt/gcnv_cache/demo-data/write-test.txt
+# Permission denied の場合は Origin 側の所有者・パーミッションを確認する
 ```
 
 ---
@@ -342,7 +343,7 @@ gcloud netapp storage-pools delete gcnv-demo-pool \
 |------|------|------|
 | GCNV Volume 作成失敗 | PSA 未設定 | `vpc-peerings connect` が完了しているか確認 |
 | NFSv4 マウント不可 | GCNV FlexCache は NFSv3 のみ | `-o vers=3` を指定 |
-| "Read-only file system" | GCNV FlexCache は read-only | 正常動作。書き込みは Origin (AWS) 経由 |
+| "Permission denied"（書き込み時） | Origin（AWS 側）の UNIX パーミッション不適合。read-only ではない | Origin 直下の所有者・モードを書き込みユーザーに合わせる（「クロスクラウドの構築とピアリング」参照） |
 | Cache にデータが見えない | VPN 経由の接続問題 | VPN トンネル状態 + Intercluster ポートを確認 |
 | TTL 後もデータ反映されない | GCNV Cache 管理はGoogle側 | GCP Console で Volume 状態を確認 |
 
@@ -353,10 +354,42 @@ gcloud netapp storage-pools delete gcnv-demo-pool \
 > 完全な検証には外部環境が必要です — BACKLOG items 7–12 を参照。
 
 
+## クロスクラウドの構築とピアリング（補足）
+
+> **区分**: `documented`。経路と制約は GCP / NetApp / AWS の公開ドキュメントで確認（2026-11-04 全文確認）。実 ID・IP・SVM 名・UID/GID は含めず一般化しています。外部記事（第三者の実機記録、本節末に出典）をきっかけに一次資料で裏取りした内容で、本リポジトリでこの GCNV 構成を実機再現はしていません。
+
+AWS ↔ GCP を HA VPN で結んで FlexCache を張るとき、本デモの手順に加えて次の点が効きます。
+
+### ネットワークと経路伝播
+
+- **Cloud Router は GLOBAL 動的ルーティングにする。** リージョン単位だと、別リージョンのサブネットから対向（AWS）への経路が学習されません。
+- **PSA ピアリングのカスタムルート交換を有効化する。** GCNV の実体は PSA 経由の Google/NetApp 管理基盤にあります。Cloud Router が AWS から受けた経路を GCNV 基盤へ伝えるため、ピアリングの `--export-custom-routes` / `--import-custom-routes` を有効にします。
+- **GCNV 側の intercluster 範囲を Cloud Router で広報する。** AWS 側の Origin から GCNV の intercluster IP へ戻れるようにします。
+
+### MTU とフラグメンテーション
+
+- **HA VPN（IPsec）はジャンボフレームを通せません。** intercluster ポートが MTU 9000/9001 の既定だと、IPsec のオーバーヘッドで IP フラグメンテーションが起き、スループット低下やセッション切断の原因になります。
+- **両拠点のブロードキャストドメイン MTU を VPN に合う値（1350〜1400 程度）に下げる。** 疎通確認は、フラグメント禁止（DF ビット）の ping でパケット分割なしに通る最大サイズを探します。通常の ping は経路側が勝手に分割するため、問題に気づけません。
+
+### ONTAP ピアリング（GCNV ONTAP モード側の制約）
+
+- **`cluster peer create` は CLI プロキシでは実行できません。** 対話コマンドのため、GCNV 側は ONTAP REST API で行います（[GCP: Manage ONTAP in ONTAP-mode](https://docs.cloud.google.com/netapp/volumes/docs/ontap/manage-ontap)）。外部記事は CLI プロキシ経由の例を示しますが、Google 公式は REST API を案内しています。採用前に現行ドキュメントで確認してください。
+- **本番は認証付きピアを推奨。** GCNV 側で `-generate-passphrase` によりパスフレーズを生成し、FSx for ONTAP 側で受け入れる順序なら、対話入力の制約を回避できます。
+- **無認証ピアには解除不能の制約があります。** 無認証ピア（`-no-authentication true`）を使うと、無認証の関係が 1 つでも残る間は、クラスタ全体のポリシーを認証必須（`-is-unauthenticated-access-permitted false`）に戻せません（ONTAP の仕様。[NetApp: cluster peer policy modify](https://docs.netapp.com/us-en/ontap-cli/cluster-peer-policy-modify.html)）。無認証で運用する場合は、HA VPN の暗号化とセキュリティグループでの接続元制限で担保し、撤去時に先にピアを削除してからポリシーを戻します。
+
+### 書き込みと Origin のパーミッション
+
+- **書き込みは Origin（AWS）側の UNIX パーミッションに従います。** Origin ボリューム直下が `root:root` の `755` のままだと、GCP 側の一般ユーザーからの書き込みは `Permission denied` になります。書き込ませたいユーザーの UID/GID を Origin 側の所有者に合わせます。`777` は切り分け用の暫定で、恒久設定には所有者を絞って `755` に戻します。
+
+出典（第三者記事・きっかけ）: GCNV ONTAP モードでの HA VPN / ピアリング / FlexCache 構築に関する Qiita 連載（投稿者ハンドル: lewip、全 3 章ほか）。本節の主張は上記の一次資料で裏取りしています。
+
 ## 参考リンク
 
 - [GCP Docs: NetApp Volumes](https://cloud.google.com/netapp/volumes/docs)
+- [GCP Docs: Manage ONTAP in ONTAP-mode](https://docs.cloud.google.com/netapp/volumes/docs/ontap/manage-ontap)
+- [GCP Docs: FlexCache overview (ONTAP-mode)](https://docs.cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/overview)
 - [GCP Docs: HA VPN](https://cloud.google.com/network-connectivity/docs/vpn/concepts/overview)
 - [NetApp Docs: FlexCache](https://docs.netapp.com/us-en/ontap/flexcache/index.html)
+- [NetApp Docs: cluster peer policy modify](https://docs.netapp.com/us-en/ontap-cli/cluster-peer-policy-modify.html)
 - [Demo Guide 04: FlexCache CVO on GCP](./demo-guide-04-flexcache-cvo-gcp.md)
 - [Demo Guide 01: FlexCache 同一リージョン](./demo-guide-01-flexcache-same-region.md)
