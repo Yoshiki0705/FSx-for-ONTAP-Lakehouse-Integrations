@@ -1,0 +1,25 @@
+{
+  "schema_version": "1",
+  "name": "fsxn-lakehouse-integrations-agent",
+  "repo": "fsxn-lakehouse-integrations",
+  "description": "Agent for the FSx for ONTAP lakehouse integrations repository. Owns documentation quality and cross-repo reference integrity for this Spoke.",
+  "skills": [
+    "quality_gate",
+    "cross_repo_notification"
+  ],
+  "quality_gates": [
+    "make docs-gates"
+  ],
+  "cross_repo_targets": [
+    {
+      "repo": "fsxn-adoption-playbook",
+      "relationship": "hub",
+      "types": ["reference_update", "feedback"]
+    }
+  ],
+  "action_policy": {
+    "auto_allowed": ["docs_gates"],
+    "human_required": ["branch_create", "commit", "pr_create", "push", "cross_repo_write"]
+  },
+  "notification_dir": "docs/agent/notifications"
+}
