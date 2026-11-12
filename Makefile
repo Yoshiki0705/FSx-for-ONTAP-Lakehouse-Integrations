@@ -16,7 +16,8 @@ docs-gates: ## Run the documentation gates (naming, number parity, headings, det
 	python3 scripts/check-detector-mutations.py
 	python3 scripts/ai_style_rules.py docs/ --fail
 
-cross-repo-agent: docs-gates ## Run quality gates and emit cross-repo notifications for Kiro Bot
+# Called by the supervisor (~/.kiro/hooks/scripts/cross_repo_agent.py run). Do not call the
+# supervisor from here: it calls this target, so doing both recurses until the timeout.
+cross-repo-agent: docs-gates ## Run the gates for the Kiro Bot supervisor (no recursion)
 	@mkdir -p docs/agent/notifications
-	@python3 ~/.kiro/hooks/scripts/cross_repo_agent.py run 2>/dev/null || true
-	@echo "cross-repo-agent: gates passed. Notifications written to docs/agent/notifications/ if any."
+	@echo "cross-repo-agent: gates passed."
