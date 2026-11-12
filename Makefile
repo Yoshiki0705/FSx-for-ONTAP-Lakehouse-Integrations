@@ -21,6 +21,6 @@ docs-gates: ## Run the documentation gates (naming, number parity, headings, det
 
 # Called by a local supervisor script that runs each repository's gates. Do not call that
 # script from here: it calls this target, so doing both recurses until the timeout.
-cross-repo-agent: docs-gates ## Run the gates for the Kiro Bot supervisor (no recursion)
+cross-repo-agent: docs-gates ## Run the gates for a local supervisor script (no recursion)
 	@mkdir -p docs/agent/notifications
 	@echo "cross-repo-agent: gates passed."
