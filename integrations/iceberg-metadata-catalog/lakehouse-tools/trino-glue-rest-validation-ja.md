@@ -24,6 +24,8 @@ AWS Glue Iceberg REST エンドポイント経由で S3 Tables メタデータ�
 
 **結論**: OSS Trino 481 の Iceberg REST connector は、REST catalog リクエストに対する AWS SigV4 認証をネイティブにサポートしていません。Glue Iceberg REST endpoint は SigV4 を要求しますが（`/v1/config` で `rest.sigv4-enabled=true`）、Trino の REST クライアントは未認証リクエストを送信します。
 
+> **訂正に関する注記（2026-11-03）**: この結論は確定していません。2026-06-01 の実行は `iceberg.rest-catalog.security=SIGV4` を指定しておらず、既定値は `NONE` です。署名のないリクエストに `Missing Authentication Token` が返るのは想定どおりです。Trino 481（Docker）で `security=SIGV4`、`signing-name=glue`、偽の資格情報を指定した対照実験では `The security token included in the request is invalid` が返りました。リクエストは署名されており、資格情報だけが理由で拒否されたことを示します。確認できていないのは、有効な資格情報で `SHOW SCHEMAS` が成功することです。481 の `SIGV4` は静的な `s3.aws-access-key` と `s3.aws-secret-key` も必要とし、この 2 つはセッショントークンを受け付けないため、一時認証情報（例: IAM Identity Center）では署名が通りません。有効な資格情報での実行が記録されるまでは、この文書の「不可」を「未確認」と読んでください。経緯は #175 にあります。
+
 ### デプロイメント別の影響
 
 | デプロイメント | 動作見込み | 理由 |

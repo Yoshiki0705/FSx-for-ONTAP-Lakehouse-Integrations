@@ -73,6 +73,7 @@ engines:
     tested_date: "2026-06-01"
     notes: |
       OSS Trino 481 (Docker): Iceberg REST connector uses NoopAuthManager — cannot sign requests with SigV4 for Glue REST.
+      Correction (2026-11-03): not settled. The 2026-06-01 run left iceberg.rest-catalog.security at its default (NONE). A control run with security=SIGV4 and fake credentials was refused for its credentials only, so the request was signed. Not confirmed with valid credentials; 481 needs static s3.aws-access-key and s3.aws-secret-key (no session token). Read "cannot sign" as "not confirmed" until then (issue 175).
       EMR Trino: Expected to work (EMR handles SigV4 automatically).
       Starburst Enterprise: Expected to work (AWS integration built-in).
       Glue REST API itself is confirmed functional (tested via PyIceberg/botocore SigV4).
