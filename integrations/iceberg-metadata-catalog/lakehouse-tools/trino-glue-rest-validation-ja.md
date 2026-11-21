@@ -20,11 +20,11 @@ AWS Glue Iceberg REST エンドポイント経由で S3 Tables メタデータ�
 |---|---|---|
 | Iceberg REST catalog で Trino 起動 | ✅ | `SERVER STARTED`、カタログ認識 |
 | `SHOW SCHEMAS FROM s3tables_glue_rest` | ❌ | `Missing Authentication Token` |
-| 根本原因 | — | Trino は REST catalog に `NoopAuthManager` を使用; SigV4 署名が HTTP リクエストに適用されない |
+| 根本原因 | — | `iceberg.rest-catalog.security` が既定の `NONE` のままで、リクエストが署名されていなかった（下の実測結果を参照） |
 
-**結論**: OSS Trino 481 の Iceberg REST connector は、REST catalog リクエストに対する AWS SigV4 認証をネイティブにサポートしていません。Glue Iceberg REST endpoint は SigV4 を要求しますが（`/v1/config` で `rest.sigv4-enabled=true`）、Trino の REST クライアントは未認証リクエストを送信します。
+**結論**: Trino 481 は SigV4 に静的な `s3.aws-access-key` と `s3.aws-secret-key` を必要とし、無いと起動しません。この 2 つはセッショントークンを受け付けません。Trino 484 は AWS の既定の認証情報チェーンで Glue Iceberg REST のリクエストに署名します。2026-06-01 の「OSS Trino はこのリクエストに署名できない」という記述は、コネクタの限界ではなく設定の漏れによるものでした。
 
-> **訂正に関する注記（2026-11-03）**: この結論は確定していません。2026-06-01 の実行は `iceberg.rest-catalog.security=SIGV4` を指定しておらず、既定値は `NONE` です。署名のないリクエストに `Missing Authentication Token` が返るのは想定どおりです。Trino 481（Docker）で `security=SIGV4`、`signing-name=glue`、偽の資格情報を指定した対照実験では `The security token included in the request is invalid` が返りました。リクエストは署名されており、資格情報だけが理由で拒否されたことを示します。確認できていないのは、有効な資格情報で `SHOW SCHEMAS` が成功することです。481 の `SIGV4` は静的な `s3.aws-access-key` と `s3.aws-secret-key` も必要とし、この 2 つはセッショントークンを受け付けないため、一時認証情報（例: IAM Identity Center）では署名が通りません。有効な資格情報での実行が記録されるまでは、この文書の「不可」を「未確認」と読んでください。経緯は #175 にあります。
+> **実測結果（2026-11-21）**: 2026-06-01 の実行は `iceberg.rest-catalog.security` を既定の `NONE` のままにしていたため、`Missing Authentication Token` は署名のないリクエストへの応答でした。同じ Glue Iceberg REST エンドポイントに対し、`security=SIGV4`、`signing-name=glue`、`s3.aws-access-key` と `s3.aws-secret-key` なしで、IAM Identity Center の一時認証情報（セッショントークンつき）を環境変数で渡して試しました。Trino 484（Docker）は `SHOW SCHEMAS` でスキーマ一覧を返し、Trino 481（Docker）は起動しませんでした（`NullPointerException: s3.aws-access-key is null`）。Trino 484 のリリースノートに、IAM ロールもアクセスキーも設定されていない場合に、Iceberg REST カタログの SigV4 署名で AWS の既定の認証情報チェーンを使う機能の追加が載っています。同じセッションで、`glue` 向けに署名した boto3 のリクエストが同じエンドポイントから HTTP 200 を得ており、資格情報が有効だったことを示します。試していないのは、テーブルデータの読み取り、S3 Tables のウェアハウス、書き込み、481 と 484 以外の Trino の版です。経緯は #175 にあります。
 
 ### デプロイメント別の影響
 
@@ -32,7 +32,7 @@ AWS Glue Iceberg REST エンドポイント経由で S3 Tables メタデータ�
 |---|---|---|
 | **EMR Trino** | ✅ はい | EMR が AWS SDK SigV4 処理を Trino にパッチ |
 | **Starburst Enterprise** | ✅ はい | AWS 統合と SigV4 サポートが組み込み |
-| **OSS Trino (Docker/EC2)** | ❌ 現時点で不可 | REST catalog リクエストに SigV4 署名なし |
+| **OSS Trino (Docker/EC2)** | ✅ 484 は可、481 は静的キーが必要 | 484 は既定の認証情報チェーンで署名（`SHOW SCHEMAS` で確認）。481 は `s3.aws-access-key` と `s3.aws-secret-key` を要求し、セッショントークンを受け付けない |
 | **OSS Trino + カスタム AuthManager** | 可能性あり | カスタムプラグイン開発が必要 |
 
 ### Glue Iceberg REST API（独立検証済み）

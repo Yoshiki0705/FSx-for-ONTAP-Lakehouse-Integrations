@@ -21,11 +21,11 @@ Validate Trino access to S3 Tables metadata via the AWS Glue Iceberg REST endpoi
 |---|---|---|
 | Trino startup with Iceberg REST catalog | ✅ | `SERVER STARTED`, catalog recognized |
 | `SHOW SCHEMAS FROM s3tables_glue_rest` | ❌ | `Missing Authentication Token` |
-| Root cause | — | Trino uses `NoopAuthManager` for REST catalog; SigV4 signing not applied to HTTP requests |
+| Root cause | — | `iceberg.rest-catalog.security` was left at its default `NONE`, so the request was unsigned (see the measured result below) |
 
-**Conclusion**: OSS Trino 481's Iceberg REST connector does not natively support AWS SigV4 authentication for REST catalog requests. The Glue Iceberg REST endpoint requires SigV4 (`rest.sigv4-enabled=true` in `/v1/config`), but Trino's REST client sends unauthenticated requests.
+**Conclusion**: Trino 481 needs static `s3.aws-access-key` and `s3.aws-secret-key` for SigV4 and does not start without them; those two properties do not accept a session token. Trino 484 signs Glue Iceberg REST requests with the AWS default credentials provider chain. The 2026-06-01 statement that OSS Trino cannot sign these requests was a configuration omission, not a limit of the connector.
 
-> **Correction note (2026-11-03)**: this conclusion is not settled. The 2026-06-01 run did not set `iceberg.rest-catalog.security=SIGV4`, and the default is `NONE`, so `Missing Authentication Token` is the expected answer to an unsigned request. A control run on Trino 481 (Docker) with `security=SIGV4` and `signing-name=glue` and fake credentials returned `The security token included in the request is invalid`, which means the request was signed and was refused only because of its credentials. Not confirmed: a successful `SHOW SCHEMAS` with valid credentials. In 481, `SIGV4` also needs static `s3.aws-access-key` and `s3.aws-secret-key`, and these do not accept a session token, so temporary credentials (for example from IAM Identity Center) do not sign. Until a run with valid credentials is recorded, read "not supported" in this document as "not confirmed". Tracked in #175.
+> **Measured result (2026-11-21)**: the 2026-06-01 run left `iceberg.rest-catalog.security` at its default `NONE`, so `Missing Authentication Token` was the answer to an unsigned request. Against the same Glue Iceberg REST endpoint, with `security=SIGV4`, `signing-name=glue`, no `s3.aws-access-key` and no `s3.aws-secret-key`, and temporary credentials (with a session token) from IAM Identity Center passed as environment variables: Trino 484 (Docker) returned the schema list for `SHOW SCHEMAS`; Trino 481 (Docker) did not start (`NullPointerException: s3.aws-access-key is null`). The Trino 484 release notes list "use the AWS default credentials provider chain for SigV4 request signing with the Iceberg REST catalog when no IAM role or access keys are configured". A boto3 request signed for `glue` to the same endpoint returned HTTP 200 in the same session, which shows the credentials were valid. Not tested: reading table data, an S3 Tables warehouse, writes, and Trino versions other than 481 and 484. Tracked in #175.
 
 ### Implications by Deployment
 
@@ -33,7 +33,7 @@ Validate Trino access to S3 Tables metadata via the AWS Glue Iceberg REST endpoi
 |---|---|---|
 | **EMR Trino** | ✅ Yes | EMR patches Trino with AWS SDK SigV4 handling |
 | **Starburst Enterprise** | ✅ Yes | Built-in AWS integration and SigV4 support |
-| **OSS Trino (Docker/EC2)** | ❌ Not currently | No SigV4 signing for REST catalog requests |
+| **OSS Trino (Docker/EC2)** | ✅ Yes on 484; 481 needs static keys | 484 signs with the default credentials provider chain (tested with `SHOW SCHEMAS`); 481 requires `s3.aws-access-key` and `s3.aws-secret-key` and does not accept a session token |
 | **OSS Trino + custom AuthManager** | Possible | Would require custom plugin development |
 
 ### Glue Iceberg REST API (verified independently)
