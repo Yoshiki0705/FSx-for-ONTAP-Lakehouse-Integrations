@@ -2,9 +2,9 @@ version: '3.8'
 
 services:
   trino:
-    # Pinned to the version in verification-pack/trino/evidence/2026-05-26. A floating
+    # Pinned to the version in verification-pack/trino/evidence/2026-11-21. A floating
     # tag lets the next release change the accepted catalog properties without notice.
-    image: trinodb/trino:481
+    image: trinodb/trino:484
     container_name: trino
     ports:
       - "8080:8080"
