@@ -88,6 +88,8 @@ Savings = Current - FSx for ONTAP S3 AP
 | SnapMirror RTO | DR リージョンへのフェイルオーバー時間 | タイム計測付きフェイルオーバーテスト | < 15 分 |
 | SnapMirror RPO | レプリケーションラグ | SnapMirror ラグメトリクス | < 15 分（非同期）または 0（同期） |
 
+- RTO と RPO を、サービス提供者が自環境の実測から決める値として定義し、RTO の時点と区間を分ける方法は、cyber リポジトリの[復旧時間と復旧点の目標のガイド](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/ja/recovery-objectives-guide.md)にあります。この文書の値は目標であって、保証値ではありません。
+
 ### 7. アクセスポリシーレビュー時間
 
 | メトリクス | 定義 | 測定方法 | 目標 |
