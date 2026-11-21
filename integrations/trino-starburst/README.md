@@ -6,18 +6,19 @@
 
 Query FSx for ONTAP data via S3 Access Points using Trino — an open-source distributed SQL query engine. Trino uses its own S3 filesystem implementation that supports path-style access, making it compatible with FSx for ONTAP S3 AP aliases.
 
-This integration targets **Trino 481** (`trinodb/trino:481`, pinned in `docker-compose.yaml`). The earlier Trino 438 configuration (file metastore, `hive.s3.*`) does not start on 481, because 481 removed the legacy S3 file system.
+This integration targets **Trino 484** (`trinodb/trino:484`, pinned in `docker-compose.yaml`). The earlier Trino 438 configuration (file metastore, `hive.s3.*`) does not start on 481 or 484, because 481 removed the legacy S3 file system.
 
-## Status: ✅ Read verified on Trino 481 (2026-05-26)
+## Status: ✅ Read verified on Trino 481 (2026-05-26), re-checked on Trino 484 (2026-11-21)
 
 Evidence: [`verification-pack/trino/evidence/2026-05-26`](../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml) (Trino 481, Docker, Glue Catalog, native S3 with path-style access, ap-northeast-1).
 
 - **Read**: `SHOW SCHEMAS`, `COUNT(*)` on 10K and 5M row Parquet, `GROUP BY` and a filter with predicate pushdown succeeded on FSx for ONTAP S3 Access Points.
-- **Write-back (CTAS)**: Fails on 481 when the source has rows (checked 2026-11-03). Trino sends a storage class on every write and FSx for ONTAP S3 Access Points reject it; see "Writing" below. On Trino 438 with a file-based metastore it failed for a different reason, the metastore.
+- **Write-back (CTAS)**: Fails on 481 (checked 2026-11-03) and on 484 (checked 2026-11-21) when the source has rows. Trino sends a storage class on every write and FSx for ONTAP S3 Access Points reject it; see "Writing" below. On Trino 438 with a file-based metastore it failed for a different reason, the metastore.
 - **No session policy issues**: Direct IAM credentials, no intermediary governance layer
 - **Re-checked on 2026-11-03 with this repository's configuration** ([`evidence-record.yaml`](../../verification-pack/trino/evidence/2026-11-03/evidence-record.yaml); `fs.s3.enabled`, the name that replaced the evidence run's `fs.native-s3.enabled`): Trino 481 started through `docker-compose.yaml` with temporary SSO credentials, listed the schemas and tables of the Glue Data Catalog, and read a Parquet file on an S3 Access Point (`SELECT`, `COUNT(*)`, `GROUP BY` and a filter returned the expected rows). That file has 2 rows, so the 10K and 5M row runs were not repeated: the original Access Point can no longer be read, and predicate pushdown was not checked.
+- **Re-checked on 2026-11-21 on Trino 484** ([`evidence-record.yaml`](../../verification-pack/trino/evidence/2026-11-21/evidence-record.yaml)): `docker-compose.yaml` (now pinned to 484) started with `fsxn.properties` unchanged, and the same 2-row Parquet file read the same way. The CTAS write failed with the same storage class error. A signed `SHOW SCHEMAS` against the Glue Iceberg REST endpoint succeeded with temporary credentials and no static keys. The 10K and 5M row runs, predicate pushdown, table reads through Glue REST and S3 Tables warehouses were not run.
 
-**Benchmark (Trino 438, single-node Docker arm64, ap-northeast-1):** measured with the earlier file-metastore configuration. Only this README records it; the 2026-05-24 evidence record is a prediction made before any run. Treat these numbers as a historical reference, not as 481 results.
+**Benchmark (Trino 438, single-node Docker arm64, ap-northeast-1):** measured with the earlier file-metastore configuration. Only this README records it; the 2026-05-24 evidence record is a prediction made before any run. Treat these numbers as a historical reference, not as 481 or 484 results.
 
 | Query | 10K rows | 5M rows (103 MB) |
 |-------|----------|-------------------|
@@ -28,7 +29,7 @@ Evidence: [`verification-pack/trino/evidence/2026-05-26`](../../verification-pac
 ## Architecture
 
 ```
-Trino 481 (Docker, single-node)
+Trino 484 (Docker, single-node)
     │
     ├── Hive Connector ──→ AWS Glue Data Catalog (schemas and tables)
     │
@@ -66,7 +67,7 @@ Properties that no longer work on 481:
 
 ## Expected Behavior
 
-Reading Parquet is verified on 481 (see Status). Writing is not possible with Trino 481 as shipped (see "Writing" below). Delta and Iceberg writes are expected to fail under the same atomic rename constraint as on the other engines, but were not tried here. Authentication uses direct IAM credentials with no intermediary governance layer, so session policies are not an issue.
+Reading Parquet is verified on 481 and 484 (see Status). Writing is not possible with Trino 481 or 484 as shipped (see "Writing" below). Delta and Iceberg writes are expected to fail under the same atomic rename constraint as on the other engines, but were not tried here. Authentication uses direct IAM credentials with no intermediary governance layer, so session policies are not an issue.
 
 ## Writing
 
@@ -74,11 +75,11 @@ Reading Parquet is verified on 481 (see Status). Writing is not possible with Tr
 
 Trino's native S3 file system sets a storage class on every PutObject and CreateMultipartUpload request (checked in the 481 source). `s3.storage-class` defaults to `STANDARD` and accepts the 11 values listed in the [Trino documentation](https://trino.io/docs/481/object-storage/file-system-s3.html). None of them is `FSX_ONTAP`, and none sends no storage class. An FSx for ONTAP S3 Access Point accepts a PutObject with no storage class or with `FSX_ONTAP`, and answers `InvalidStorageClass` to each of the 11 values. That was checked on 2026-11-03 with `aws s3api put-object`, independent of Trino. `create-multipart-upload` gave the same answer for `STANDARD` and accepted `FSX_ONTAP`. AWS documents `FSX_ONTAP` as the only supported storage class ([Object API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)), and the [compatibility matrix](../../docs/en/compatibility-matrix.md) says the same.
 
-In the 481 source the storage class comes only from `s3.storage-class`, so no catalog property works around it. Reading is unaffected.
+In the 481 source the storage class comes only from `s3.storage-class`, so no catalog property works around it. On Trino 484 the same CTAS failed with the same storage class error on 2026-11-21 (two runs). Reading is unaffected.
 
 ## S3 Tables through the Glue Iceberg REST endpoint
 
-`config/etc/catalog/s3tables_glue_rest.properties` defines a second catalog for S3 Tables. It loads on 481 but sends unsigned requests, so Glue answers `Missing Authentication Token`. Trino signs requests only when `iceberg.rest-catalog.security=SIGV4` is set, and that setting is commented out in the file because 481 then refuses to start unless `s3.aws-access-key` and `s3.aws-secret-key` are also set, and neither property accepts a session token. The file's comments give the steps. A control run on 481 with made-up credentials showed signed requests (`The security token included in the request is invalid`); a run with valid credentials has not been done.
+`config/etc/catalog/s3tables_glue_rest.properties` defines a second catalog for S3 Tables. It sets `iceberg.rest-catalog.security=SIGV4`, because the default is `NONE` and Glue answers unsigned requests with `Missing Authentication Token`. On Trino 484 no keys are needed: with no `s3.iam-role` and no static keys, Trino signs with the AWS default credentials provider chain, so temporary credentials work (`SHOW SCHEMAS` checked on 2026-11-21). Trino 481 refuses to start with `SIGV4` unless `s3.aws-access-key` and `s3.aws-secret-key` are set, and neither accepts a session token. Table reads through this catalog and an S3 Tables warehouse were not tested, and the `warehouse` value in the file is a placeholder to replace.
 
 ## Unstructured Data Support
 

@@ -1,0 +1,119 @@
+# Verification Evidence Record — Trino 484 (Docker): re-check of the read path, the write test and Glue REST signing
+# Repeats the 2026-11-03 record (Trino 481) on Trino 484 with this repository's docker-compose.yaml and catalog files,
+# against the same existing access point that holds a 2-row Parquet file.
+# Resource IDs, names and the access point alias are masked; real values are not published.
+# Dates and times in this record are UTC.
+test_id: "TRINO-RECHECK-002"
+date_tested: "2026-11-21"
+tester: "repository maintainer"
+# Result
+result: "Read: PASS on a 2-row file. Write (CTAS): FAILED, storage class rejected, as on 481. Glue Iceberg REST: signed requests succeed with the AWS default credentials provider chain."
+verification_method: "Docker Trino 484 (this repository's docker-compose.yaml, image pinned to 484) + Glue Data Catalog + native S3 file system, path-style"
+# Infrastructure
+region: "ap-northeast-1"
+trino_version: "484"
+trino_image: "trinodb/trino:484"
+trino_image_index_digest: "sha256:2704eb53935af5e582d63d6033e9bf99d20c325e9b0e30b1016ef59a4773979f"  # multi-platform index digest from the registry; the run used the linux/arm64 image
+deployment: "Docker Desktop (Docker 29.5.3), macOS arm64, single node"
+metastore: "AWS Glue Data Catalog"
+s3_access: "native S3 file system (fs.s3.enabled=true) with path-style access"
+s3_endpoint: "https://s3.ap-northeast-1.amazonaws.com"
+authentication: "temporary credentials from an IAM Identity Center session, exported with aws configure export-credentials and passed through by docker-compose.yaml; no static keys"
+# FSx for ONTAP (existing resources, reused; nothing was created or changed)
+file_system: "the same existing file system and access point as TRINO-RECHECK-001; its deployment details were not retrieved again in this run"
+ap_alias: "existing-ap-EXAMPLEaliassuffix-ext-s3alias"
+ap_network_origin: "INTERNET"               # as recorded in TRINO-RECHECK-001; not re-queried
+ap_file_system_user_type: "WINDOWS"         # as recorded in TRINO-RECHECK-001; not re-queried
+# Catalog configuration (integrations/trino-starburst/config/etc/catalog/)
+catalog_config_fsxn: |
+  connector.name=hive
+  hive.metastore=glue
+  hive.metastore.glue.region=ap-northeast-1
+  fs.s3.enabled=true
+  s3.path-style-access=true
+  s3.endpoint=https://s3.ap-northeast-1.amazonaws.com
+  s3.region=ap-northeast-1
+catalog_config_s3tables_glue_rest: |
+  connector.name=iceberg
+  iceberg.catalog.type=rest
+  iceberg.rest-catalog.uri=https://glue.ap-northeast-1.amazonaws.com/iceberg
+  iceberg.rest-catalog.vended-credentials-enabled=false
+  iceberg.rest-catalog.security=SIGV4
+  iceberg.rest-catalog.signing-name=glue
+  fs.s3.enabled=true
+  s3.region=ap-northeast-1
+  # no s3.aws-access-key, no s3.aws-secret-key, no s3.iam-role
+# Test data
+datasets:
+  - name: "existing object on the access point root"
+    format: "Parquet"
+    size_bytes: 2191
+    row_count: 2
+    columns: ["id", "name", "department"]
+# Trino tests
+tests:
+  - name: "docker compose up -d, then SELECT node_version FROM system.runtime.nodes"
+    result: "PASS"
+    output: "484"
+  - name: "SHOW CATALOGS"
+    result: "PASS"
+    output: "fsxn, s3tables_glue_rest, system (also after SIGV4 was enabled in s3tables_glue_rest.properties, in a fresh container)"
+  - name: "SHOW SCHEMAS FROM fsxn"
+    result: "PASS"
+    output: "default, fsxn_athena_verification, fsxn_iceberg_test, information_schema"
+  - name: "External table over the access point root, SELECT / COUNT(*) / GROUP BY / filter"
+    result: "PASS"
+    output: "SELECT returned (1, Alice, Sales) and (2, Bob, IT); COUNT(*) = 2; GROUP BY department gave IT = 1 and Sales = 1; WHERE id > 1 returned Bob"
+    note: "2 rows only. This repeats the read path; it does not repeat the 10K and 5M row runs or the predicate pushdown check."
+  - name: "CTAS with external_location into the access point"
+    result: "Not a write test"
+    error: "Writes to non-managed Hive tables is disabled"
+    note: "Trino refused the statement with a configuration message; this is not the storage class error. The repository's sql/03_write_back.sql creates a managed table, so the next test uses that form."
+  - name: "CTAS of a managed table in a schema whose location is on the access point (the form of sql/03_write_back.sql), source table with 2 rows"
+    result: "FAILED"
+    error: "Error committing write to Parquet file"
+    cause_chain: "IOException 'Put failed for bucket [<alias>] key [...]' -> S3Exception 'The storage class you specified is not valid (Service: S3, Status Code: 400)'"
+    reproduced: "twice with the same error"
+  - name: "SHOW SCHEMAS against the Glue Iceberg REST endpoint, catalog properties as in s3tables_glue_rest.properties with the warehouse set to the account's default Glue catalog"
+    result: "PASS"
+    output: "default, fsxn_athena_verification, fsxn_iceberg_test, information_schema, system (plus the schema this run created, before it was dropped)"
+    note: "Signed with the AWS default credentials provider chain from temporary credentials with a session token. Reads the account's default Glue catalog, not an S3 Tables warehouse."
+# Control for the signing test, same session (without Trino)
+signing_control:
+  request: "GET /iceberg/v1/config?warehouse=<account id> on the Glue Iceberg REST endpoint, signed with boto3 for service glue"
+  result: "HTTP 200"
+  note: "Shows the credentials were valid and the endpoint accepts signed requests."
+# Trino 481 with the same SIGV4 properties and no static keys (same session)
+trino_481_signing_control:
+  result: "the container did not start"
+  error: "NullPointerException: s3.aws-access-key is null"
+# Source and documentation checked
+sources_checked:
+  - "Trino 484 release notes: 'Add support for using the AWS default credentials provider chain for SigV4 request signing with the Iceberg REST catalog when no IAM role or access keys are configured.'"
+  - "Trino 483 release notes: 'Fix query failure when using an Iceberg REST catalog with SigV4 request signing.'"
+  - "Trino documentation, Iceberg REST catalog: SIGV4 signs with s3.iam-role if configured, otherwise with s3.aws-access-key and s3.aws-secret-key, otherwise with the AWS default credentials provider chain (documentation for 484)."
+# Key Findings
+key_findings:
+  - "Raising the pin from 481 to 484 changes nothing for the read path: the two catalog files start and the 2-row file reads the same way."
+  - "The CTAS write failure is the same on 484: the S3 file system sends a storage class that the access point refuses."
+  - "On 484, SigV4 signing for the Glue Iceberg REST endpoint needs no static keys, so temporary credentials work. On 481 the same properties do not start."
+# Not verified in this run
+not_verified:
+  - "The 10K and 5M row runs and predicate pushdown, which were last run on 481 (2026-05-26). They were not repeated."
+  - "Table reads through the Glue Iceberg REST catalog and an S3 Tables warehouse."
+  - "Iceberg or Delta Lake writes."
+  - "Whether a Glue-metastore Hive write that gets past the storage class sends a conditional write."
+  - "Trino versions other than 481 and 484."
+  - "The ONTAP version."
+# Teardown (this run created only disposable objects; existing resources untouched)
+teardown:
+  created_this_run: ["one Glue database with one external table (dropped)", "the local Docker containers and compose network"]
+  teardown_verified:
+    access_point_objects: "list-objects-v2 returns only the original 2191-byte object"
+    multipart_uploads: "list-multipart-uploads returns none"
+    glue_databases: "get-databases lists the same 3 databases as before the run"
+    docker: "no container named trino; the compose network was removed; the 481 and 484 images were removed"
+  existing_untouched: ["file system", "SVMs", "volumes", "other S3 Access Points"]
+reviewer: ""
+review_date: ""
+review_notes: ""
