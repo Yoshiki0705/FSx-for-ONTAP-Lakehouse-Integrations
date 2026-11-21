@@ -2,16 +2,17 @@
 
 🌐 [English](../../README.md) | **日本語**
 
-> **検証ステータス: ✅ Trino 481 で読み取り検証済み (2026-05-26)**
+> **検証ステータス: ✅ Trino 481 で読み取り検証済み (2026-05-26)、Trino 484 で再確認 (2026-11-21)**
 >
 > 根拠: [`verification-pack/trino/evidence/2026-05-26`](../../../../verification-pack/trino/evidence/2026-05-26/evidence-record.yaml)（Trino 481、Docker、Glue Catalog、ネイティブ S3 とパススタイルアクセス、ap-northeast-1）
 >
 > - **読み取り**: FSx for ONTAP S3 Access Points 上で、`SHOW SCHEMAS`、10K / 5M 行 Parquet の `COUNT(*)`、`GROUP BY`、述語プッシュダウン付きのフィルターが成功
-> - **書き戻し (CTAS)**: 元のテーブルに行があると 481 では失敗する（2026-11-03 に確認）。Trino が書き込みごとにストレージクラスを送り、FSx for ONTAP の S3 Access Points がそれを拒否するため。下の「書き込み」を参照。Trino 438 のファイルベースメタストアでは、別の原因（メタストア）で失敗した
+> - **書き戻し (CTAS)**: 元のテーブルに行があると 481（2026-11-03 に確認）と 484（2026-11-21 に確認）では失敗する。Trino が書き込みごとにストレージクラスを送り、FSx for ONTAP の S3 Access Points がそれを拒否するため。下の「書き込み」を参照。Trino 438 のファイルベースメタストアでは、別の原因（メタストア）で失敗した
 > - **セッションポリシー問題なし**: 直接 IAM 認証情報、中間ガバナンスレイヤーなし
 > - **2026-11-03 に、このリポジトリの設定で再確認した**（[実測記録](../../../../verification-pack/trino/evidence/2026-11-03/evidence-record.yaml)。証拠記録の `fs.native-s3.enabled` に代わる `fs.s3.enabled` を使用）: Trino 481 を `docker-compose.yaml` で起動し、SSO の一時認証情報で、Glue Data Catalog のスキーマとテーブルを一覧し、S3 Access Point 上の Parquet を読みました（`SELECT`、`COUNT(*)`、`GROUP BY`、フィルターが期待どおりの行を返した）。そのファイルは 2 行なので、10K 行と 5M 行の実行は繰り返していません。元の Access Point は読めなくなっており、述語プッシュダウンも確認していません
+> - **2026-11-21 に Trino 484 で再確認した**（[実測記録](../../../../verification-pack/trino/evidence/2026-11-21/evidence-record.yaml)）: `docker-compose.yaml`（484 に固定）が `fsxn.properties` を変えずに起動し、同じ 2 行の Parquet ファイルを同じように読めました。CTAS の書き込みは、同じストレージクラスのエラーで失敗しました。Glue Iceberg REST エンドポイントへの署名つきの `SHOW SCHEMAS` は、一時認証情報と静的キーなしで成功しました。10K と 5M 行の実行、述語プッシュダウン、Glue REST 経由のテーブル読み取り、S3 Tables のウェアハウスは実行していません。
 >
-> **ベンチマーク (Trino 438, シングルノード Docker arm64, ap-northeast-1):** 以前のファイルメタストア構成での測定です。記録しているのはこの README だけで、2026-05-24 の証拠記録は実行前の予測です。481 の結果ではなく、過去の参考値として扱ってください。
+> **ベンチマーク (Trino 438, シングルノード Docker arm64, ap-northeast-1):** 以前のファイルメタストア構成での測定です。記録しているのはこの README だけで、2026-05-24 の証拠記録は実行前の予測です。481 や 484 の結果ではなく、過去の参考値として扱ってください。
 >
 > | クエリ | 10K 行 | 5M 行 (103 MB) |
 > |-------|--------|----------------|
@@ -23,12 +24,12 @@
 
 Trino（オープンソース分散 SQL クエリエンジン）を使用して FSx for ONTAP のデータを S3 Access Points 経由でクエリします。Trino の S3 ファイルシステム実装はパススタイルアクセスをサポートしており、FSx for ONTAP S3 AP エイリアスと互換性があります。
 
-この統合は **Trino 481**（`trinodb/trino:481`、`docker-compose.yaml` で固定）を対象にします。以前の Trino 438 の構成（ファイルメタストア、`hive.s3.*`）は、481 が旧 S3 ファイルシステムを削除したため、481 では起動しません。
+この統合は **Trino 484**（`trinodb/trino:484`、`docker-compose.yaml` で固定）を対象にします。以前の Trino 438 の構成（ファイルメタストア、`hive.s3.*`）は、481 が旧 S3 ファイルシステムを削除したため、481 と 484 では起動しません。
 
 ## アーキテクチャ
 
 ```
-Trino 481 (Docker, シングルノード)
+Trino 484 (Docker, シングルノード)
     │
     ├── Hive Connector ──→ AWS Glue Data Catalog (スキーマとテーブル)
     │
@@ -96,7 +97,7 @@ s3.region=ap-northeast-1
 
 ## 期待される動作
 
-Parquet の読み取りは 481 で検証済みです（上のステータスを参照）。書き込みは、出荷時の Trino 481 では行えません（下の「書き込み」を参照）。Delta と Iceberg の書き込みは、他のエンジンと同じ atomic rename の制約で失敗すると予想しますが、ここでは試していません。認証は直接の IAM 認証情報で、中間のガバナンスレイヤーはないため、セッションポリシーの問題はありません。
+Parquet の読み取りは 481 と 484 で検証済みです（上のステータスを参照）。書き込みは、出荷時の Trino 481 と 484 では行えません（下の「書き込み」を参照）。Delta と Iceberg の書き込みは、他のエンジンと同じ atomic rename の制約で失敗すると予想しますが、ここでは試していません。認証は直接の IAM 認証情報で、中間のガバナンスレイヤーはないため、セッションポリシーの問題はありません。
 
 ## 書き込み
 
@@ -104,11 +105,11 @@ Parquet の読み取りは 481 で検証済みです（上のステータスを�
 
 Trino のネイティブ S3 ファイルシステムは、PutObject と CreateMultipartUpload のどちらでもストレージクラスを付けて送ります（481 のソースで確認）。`s3.storage-class` の既定は `STANDARD` で、指定できる値は [Trino のドキュメント](https://trino.io/docs/481/object-storage/file-system-s3.html)にある 11 個です。そのどれも `FSX_ONTAP` ではなく、ストレージクラスを送らない指定もありません。FSx for ONTAP の S3 Access Point は、ストレージクラスなし、または `FSX_ONTAP` の PutObject を受け付け、11 個の値すべてに `InvalidStorageClass` を返します。これは 2026-11-03 に `aws s3api put-object` で確認したもので、Trino とは無関係です。`create-multipart-upload` でも `STANDARD` は同じ応答で、`FSX_ONTAP` は受理されました。AWS のドキュメントも、サポートするストレージクラスは `FSX_ONTAP` だけと記載しており（[Object API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）、[互換性マトリクス](../../../../docs/ja/compatibility-matrix.md)も同じ内容です。
 
-481 のソースでは、ストレージクラスは `s3.storage-class` だけから決まるため、カタログのプロパティでは回避できません。読み取りだけの利用には影響しません。
+481 のソースでは、ストレージクラスは `s3.storage-class` だけから決まるため、カタログのプロパティでは回避できません。Trino 484 でも、2026-11-21 に同じ CTAS が同じストレージクラスのエラーで失敗しました（2 回実行）。読み取りだけの利用には影響しません。
 
 ## Glue Iceberg REST エンドポイント経由の S3 Tables
 
-`config/etc/catalog/s3tables_glue_rest.properties` は、S3 Tables 用の 2 つ目のカタログを定義します。481 では読み込まれますが、署名なしのリクエストを送るため、Glue は `Missing Authentication Token` を返します。Trino が署名するのは `iceberg.rest-catalog.security=SIGV4` を指定したときだけです。ファイルではこの設定をコメントアウトしています。有効にすると 481 は `s3.aws-access-key` と `s3.aws-secret-key` がないと起動せず、どちらもセッショントークンを受け付けないためです。手順はファイルのコメントにあります。偽の認証情報での対照実験では、481 が署名つきのリクエストを送ることを確認しました（`The security token included in the request is invalid`）。有効な認証情報での実行は、していません。
+`config/etc/catalog/s3tables_glue_rest.properties` は、S3 Tables 用の 2 つ目のカタログを定義します。既定が `NONE` で、署名のないリクエストには Glue が `Missing Authentication Token` を返すため、`iceberg.rest-catalog.security=SIGV4` を指定しています。Trino 484 ではキーが要りません。`s3.iam-role` も静的キーもない場合、AWS の既定の認証情報チェーンで署名するため、一時認証情報で動きます（`SHOW SCHEMAS` を 2026-11-21 に確認）。Trino 481 は、`SIGV4` を指定すると `s3.aws-access-key` と `s3.aws-secret-key` がない限り起動せず、どちらもセッショントークンを受け付けません。このカタログ経由のテーブル読み取りと S3 Tables のウェアハウスは試しておらず、ファイルの `warehouse` の値は置き換えるべきプレースホルダーです。
 
 ## クイックスタート
 
