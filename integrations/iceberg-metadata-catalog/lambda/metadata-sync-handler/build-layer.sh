@@ -29,6 +29,9 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}/python"
 
 # Install dependencies into layer structure
+# Versions live in requirements.txt only. The platform tag below is why pyarrow is
+# capped there: from pyarrow 21.0.0 the cp312 x86_64 wheels are manylinux_2_28 only,
+# and a manylinux_2_28-only tag cannot resolve zstandard (a pyiceberg dependency).
 echo "[1/3] Installing dependencies..."
 pip install \
   --target "${BUILD_DIR}/python" \
@@ -36,9 +39,7 @@ pip install \
   --implementation cp \
   --python-version 3.12 \
   --only-binary=:all: \
-  'pyiceberg[s3tables]>=0.7.0' \
-  'pyarrow>=15.0.0' \
-  'boto3>=1.35.0'
+  -r "${SCRIPT_DIR}/requirements.txt"
 
 # Remove unnecessary files to reduce layer size
 echo "[2/3] Optimizing layer size..."
