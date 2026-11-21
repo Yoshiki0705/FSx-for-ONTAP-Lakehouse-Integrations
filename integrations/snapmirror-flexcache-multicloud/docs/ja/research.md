@@ -2517,6 +2517,8 @@ AWS Support による解決が必要な場合の所要日数: 通常 1-3 営業�
 
 **参考**: [AWS re:Post — FSx for ONTAP SVM 削除](https://repost.aws/knowledge-center/fsx-ontap-delete-svm), [FSx ユーザーガイド — SVM 削除不可](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/cannot-delete-svm.html)
 
+- cyber リポジトリの[復旧の測定結果](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/ja/recovery-measurement-results.md#先行記録との関係)は、この記録を、測定の土台にする先行記録として挙げています。値はそちらに写されていません。
+
 #### SM-VAL-012: DP ボリュームに対する UpdateVolume の junction path 指定の無言の破棄
 
 **測定**: 2026-09-13、ap-northeast-1（[検証記録](../../../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13/evidence-record.yaml)）。分類 `works_with_caveats`。

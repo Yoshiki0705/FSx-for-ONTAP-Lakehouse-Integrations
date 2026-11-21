@@ -625,6 +625,8 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 
 **Recovery if orphaned:** Use ONTAP CLI via SSH (`sshpass -p <pass> ssh fsxadmin@<mgmt-ip>`).
 
+- The Cyber Resilience Patterns repository's [recovery measurement results](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/en/recovery-measurement-results.md#relation-to-earlier-records) cite this record among the earlier records that each recovery measurement builds on. Its values are not copied there.
+
 ### SM-VAL-012: UpdateVolume Accepts a Junction Path on a DP Volume and Silently Discards It
 
 | Item | Details |

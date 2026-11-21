@@ -88,6 +88,8 @@ Savings = Current - FSx for ONTAP S3 AP
 | SnapMirror RTO | Time to failover to DR region | Timed failover test | < 15 minutes |
 | SnapMirror RPO | Replication lag | SnapMirror lag metric | < 15 minutes (async) or 0 (sync) |
 
+- How to define RTO and RPO as values the service owner sets from measurements in its own environment, and how to split the RTO into time points and intervals, is in the Cyber Resilience Patterns repository's [recovery objectives guide](https://github.com/Yoshiki0705/FSx-for-ONTAP-Cyber-Resilience-Patterns/blob/main/docs/en/recovery-objectives-guide.md). The values in this document are targets, not guarantees.
+
 ### 7. Access Policy Review Time
 
 | Metric | Definition | Measurement Method | Target |
