@@ -3,4 +3,6 @@ boto3>=1.35.0
 # and later publish manylinux_2_28 wheels only for cp312 x86_64. Raising this cap needs
 # a build-layer.sh platform change and a layer-size check (the unzipped limit is 250 MiB).
 pyarrow>=15.0.0,<21
-pyiceberg[s3tables]>=0.7.0
+# No extras: pyiceberg has no "s3tables" extra (pip ignores it with a warning). handler.py uses the
+# REST catalog with SigV4, which needs boto3 (listed above).
+pyiceberg>=0.7.0
