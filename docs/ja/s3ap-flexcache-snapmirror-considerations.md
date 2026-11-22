@@ -55,7 +55,7 @@ S3 AP のディレクトリ設計は、単体での性能だけでなく FlexCac
 
 | 観点 | 値 | 備考 |
 |------|-----|------|
-| 新規ファイル可視性（キャッシュミス時） | 書き込み経路と NFS マウントで変わる | S3 Access Points でオリジンに書き込み → FlexCache Cache を NFS で読む場合: p50 8 ms、3 回の実測で 7〜14 ms（2026-08-09、ap-northeast-1、両クラスタとも ONTAP 9.18.1P3D1、VPC ピアリング、NFSv3、`actimeo=0`、n=30。[S3-Burst-on-ONTAP-Files の記録](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification-status.md)）。ap-northeast-1 で NFS 書き込み → us-west-2 の Cache で読む場合: RTT 約 120 ms で 3 秒未満（2026-07-22、ONTAP 9.17.1、秒単位の粒度でパーセンタイルなし。[クロスリージョンの記録](../../integrations/snapmirror-flexcache-multicloud/docs/ja/README.md)）。以前ここに書いていた intra-cluster の「~6秒」は、このリポジトリに測定記録がない。Cache 側の既定の NFS マウントは未測定。通常のボリュームでは、同じ S3-Burst の状況ページに、削除が見えるまで既定マウントで 2,171 ms、`actimeo=0` で 7 ms という値がある |
+| 新規ファイル可視性（キャッシュミス時） | 書き込み経路と NFS マウントで変わる | S3 Access Points でオリジンに書き込み → FlexCache Cache を NFS で読む場合: p50 8 ms、3 回の実測で 7〜14 ms（2026-08-09、ap-northeast-1、両クラスタとも ONTAP 9.18.1P3D1、VPC ピアリング、NFSv3、`actimeo=0`、n=30。[S3-Burst-on-ONTAP-Files の記録](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification-status.md)）。ap-northeast-1 で NFS 書き込み → us-west-2 の Cache で読む場合: RTT 約 120 ms で 3 秒未満（2026-07-22、ONTAP 9.17.1、秒単位の粒度でパーセンタイルなし。[クロスリージョンの記録](../../integrations/snapmirror-flexcache-multicloud/docs/en/README.md#cross-region-2026-07-22)）。以前ここに書いていた intra-cluster の「~6秒」は、このリポジトリに測定記録がない。Cache 側の既定の NFS マウントは未測定。通常のボリュームでは、同じ S3-Burst の状況ページに、削除が見えるまで既定マウントで 2,171 ms、`actimeo=0` で 7 ms という値がある |
 | 既読ファイル更新の反映 | TTL 経過後（デフォルト 30 秒） | `read_after_write_flush_time` で調整可 |
 | FlexCache プリポピュレート | 未対応（S3 AP 経由） | NFS/SMB アクセスで事前キャッシュ充填は可能 |
 
