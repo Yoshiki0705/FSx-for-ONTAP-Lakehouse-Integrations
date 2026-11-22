@@ -142,7 +142,7 @@ SnapMirror はボリュームデータ（ファイル/ディレクトリ）の�
 | 宛先で本番サービスを引き継ぐ | break → mount → アタッチ（DR フェイルオーバー経路） |
 | ソースの書き込みを近リアルタイムで見る | SnapMirror ではなく FlexCache（§2.2） |
 
-顧客に約束する前に述べておくべき未測定事項: **Snowflake そのもの**。Athena はエンジン層がボリューム種別を意識しないことの有力な根拠であり、Snowflake も同じ `GetObject` と `ListObjectsV2` の面を通して読むが、Snowflake を DP 由来のアクセスポイントに向けてはいないので、測定済みとして提示しないこと。ほかに未測定なのは、AP を残したまま break と resync を経ても経路が維持されるか、クロスリージョンや第 2 世代ファイルシステムでの反映時間、少数の小さなオブジェクトを超える規模、そして WINDOWS の file-system identity。
+利用者に約束する前に述べておくべき未測定事項: **Snowflake そのもの**。Athena はエンジン層がボリューム種別を意識しないことの有力な根拠であり、Snowflake も同じ `GetObject` と `ListObjectsV2` の面を通して読むが、Snowflake を DP 由来のアクセスポイントに向けてはいないので、測定済みとして提示しないこと。ほかに未測定なのは、AP を残したまま break と resync を経ても経路が維持されるか、クロスリージョンや第 2 世代ファイルシステムでの反映時間、少数の小さなオブジェクトを超える規模、そして WINDOWS の file-system identity。
 
 ### 3.3 RPO とデータ可視性
 

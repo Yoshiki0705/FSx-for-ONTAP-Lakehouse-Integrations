@@ -97,7 +97,7 @@ FSx for ONTAP (実ファイル: PDF、画像、CAD、動画)
 | Lake Formation 列レベル制御が S3 Tables フェデレーテッドカタログで未サポート | 特定カラムを非表示にできない | Athena View | AWS ケース提出済み |
 | Lambda 並行書き込みで Iceberg commit conflict | 一部書き込みがリトライ | reserved_concurrency=1 | 設計推奨 |
 
-## 次のステップ (顧客判断ポイント)
+## 次のステップ (利用者の判断ポイント)
 
 | オプション | 選択する場合 | 追加コスト |
 |----------|------------|----------|

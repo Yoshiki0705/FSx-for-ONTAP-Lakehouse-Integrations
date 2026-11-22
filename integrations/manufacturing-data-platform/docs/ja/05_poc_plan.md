@@ -62,7 +62,7 @@
 
 **オプション（1つ選択）:**
 - ClickHouse Cloud（最速セットアップ）
-- ClickHouse BYOC（顧客 VPC 内データ）
+- ClickHouse BYOC（利用者の VPC 内データ）
 - セルフマネージド EC2（最低コスト）
 
 **受入基準:**

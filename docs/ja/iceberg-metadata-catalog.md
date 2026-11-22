@@ -644,7 +644,7 @@ def detect_pii(text: str, language: str) -> list:
 | **3年 TCO** | **$474,480** | **$65,340-$79,740** |
 | **削減率** | — | **83-86%** |
 
-> **ベンチマーク注記**: 上記の人件費削減率 (90%) は仮定値であり、実際の効果は組織のデータ利用パターンに依存する。PoC で実測した「データ発見時間」の Before/After を用いて顧客固有の ROI を算出すること。
+> **ベンチマーク注記**: 上記の人件費削減率 (90%) は仮定値であり、実際の効果は組織のデータ利用パターンに依存する。PoC で実測した「データ発見時間」の Before/After を用いて利用者固有の ROI を算出すること。
 
 ---
 
@@ -723,10 +723,10 @@ Amazon FSx for NetApp ONTAP の CloudWatch メトリクスおよび ONTAP REST A
 | 層 | 暗号化 | 鍵管理 |
 |----|--------|--------|
 | FSx for ONTAP | SSE-FSX (AES-256) | AWS KMS マネージド、透過的 |
-| S3 Tables | SSE-S3 or SSE-KMS | 顧客選択 (コンプライアンスには KMS 推奨) |
-| SQS メッセージ | SSE-SQS or SSE-KMS | AWS マネージド or 顧客 KMS |
+| S3 Tables | SSE-S3 or SSE-KMS | 利用者が選択 (コンプライアンスには KMS 推奨) |
+| SQS メッセージ | SSE-SQS or SSE-KMS | AWS マネージド or カスタマー管理の KMS キー |
 | Lambda 環境 | デフォルト暗号化 | AWS マネージド |
-| OpenSearch Serverless | デフォルト暗号化 | AWS マネージド or 顧客 KMS |
+| OpenSearch Serverless | デフォルト暗号化 | AWS マネージド or カスタマー管理の KMS キー |
 
 ### 監査ログ保持期間
 

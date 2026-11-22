@@ -46,13 +46,13 @@
 
 ### パートナー会話スクリプト
 
-**NAS データ + AI 要件のある顧客向け:**
+**NAS データ + AI 要件のある利用者向け:**
 > 「Snowflake は FSx for ONTAP の NAS データに対してコピーなしで直接 AI を実行できます。テストした 10 の Cortex AI 機能のうち 8 つが FSx データ上で動作し、OCR、要約、翻訳、セマンティック検索（Cortex Search で 198ms クエリレイテンシ）を含みます。画像分析には 1 ステップのステージング回避策で Vision AI を有効化できます。NFS/SMB ユーザーがアクセスする同じデータに対して、タグ、マスキング、行レベルセキュリティの完全なガバナンスを実現します。」
 
-**データ移動を懸念する顧客向け:**
+**データ移動を懸念する利用者向け:**
 > 「External Table を使えば、データは FSx for ONTAP に残ります。Snowflake ストレージへのコピーは不要です。NFS、SMB、S3 AP で同時にアクセス可能な同じファイルです。Snapshot、FlexClone、SnapLock などの ONTAP 機能がデータを保護し続けます。Snowflake はストレージを所有せずにガバナンスと AI を追加します。」
 
-**NAS 統合で Snowflake vs Databricks を評価中の顧客向け:**
+**NAS 統合で Snowflake と Databricks を比較検討中の利用者向け:**
 > 「Snowflake の `AWS_ACCESS_POINT_ARN` 付き External Table は、AI 機能を含むガバナンス付き読み取りアクセスを今日提供します。Databricks Unity Catalog は現在セッションポリシーの制限により S3 Access Points 上でテーブル作成ができません。NAS データに対するガバナンス付き分析には、Snowflake が検証済みパスです。」
 
 > **補足（Databricks を標準 S3 ステージングで使う場合）**: 上記は FSx for ONTAP S3 Access Point 上を直接クエリする前提。Databricks では標準 S3 バケットにステージングすれば UC ガバナンス下で非構造化データ AI（`ai_query` Vision・`ai_parse_document` OCR・`FILE EXTERNAL`・AI Functions・Genie）が動作する（実機検証: [標準 S3 PoC](../../../../docs/ja/databricks-standard-s3-unstructured-poc.md) / [English](../../../../docs/en/databricks-standard-s3-unstructured-poc.md)）。両エンジンを併用する組織は、ゼロコピーのその場クエリ（Snowflake External Table）と、標準 S3 へステージング後のガバナンス付き処理（どちらのエンジンでも可）を用途で使い分けられる。
@@ -127,7 +127,7 @@ FSx for ONTAP と Snowflake を統合する際、内部（マネージド）テ�
 | 観点 | 外部テーブル（FSx for ONTAP S3 AP 上） | 内部テーブル（COPY INTO） |
 |---|---|---|
 | **データ所在** | FSx for ONTAP に残る（ゼロコピー） | Snowflake マネージドストレージにコピー |
-| **データ所有権** | 顧客がデータライフサイクルを管理 | Snowflake がストレージライフサイクルを管理 |
+| **データ所有権** | 利用者がデータライフサイクルを管理 | Snowflake がストレージライフサイクルを管理 |
 | **DROP TABLE 動作** | データは削除されない（メタデータのみ削除） | Snowflake ストレージからデータが削除される |
 | **マルチプロトコルアクセス** | 同一データに NFS/SMB/S3 AP で同時アクセス可能 | Snowflake 経由のみアクセス可能 |
 | **データ鮮度** | リアルタイム（現在のファイル状態を読み取り） | 次の COPY INTO / Snowpipe まで古い |
@@ -407,7 +407,7 @@ cp params.example.json params.json  # 編集: S3AccessPointArn を設定
 5. **AUTO_REFRESH 不可**: S3 Event Notifications に依存するため利用不可。手動 REFRESH または Snowflake Task でスケジュール実行が必要
 6. **TO_FILE / FILE データ型（Snowflake 側の制限）**: FSx for ONTAP S3 AP 外部ステージでは `TO_FILE()` が "Remote file not found" を返し、Vision AI に直接使用不可。回避策: `COPY FILES` で暗号化なし内部ステージ（SNOWFLAKE_SSE）にコピー後、`TO_FILE(BUILD_SCOPED_FILE_URL(@internal_stage, path))` を使用
 
-## 顧客適格化質問
+## 利用者の前提確認質問
 
 アーキテクチャパターンを決定するための質問:
 

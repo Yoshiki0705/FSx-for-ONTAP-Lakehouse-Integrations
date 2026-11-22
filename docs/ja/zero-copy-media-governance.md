@@ -2,7 +2,7 @@
 
 🌐 日本語 | [English](../en/zero-copy-media-governance.md)
 
-## 顧客課題
+## 利用者の課題
 
 | # | 課題 | 根本原因 |
 |---|------|---------|
@@ -369,7 +369,7 @@ GROUP BY checksum HAVING COUNT(*) > 1;
 | **ストレージ効率** | ONTAP 重複排除がストレージ効率に有効(S3 にはネイティブ dedup なし)。FSx for ONTAP への移行が根本原因の解決に寄与。 |
 | **運用と監視** | Amazon CloudWatch と ONTAP REST API で運用を統合管理。DataSync による FSx for ONTAP への移行はサポートされたパス。FlexCache S3 AP(ロードマップ)はハイブリッド構成で有効な選択肢。 |
 | **データ主権** | データ主権要件によりオンプレ ONTAP + SnapMirror(Option C)が必須の場合あり。FlexCache S3 AP でフルレプリケーションなしにクラウド分析を実現。 |
-| **ビジネス成果との整合** | 顧客のゴールは「コスト削減 + ガバナンス付き共有」。FlexCache S3 AP(ロードマップ)が最小データ移動で両立に寄与。 |
+| **ビジネス成果との整合** | 利用者のゴールは「コスト削減 + ガバナンス付き共有」。FlexCache S3 AP(ロードマップ)が最小データ移動で両立に寄与。 |
 
 
 ---

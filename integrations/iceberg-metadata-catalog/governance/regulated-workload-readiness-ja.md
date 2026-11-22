@@ -54,7 +54,7 @@ FSx for ONTAP 上のファイル
 ```
 
 [AWS Bedrock データ保護](https://docs.aws.amazon.com/bedrock/latest/userguide/data-protection.html) に基づき：
-- モデルプロバイダーは顧客のプロンプトや完了結果にアクセスできない
+- モデルプロバイダーは利用者のプロンプトや完了結果にアクセスできない
 - 入出力はモデルトレーニングに使用されない
 - データは API エンドポイントと同じリージョンで処理される
 

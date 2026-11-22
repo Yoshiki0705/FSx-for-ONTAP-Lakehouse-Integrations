@@ -4,7 +4,7 @@
 
 > **ステータス**: 実機検証済み（2026-09-23）。6 シナリオ中 5 つを本環境で **Verified**、1 つ（Vector Search）はエンドポイント作成まで Verified・インデックスの ONLINE 化は環境依存の遅延で未完（[検証ステータス](#検証ステータス)を参照）。スクリーンショットはアカウント ID / ワークスペース URL / メールをマスクして掲載。
 > **Evidence tier**: 各主張に明記（**Public** = 公開情報で検証可能 / **Verified** = 本環境で実測 / **Project-context** = 内部前提 / **Hypothesis** = 仮説）。
-> **検証環境**: Databricks ワークスペース（US リージョン、us-west-2）、Serverless SQL Warehouse（Small、DBSQL channel Current）、標準 S3 汎用バケット（ap-northeast-1、FSx for ONTAP S3 Access Point は使用しない）。合成サンプルのみ（実データ・顧客データなし）。
+> **検証環境**: Databricks ワークスペース（US リージョン、us-west-2）、Serverless SQL Warehouse（Small、DBSQL channel Current）、標準 S3 汎用バケット（ap-northeast-1、FSx for ONTAP S3 Access Point は使用しない）。合成サンプルのみ（実データ・利用者のデータなし）。
 > **フレーミング**: vendor-versus ではなく right-tool-for-the-job。本リポジトリが推奨する方式の制約も含めて、トレードオフを対称に記載する。
 > **このページの位置づけ**: [FILE 型（β）評価](./databricks-file-type-evaluation.md)は FSx for ONTAP **S3 Access Point** 上の挙動を扱い、そこでの推奨暫定経路は「標準 S3 バケットへステージングしてガバナンスする」だった。本ページはその**標準 S3 バケット側で実際に何ができるか**を実機で埋める。S3 Access Point の話ではなく、ステージング先の標準バケットの話である。
 
@@ -213,7 +213,7 @@ Vision（`ai_query`）と OCR（`ai_parse_document`）と合わせ、Cortex AISQ
 | 音声（WAV / MP3） | `BINARYFILE` / External Volume | 文字起こし UDF / 外部 ASR 経由 | 対応形式として言及（実機せず） |
 | 動画（MP4 / MOV） | `BINARYFILE` / External Volume | フレーム抽出 → Vision | 対応形式として言及（実機せず） |
 
-> **補足**: 音声・動画は「取り込み形式として対応」までを示し、AI 処理の実機は画像・PDF を主軸とした（合成またはライセンス明確な公開サンプルのみ使用、実データ・顧客データは使わない）。
+> **補足**: 音声・動画は「取り込み形式として対応」までを示し、AI 処理の実機は画像・PDF を主軸とした（合成またはライセンス明確な公開サンプルのみ使用、実データ・利用者のデータは使わない）。
 
 ---
 

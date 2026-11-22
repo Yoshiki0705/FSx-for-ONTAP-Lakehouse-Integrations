@@ -1,4 +1,4 @@
-# 顧客デモガイド
+# デモガイド
 
 🌐 日本語 | [English](demo-guide.md)
 
@@ -150,7 +150,7 @@ aws glue delete-catalog --name s3tablescatalog --region ap-northeast-1
 
 デモ後、1週間以内に以下を完了してください：
 
-- [ ] デモ録画を顧客ステークホルダーに共有（asciinema リンクまたは GIF）
+- [ ] デモ録画を利用者側のステークホルダーに共有（asciinema リンクまたは GIF）
 - [ ] デモ後フィードバックアンケートを送付（`docs/post-demo-survey.md`）
 - [ ] 「次のステップ」テンプレートを送付（`docs/next-steps-template.md`）
 - [ ] 1週間後のフォローアップミーティングを設定（PoC スコープ議論）

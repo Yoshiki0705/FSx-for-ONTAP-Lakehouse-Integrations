@@ -43,7 +43,7 @@ Databricks の **Structured Streaming / Lakeflow Declarative Pipelines** が Kaf
 
 ```
 [Databricks コンピュート]                         [Amazon MSK / Kafka]
-  classic（顧客VPC）── VPC Peering / Transit Gateway ──▶ ブローカー
+  classic（利用者の VPC）── VPC Peering / Transit Gateway ──▶ ブローカー
   serverless ──────── PrivateLink / NCC（Network Connectivity Config）─▶ ブローカー
         │                                                   │
         └─ 読み取り（Structured Streaming）────────────────┘

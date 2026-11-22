@@ -376,7 +376,7 @@ WHERE RELATIVE_PATH LIKE '%.png' OR RELATIVE_PATH LIKE '%.jpg';
 | **ヘルスケア** | 匿名化研究データ、画像メタデータ | PII カラムマスキング付き研究クエリ | 臨床ノートの PARSE_DOCUMENT、文献レビューの Cortex Search |
 | **小売** | POS データ、顧客フィードバック、商品カタログ | 売上分析、リージョン別ガバナンスタグ | 顧客レビューの SENTIMENT、グローバル市場向け TRANSLATE |
 
-> **パートナー向けポジショニング**: 「まず External Table で即座にガバナンス付き分析を開始（コストゼロ、データ移動ゼロ）。顧客が価値を実感したら、高価値サブセットを Dynamic Table に昇格させて Cortex AI を活用。これはマイグレーションではなく、段階的な AI-ready データプロダクト化です。」
+> **パートナー向けポジショニング**: 「まず External Table で即座にガバナンス付き分析を開始（コストゼロ、データ移動ゼロ）。利用者が価値を実感したら、高価値サブセットを Dynamic Table に昇格させて Cortex AI を活用。これはマイグレーションではなく、段階的な AI-ready データプロダクト化です。」
 
 ## コスト考慮事項
 
@@ -403,7 +403,7 @@ WHERE RELATIVE_PATH LIKE '%.png' OR RELATIVE_PATH LIKE '%.jpg';
 1. **最初の External Table を作成**: [設定ガイド](../../README.md#internal-table-vs-external-table--design-guide)に従い、ステージに `AWS_ACCESS_POINT_ARN` を設定して External Table を作成
 2. **RAG / Cortex Search 向け**: External Table ソースに `TARGET_LAG = '1 hour'` の Dynamic Table を設定し、Cortex Search Service を作成
 3. **イベント駆動取り込み向け**: FPolicy → Lambda → Snowpipe REST API をデプロイ（[Snowpipe 統合ガイド](snowpipe-integration.md)）
-4. **マルチプラットフォーム共有 (Iceberg) 向け**: Snowflake Managed Iceberg Table を使用して、curated dataset を顧客所有の S3 上にオープン Iceberg 形式で書き込み — Databricks、Athena、EMR、Trino から追加コピーなしでアクセス可能
+4. **マルチプラットフォーム共有 (Iceberg) 向け**: Snowflake Managed Iceberg Table を使用して、curated dataset を利用者所有の S3 上にオープン Iceberg 形式で書き込み — Databricks、Athena、EMR、Trino から追加コピーなしでアクセス可能
 
 ---
 
@@ -411,13 +411,13 @@ WHERE RELATIVE_PATH LIKE '%.png' OR RELATIVE_PATH LIKE '%.jpg';
 
 > **サポート確認済み（2026年5月）**: External Stage（`AWS_ACCESS_POINT_ARN` 付き）から Snowflake Managed Iceberg Table への COPY INTO はサポートされています。これにより FSx for ONTAP → S3 AP → Snowflake Managed Iceberg パイプラインが検証されました。
 
-Snowflake [Managed Iceberg Tables](https://docs.snowflake.com/en/user-guide/tables-iceberg) は、顧客所有の S3 ストレージにオープン Apache Iceberg 形式でデータを書き込みます。これによりマルチプラットフォームアーキテクチャが実現します:
+Snowflake [Managed Iceberg Tables](https://docs.snowflake.com/en/user-guide/tables-iceberg) は、利用者所有の S3 ストレージにオープン Apache Iceberg 形式でデータを書き込みます。これによりマルチプラットフォームアーキテクチャが実現します:
 
 ```
 FSx for ONTAP (Source of Truth)
   ↓ S3 AP (ゼロコピー読み取り) or DataSync (S3 に同期)
 Snowflake Managed Iceberg Table (curated, governed)
-  ↓ 顧客所有 S3 上のオープン Iceberg 形式
+  ↓ 利用者所有の S3 上のオープン Iceberg 形式
   ├── Databricks UC (Iceberg 読み取り)
   ├── AWS Athena / Glue (Glue Catalog 経由で Iceberg 読み取り)
   ├── EMR Spark (Iceberg 読み書き)
@@ -425,7 +425,7 @@ Snowflake Managed Iceberg Table (curated, governed)
 ```
 
 **主要メリット**:
-- **ベンダーロックインなし**: データはオープン Iceberg 形式、顧客が所有
+- **ベンダーロックインなし**: データはオープン Iceberg 形式、利用者が所有
 - **Snowflake がライフサイクル管理**: OPTIMIZE、Time Travel、ガバナンスタグ — プロプライエタリ形式なし
 - **マルチエンジンアクセス**: 同じ curated dataset を全 Iceberg 互換エンジンから読み取り可能
 - **ONTAP が Source of Truth のまま**: 高価値な curated subset のみ Iceberg に昇格
