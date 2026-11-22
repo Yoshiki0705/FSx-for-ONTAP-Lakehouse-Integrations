@@ -18,9 +18,9 @@
 | **supported**（サポート確認済み） | 31 | 公式ドキュメントまたは技術的根拠・検証エビデンスによりサポートが確認された項目 |
 | **partially_supported**（条件付きサポート） | 2 | 特定条件下でのみサポート、またはプラットフォーム依存の制約あり |
 | **works_with_caveats**（動作するが注意事項あり） | 2+4 | 動作確認済みだが重要な注意事項・リスクが存在する項目（原 2 件 + cross-region 検証 4 件） |
-| **version_gated**（バージョン依存） | 0 | なし。FC-002 をここに数えていたが、ONTAP 9.18.1 でも FSx API が拒否すると実測したため unsupported に移した |
+| **version_gated**（バージョン依存） | 0 | なし。FC-002 をここに数えていたが、ONTAP 9.18.1 でも Amazon FSx API が拒否すると実測したため unsupported に移した |
 | **undocumented — validation required**（未文書化、検証必要） | 3 | 公式ドキュメントに記載なし、実機検証で確定が必要な項目 |
-| **unsupported**（非サポート） | 3 | 明示的に非サポートが確認された項目。FC-002（FlexCache ボリュームへの S3 Access Points のアタッチを FSx API が拒否。2026-07-24 に ONTAP 9.18.1P3D1、2026-09-13 に ONTAP 9.18.1P5 で実測）を含む |
+| **unsupported**（非サポート） | 3 | 明示的に非サポートが確認された項目。FC-002（FlexCache ボリュームへの S3 Access Points のアタッチを Amazon FSx API が拒否。2026-07-24 に ONTAP 9.18.1P3D1、2026-09-13 に ONTAP 9.18.1P5 で実測）を含む |
 | **合計** | **41** | |
 
 ### 主要結論
@@ -145,7 +145,7 @@ FSx for ONTAP S3 AP は S3 multiprotocol メカニズムを使用しているた
 
 FSx for ONTAP S3 AP のメタデータは以下の2レイヤーで構成される:
 
-1. **AWS レイヤー（S3 AP 本体）**: S3 access point attachment、IAM ポリシー、VPC configuration — これらは FSx API で管理される AWS リソースであり、ONTAP ボリュームのデータには含まれない
+1. **AWS レイヤー（S3 AP 本体）**: S3 access point attachment、IAM ポリシー、VPC configuration — これらは Amazon FSx API で管理される AWS リソースであり、ONTAP ボリュームのデータには含まれない
 2. **ONTAP レイヤー（`s3_unix` name-mapping）**: FSx が S3 AP アタッチ時に SVM 上に自動作成する `direction: s3_unix` の name-mapping エントリ（パターン: `amazon-fsx-<RANDOM>` → 指定 UNIX ユーザー）
 
 #### Phase 3 検証結果（TC-01/TC-02 で確認）
@@ -265,8 +265,8 @@ Phase 3 検証（TC-01/TC-02）により、SnapMirror break 後のデスティ�
 
 1. SnapMirror relationship の break を実行
 2. デスティネーションボリュームの junction path を設定（break 直後は junction path が未設定の場合がある）
-3. FSx API の `VolumeType` が `DP` → `RW` に変わるまで **約60秒待機**（FSx API には遅延あり、ONTAP レベルでは break 直後に RW だが FSx API の反映にラグがある）
-4. AWS FSx API `create-and-attach-s3-access-point` を使用して新規 S3 AP をアタッチ
+3. Amazon FSx API の `VolumeType` が `DP` → `RW` に変わるまで **約60秒待機**（FSx API には遅延あり、ONTAP レベルでは break 直後に RW だが Amazon FSx API の反映にラグがある）
+4. AWS Amazon FSx API `create-and-attach-s3-access-point` を使用して新規 S3 AP をアタッチ
 
 ```bash
 aws fsx create-and-attach-s3-access-point \
@@ -276,13 +276,13 @@ aws fsx create-and-attach-s3-access-point \
     'VolumeId=<destination-volume-id>,FileSystemIdentity={Type=UNIX,UnixUser={Name=<unix-user>}}'
 ```
 
-#### 新規 Finding: SM-VAL-004/007 — FSx API VolumeType 遅延
+#### 新規 Finding: SM-VAL-004/007 — Amazon FSx API VolumeType 遅延
 
 Phase 3 検証中に発見された追加事項:
 
-- FSx API の `describe-volumes` で返される `VolumeType` は、ONTAP レベルで break が完了しても約60秒間 `DP` のまま表示される
+- Amazon FSx API の `describe-volumes` で返される `VolumeType` は、ONTAP レベルで break が完了しても約60秒間 `DP` のまま表示される
 - S3 AP アタッチは `VolumeType` が `RW` に変わった後に実行する必要がある
-- **分類**: `works_with_caveats` — 動作するが FSx API ラグへの対応（ポーリングまたは wait）が必要
+- **分類**: `works_with_caveats` — 動作するが Amazon FSx API ラグへの対応（ポーリングまたは wait）が必要
 
 #### 重要な考慮事項
 
@@ -320,7 +320,7 @@ AWS 公式ドキュメント「Managing access point access」に以下が明記
 |---------|---------|:---:|
 | AWS IAM identity policy（呼び出し元 principal） | AWS IAM | ❌ |
 | S3 access point resource policy | AWS S3 API | ❌ |
-| File system user identity（UNIX/Windows） | FSx API + ONTAP SVM | ❌（AP 設定は AWS リソース） |
+| File system user identity（UNIX/Windows） | Amazon FSx API + ONTAP SVM | ❌（AP 設定は AWS リソース） |
 | ファイルシステム権限（mode-bits, ACL） | ONTAP ボリューム内データ | ✅ |
 
 #### 結論
@@ -1002,7 +1002,7 @@ FlexGroup ボリュームを FlexCache Origin とすることは ONTAP 9.7+ で�
 - **unsupported（明確に非サポート）**: 1件（FC-002）
 
 **主要な検証ポイント（残）:**
-1. ~~Cache Volume に S3 AP を独立アタッチできること（FC-002）~~ — 2026-09-13 に決着。9.18.1P5 でも FSx API が拒否する
+1. ~~Cache Volume に S3 AP を独立アタッチできること（FC-002）~~ — 2026-09-13 に決着。9.18.1P5 でも Amazon FSx API が拒否する
 2. NFSv4.1 マウント時の Cache Volume での delegation 動作（FC-005）
 3. FlexGroup Origin + S3 AP の組み合わせで constituent レベルの問題がないこと（FC-007）
 
@@ -2431,7 +2431,7 @@ Phase 3 では、Phase 1/2 で `undocumented — validation required` に分類�
 
 | ID | カテゴリ | 発見事項 | 分類 |
 |:--:|:-------:|---------|:----:|
-| SM-VAL-004/007 | SnapMirror | FSx API の `VolumeType` は ONTAP break 後 ~60秒間 `DP` のまま表示される | `works_with_caveats` |
+| SM-VAL-004/007 | SnapMirror | Amazon FSx API の `VolumeType` は ONTAP break 後 ~60秒間 `DP` のまま表示される | `works_with_caveats` |
 | FC-VAL-001 | FlexCache | FSx for ONTAP での FlexCache 最小サイズは 50GB（FlexGroup + FabricPool aggregate） | operational note |
 | FC-VAL-002 | FlexCache | FlexCache 作成に `use_tiered_aggregate: true` が必須（FSx for ONTAP 固有） | operational note |
 | FC-VAL-003 | FlexCache | 同一クラスター内 FlexCache でも Intra-cluster SVM Peering が必要 | operational note |
@@ -2465,14 +2465,14 @@ Cross-region SnapMirror + S3 AP re-attach を ap-northeast-1 → us-west-2 間�
 
 | Finding ID | 分類 | 概要 |
 |:----------:|:----:|------|
-| SM-VAL-008 | `works_with_caveats` | FSx API VolumeType:DP 表示ラグ（cross-region では >10 分）。S3 AP 作成は junction path 設定後即可能 |
-| SM-VAL-009 | `works_with_caveats` | ONTAP REST API で作成したボリュームは FSx API への反映に ~30 分かかる。即時 S3 AP アタッチが必要なら FSx API で作成 |
+| SM-VAL-008 | `works_with_caveats` | Amazon FSx API VolumeType:DP 表示ラグ（cross-region では >10 分）。S3 AP 作成は junction path 設定後即可能 |
+| SM-VAL-009 | `works_with_caveats` | ONTAP REST API で作成したボリュームは Amazon FSx API への反映に ~30 分かかる。即時 S3 AP アタッチが必要なら Amazon FSx API で作成 |
 | SM-VAL-010 | `supported (validated)` | Cross-region S3 AP re-attach RTO: ~3 分（break + junction 伝搬 + AP 作成 + 初回 API） |
 | SM-VAL-011 | `works_with_caveats` | Teardown 順序が重要。VPC Peering を SVM peer 削除前に削除すると永続的な zombie レコード発生 |
 | SM-VAL-012 | `works_with_caveats` | DP ボリュームへの `update-volume` junction path 指定は 200 を返して無言で破棄される。`DescribeVolumes` の値で判定すること（2026-09-13 追加） |
 | SM-VAL-013 | `supported (validated)` | 稼働中の SnapMirror 宛先を ONTAP で mount すれば S3 AP で読める（break・クローン不要）。転送反映は 15 秒、初回セットアップは FSx 反映待ちで数十分（2026-09-13 追加） |
 
-#### SM-VAL-008: FSx API VolumeType:DP 表示ラグ（Cross-Region）
+#### SM-VAL-008: Amazon FSx API VolumeType:DP 表示ラグ（Cross-Region）
 
 **発見**: SnapMirror break 後、FSx API は `OntapVolumeType: DP` を cross-region シナリオで **10 分以上**表示し続ける（同一リージョンでは ~60秒）。ただし S3 AP アタッチは junction path 設定後すぐに成功する。
 
@@ -2480,22 +2480,22 @@ Cross-region SnapMirror + S3 AP re-attach を ap-northeast-1 → us-west-2 間�
 
 **自動化への影響**:
 - `describe-volumes → OntapVolumeType` を S3 AP アタッチのゲートにしないこと
-- 正しい手順: (1) SnapMirror break, (2) `update-volume` で junction path 設定, (3) FSx API に junction path が反映されるまで待機 (~2分), (4) S3 AP アタッチ
+- 正しい手順: (1) SnapMirror break, (2) `update-volume` で junction path 設定, (3) Amazon FSx API に junction path が反映されるまで待機 (~2分), (4) S3 AP アタッチ
 
-#### SM-VAL-009: ONTAP REST API で作成したボリュームの FSx API 反映遅延（~30 分）
+#### SM-VAL-009: ONTAP REST API で作成したボリュームの Amazon FSx API 反映遅延（~30 分）
 
-**発見**: ONTAP REST API (`POST /api/storage/volumes {type: dp}`) のみで作成されたボリュームは FSx API (`describe-volumes`) に**即座には表示されない**。FSx コントロールプレーンへの同期に約 **30 分**かかる。S3 AP アタッチには FSx volume ID (`fsvol-*`) が必要。
+**発見**: ONTAP REST API (`POST /api/storage/volumes {type: dp}`) のみで作成されたボリュームは Amazon FSx API (`describe-volumes`) に**即座には表示されない**。FSx コントロールプレーンへの同期に約 **30 分**かかる。S3 AP アタッチには FSx volume ID (`fsvol-*`) が必要。
 
-**推奨**: DP ボリュームは `aws fsx create-volume --ontap-configuration '{"OntapVolumeType":"DP"}'` で作成すれば即座に FSx API に表示される。FlexCache のように FSx API に作成 API がない場合は ONTAP REST API で作成し、~30 分の FSx コントロールプレーン同期を待ってから S3 AP をアタッチする。
+**推奨**: DP ボリュームは `aws fsx create-volume --ontap-configuration '{"OntapVolumeType":"DP"}'` で作成すれば即座に Amazon FSx API に表示される。FlexCache のように Amazon FSx API に作成 API がない場合は ONTAP REST API で作成し、~30 分の FSx コントロールプレーン同期を待ってから S3 AP をアタッチする。
 
-**対処法**: ONTAP REST API で作成したボリュームを削除・再作成する必要はない。待てば FSx API に反映される。
+**対処法**: ONTAP REST API で作成したボリュームを削除・再作成する必要はない。待てば Amazon FSx API に反映される。
 
 #### SM-VAL-010: Cross-Region S3 AP Re-Attach RTO
 
 | フェーズ | 所要時間 | 備考 |
 |---------|:--------:|------|
 | SnapMirror break | ~即座 | ONTAP REST API PATCH |
-| Junction path 設定 + FSx API 伝搬 | ~2 分 | `update-volume` + ポーリング |
+| Junction path 設定 + Amazon FSx API 伝搬 | ~2 分 | `update-volume` + ポーリング |
 | S3 AP 作成 (CREATING → AVAILABLE) | ~30秒 | `create-and-attach-s3-access-point` |
 | 初回 S3 API コール成功 | ~30秒 | ListObjectsV2 / GetObject |
 | **合計** | **~3 分** | Cross-region (ap-northeast-1 → us-west-2) |
@@ -2513,8 +2513,8 @@ Cross-region SnapMirror + S3 AP re-attach を ap-northeast-1 → us-west-2 間�
 2. SVM peer 削除（両側）— **両クラスターで `num_records: 0` を確認するまで待機**
 3. Cluster peer 削除
 4. VPC Peering / ルート削除
-5. FSx API で SVM 削除
-6. FSx API でファイルシステム削除
+5. Amazon FSx API で SVM 削除
+6. Amazon FSx API でファイルシステム削除
 
 **復旧手順**: ONTAP CLI via SSH を使用（SSH アクセスは FSx コンソールで有効化が必要）。本番環境では SSH キー認証または AWS Systems Manager Session Manager を推奨。
 
@@ -2536,9 +2536,9 @@ AWS Support による解決が必要な場合の所要日数: 通常 1-3 営業�
 
 対して `CreateVolume` は同じフィールドを明示的に拒否する: `Invalid fields provided for a DP volume. JunctionPath, StorageEfficiency, SnapshotPolicy and SecurityStyle cannot be specified for a DP Volume.` 同一の不正入力に対して 2 つの API が異なる拒否の仕方をしており、状態を変更する側が沈黙する側である。
 
-**SM-VAL-008 との相互作用**（運用上の要点）。SM-VAL-008 は S3 AP アタッチのゲートに `OntapVolumeType` を使うなと述べており、これは正しい。cross-region の break 成功後も FSx API が 10 分以上 `DP` を報告し続けるためである。本 finding と組み合わせると、ボリューム種別だけでは次の 2 状態が区別できない。
+**SM-VAL-008 との相互作用**（運用上の要点）。SM-VAL-008 は S3 AP アタッチのゲートに `OntapVolumeType` を使うなと述べており、これは正しい。cross-region の break 成功後も Amazon FSx API が 10 分以上 `DP` を報告し続けるためである。本 finding と組み合わせると、ボリューム種別だけでは次の 2 状態が区別できない。
 
-| 実際の状態 | FSx API の `OntapVolumeType` | junction path 指定の `update-volume` |
+| 実際の状態 | Amazon FSx API の `OntapVolumeType` | junction path 指定の `update-volume` |
 |---|---|---|
 | break 済み、FSx API が遅延中 | `DP` | 効く |
 | break していない、または resync 済み | `DP` | 受理され、無言で破棄される |
@@ -2558,13 +2558,13 @@ AWS Support による解決が必要な場合の所要日数: 通常 1-3 営業�
 | フェーズ | 所要時間 |
 |---|--:|
 | ONTAP 側の操作（mount またはクローン作成） | 数秒、20 秒未満 |
-| FSx API がボリューム / junction path を報告 | **665 秒・1011 秒・2298 秒** |
+| Amazon FSx API がボリューム / junction path を報告 | **665 秒・1011 秒・2298 秒** |
 | アクセスポイント CREATING → AVAILABLE | 31〜32 秒 |
 
 **自動化への影響**: 初回セットアップを支配するのは ONTAP 側の操作ではなく FSx コントロールプレーンの反映。`DescribeVolumes` を `JunctionPath` が non-null になるまで（DP 経路）、または `fsvol-*` の識別子が現れるまで（クローン経路）ポーリングし、それ以前にアタッチを試みないこと（`the volume is not mounted` で失敗する）。1 ファイルシステム上の 3 サンプルで、665 秒と 2298 秒は同一操作であるため、ばらつきは経路の性質ではない。数分から数十分を見込んで設計し、特定の数値を引用しない。
 
 **エンジンから見た同等性（S3AP-DP-ATHENA-001）**: Amazon Athena を DP 由来のアクセスポイントに向けた結果は、同一 Parquet ファイルから作った RW 由来のコントロールと同一だった（同一セッション、行も集計値も一致、7493 ミリ秒対 7804 ミリ秒）。read-only ボリュームに対してパーティション検出（`MSCK REPAIR`）と枝刈りの双方が機能し、`INSERT` は S3 403 が `PERMISSION_DENIED` として表面化して失敗し、ボリューム上には何も残らなかった。後続転送で追加されたパーティションはカタログ更新のみでクエリ可能になった。Snowflake は DP 由来のアクセスポイントで**未検証**。読み取りの面は同一だが、それは推論であって測定ではない。
 
-**Teardown と、2 回かかった診断**: FlexClone を FSx API で削除したところ親が `clone.has_flexclone=true` のまま残り、その後どちらの API でも親を削除できなくなった。最初の読み（フラグが陳腐化しクローンは存在せず、自力では解消できない）は誤りだった。`aws fsx delete-volume` はボリュームを破棄しない。ONTAP は `<name>_NNNN` に改名して**ボリューム recovery queue**（type `del`）へ移し、queue にあるクローンが親の Snapshot を保持し続けていた。これは `/api/storage/volumes` と既定権限の `volume show` には現れず、`privilege_level=diagnostic`・`volume clone show`・`volume recovery-queue show` に現れる。`volume recovery-queue purge` で解消し、その後親は正常に削除できた。`fsxadmin` の権限のみで足りる。詳細は [ONTAP-RECOVERY-QUEUE-001](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml)。またアクセスポイントの内部オブジェクトストアバケット `amazon-fsx-fsvol-*` は一時的にボリューム削除をブロックするが、`GET /api/protocols/s3/buckets` には**列挙されない**。
+**Teardown と、2 回かかった診断**: FlexClone を Amazon FSx API で削除したところ親が `clone.has_flexclone=true` のまま残り、その後どちらの API でも親を削除できなくなった。最初の読み（フラグが陳腐化しクローンは存在せず、自力では解消できない）は誤りだった。`aws fsx delete-volume` はボリュームを破棄しない。ONTAP は `<name>_NNNN` に改名して**ボリューム recovery queue**（type `del`）へ移し、queue にあるクローンが親の Snapshot を保持し続けていた。これは `/api/storage/volumes` と既定権限の `volume show` には現れず、`privilege_level=diagnostic`・`volume clone show`・`volume recovery-queue show` に現れる。`volume recovery-queue purge` で解消し、その後親は正常に削除できた。`fsxadmin` の権限のみで足りる。詳細は [ONTAP-RECOVERY-QUEUE-001](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml)。またアクセスポイントの内部オブジェクトストアバケット `amazon-fsx-fsvol-*` は一時的にボリューム削除をブロックするが、`GET /api/protocols/s3/buckets` には**列挙されない**。
 
 **未確立**: 分析エンジンが DP 由来のアクセスポイントを RW 由来と同一に読むか（S3 API のみを実行）、クロスリージョンの挙動、アクセスポイントを残したままの break/resync 通過、小さな 4 オブジェクトを超える規模、WINDOWS identity と NTFS セキュリティスタイル。

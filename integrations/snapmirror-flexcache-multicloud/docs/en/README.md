@@ -38,7 +38,7 @@ Destinations provide secure file-level authenticated access via NFS/SMB protocol
 | SVM-DR with S3 AP | ❌ Unsupported | Volume-level SnapMirror only. Destination SVM config is manual |
 | FSx for ONTAP → ANF (SnapMirror) | ❌ Unsupported | ANF has no external Cluster Peering. Use CVO on Azure instead |
 | S3 AP volume as FlexCache Origin | ✅ Validated | Confirmed on ONTAP 9.17.1 (intra-cluster + cross-region). [Evidence](#flexcache-origin-validation-evidence) |
-| S3 AP on FlexCache Cache Volume | ❌ Not attachable | The FSx API refuses attachment with `the volume is a FlexCache` (measured 2026-07-24, ONTAP 9.18.1P3D1, us-west-2). The refusal is by volume type, not ONTAP version. [FC-002 details](#fc-002-s3-ap-on-flexcache-cache-volume) |
+| S3 AP on FlexCache Cache Volume | ❌ Not attachable | The Amazon FSx API refuses attachment with `the volume is a FlexCache` (measured 2026-07-24, ONTAP 9.18.1P3D1, us-west-2). The refusal is by volume type, not ONTAP version. [FC-002 details](#fc-002-s3-ap-on-flexcache-cache-volume) |
 | FlexCache write-back + S3 AP | ⚠️ Caveats | Works, but S3 AP Origin write revokes Cache XLD (data loss risk on same file) |
 | Cross-cloud encryption | ✅ Confirmed | Cluster Peering Encryption (TLS 1.2) enabled by default |
 | SnapMirror data integrity | ✅ Confirmed | WAFL atomicity + crash-consistent Snapshot protects all paths |
@@ -82,7 +82,7 @@ cp scripts/validation/cross-region-params.env.example scripts/validation/cross-r
 | 03 | [FlexCache On-Premises](demo-guide-03-flexcache-on-premises.md) | FSx → On-prem ONTAP | DX / VPN | ~90min |
 | 04 | [FlexCache CVO on GCP](demo-guide-04-flexcache-cvo-gcp.md) | FSx → CVO on GCP | HA VPN | ~120min |
 | 05 | [FlexCache CVO on Azure](demo-guide-05-flexcache-cvo-azure.md) | FSx → CVO on Azure | Azure VPN GW | ~120min |
-| 06 | [FlexCache GCNV](demo-guide-06-flexcache-gcnv.md) | FSx → GCNV (Cache only; pairing not confirmed, FCXC-005) | HA VPN | ~90min |
+| 06 | [FlexCache GCNV](demo-guide-06-flexcache-gcnv.md) | FSx for ONTAP → GCNV (Cache only; pairing not confirmed, FCXC-005) | HA VPN | ~90min |
 
 ### SnapMirror Patterns
 
@@ -92,7 +92,7 @@ cp scripts/validation/cross-region-params.env.example scripts/validation/cross-r
 | 08 | [SnapMirror On-Premises](demo-guide-08-snapmirror-on-premises.md) | FSx → On-prem ONTAP | DX / VPN | ~60min |
 | 09 | [SnapMirror CVO on GCP](demo-guide-09-snapmirror-cvo-gcp.md) | FSx → CVO on GCP | HA VPN | ~120min |
 | 10 | [SnapMirror CVO on Azure](demo-guide-10-snapmirror-cvo-azure.md) | FSx → CVO on Azure | Azure VPN GW | ~120min |
-| 11 | [SnapMirror GCNV](demo-guide-11-snapmirror-gcnv.md) | FSx → GCNV (External Replication) | HA VPN | ~90min |
+| 11 | [SnapMirror GCNV](demo-guide-11-snapmirror-gcnv.md) | FSx for ONTAP → GCNV (External Replication) | HA VPN | ~90min |
 
 ### Path Selection Guide
 
@@ -177,9 +177,9 @@ S3 AP-attached volumes work as FlexCache Origin, validated in two scenarios:
 
 | Item | Details |
 |------|---------|
-| **Classification** | `not_supported_on_fsx` — FSx for ONTAP S3 Access Points cannot be attached to a FlexCache volume |
+| **Classification** | `unsupported` — FSx for ONTAP S3 Access Points cannot be attached to a FlexCache volume |
 | **FSx for ONTAP on ONTAP 9.17.1** | ❌ Not available |
-| **FSx for ONTAP on ONTAP 9.18.1P3D1** | ❌ Refused by the FSx API (measured 2026-07-24, us-west-2) — [research.md FC-002](research.md), [BACKLOG lesson 26](../BACKLOG.md) |
+| **FSx for ONTAP on ONTAP 9.18.1P3D1** | ❌ Refused by the Amazon FSx API (measured 2026-07-24, us-west-2) — [research.md FC-002](research.md), [BACKLOG lesson 26](../BACKLOG.md) |
 
 ### What ONTAP 9.18.1 adds, and why it does not apply here
 
@@ -189,10 +189,10 @@ ONTAP 9.18.1 adds the ONTAP native S3 NAS bucket on a FlexCache Cache. That is a
 Origin Volume (Region A)
   ↓ FlexCache
 Cache Volume (Region B)
-  ✗ S3 Access Points attachment refused by the FSx API
+  ✗ S3 Access Points attachment refused by the Amazon FSx API
 ```
 
-Cache Volume access is NFS/SMB only: the FSx API refuses attachment outright with `the volume is a FlexCache`, independently of ONTAP version. For S3 API access to remote data, replicate with SnapMirror instead and serve the destination — **no break required**, see [§3.2 of the design considerations](../../../../docs/en/s3ap-flexcache-snapmirror-considerations.md#32-s3-ap-attachment-at-the-destination).
+Cache Volume access is NFS/SMB only: the Amazon FSx API refuses attachment outright with `the volume is a FlexCache`, independently of ONTAP version. For S3 API access to remote data, replicate with SnapMirror instead and serve the destination — **no break required**, see [§3.2 of the design considerations](../../../../docs/en/s3ap-flexcache-snapmirror-considerations.md#32-s3-ap-attachment-at-the-destination).
 
 ### Source
 
