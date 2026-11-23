@@ -151,8 +151,8 @@ Amazon S3 は FSx for ONTAP ボリュームに接続された全アクセスポ�
 |---------|----------|--------|------|
 | **保存時** | SSE-FSX（自動） | AWS KMS マネージド | 全 FSx for ONTAP ファイルシステムがデフォルトで暗号化。アプリケーションに透過的 |
 | **転送中（S3 API）** | TLS 1.2+ | AWS マネージド | S3 API コールに HTTPS 強制 |
-| **転送中（NFS）** | Kerberos 暗号化（オプション） | 顧客管理 | 同じデータにアクセスする NFS クライアント用 |
-| **転送中（SMB）** | SMB 暗号化（オプション） | 顧客管理 | 同じデータにアクセスする SMB クライアント用 |
+| **転送中（NFS）** | Kerberos 暗号化（オプション） | 利用者管理 | 同じデータにアクセスする NFS クライアント用 |
+| **転送中（SMB）** | SMB 暗号化（オプション） | 利用者管理 | 同じデータにアクセスする SMB クライアント用 |
 
 **注**: SSE-FSX は S3 Access Points でサポートされる唯一のサーバーサイド暗号化モードです。SSE-S3、SSE-KMS、SSE-C はサポートされていません。（[ソース](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)）
 
@@ -162,8 +162,8 @@ Amazon S3 は FSx for ONTAP ボリュームに接続された全アクセスポ�
 |------|------|
 | 保存データ | FSx for ONTAP がデプロイされた AWS リージョンに留まる |
 | S3 Access Point | FSx for ONTAP ボリュームと同じリージョンに作成必須（[ソース](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-point-for-fsxn-restrictions-limitations-naming-rules.html)） |
-| DR レプリケーション | 指定された DR リージョンへの SnapMirror（顧客制御） |
-| クエリ結果 | 顧客指定の S3 バケットに書き込み（同一または異なるリージョン） |
+| DR レプリケーション | 指定された DR リージョンへの SnapMirror（利用者が制御） |
+| クエリ結果 | 利用者が指定した S3 バケットに書き込み（同一または異なるリージョン） |
 | バックアップストレージ | ファイルシステムと同じリージョン、複数 AZ にまたがる冗長性 |
 
 ## 責任分界マトリクス（RACI）
@@ -261,11 +261,11 @@ Components:
 
 ## デプロイ前チェックリスト
 
-> **重要**: 本ドキュメントは汎用的なガバナンスフレームワークを提供します。実際のデプロイでは、全セクションを顧客の法務、セキュリティ、データ保護、ビジネスステークホルダーとともにカスタマイズする必要があります。顧客固有のレビューなしにこれらのテンプレートをそのまま使用しないでください。
+> **重要**: 本ドキュメントは汎用的なガバナンスフレームワークを提供します。実際のデプロイでは、全セクションを利用者の法務、セキュリティ、データ保護、ビジネスステークホルダーとともにカスタマイズする必要があります。利用者固有のレビューなしにこれらのテンプレートをそのまま使用しないでください。
 
 ### 医療 PoC ガバナンスインテーク質問
 
-医療 PoC を開始する前に、顧客と以下の質問に回答してください：
+医療 PoC を開始する前に、利用者側の担当者と以下の質問に回答してください：
 
 | # | 質問 | 回答選択肢 | 設計への影響 |
 |---|------|-----------|------------|
@@ -358,7 +358,7 @@ FSx for ONTAP S3 AP を生成 AI のデータソースとして使用する場�
 
 | プラットフォーム | RAG パス | データ移動 | ガバナンスモデル | 最適用途 |
 |----------|----------|---------|------------|----------|
-| **Amazon Bedrock KB** | FSx for ONTAP S3 AP → Bedrock KB → OpenSearch（embedding） | 顧客アカウント内に embedding 作成 | IAM + Bedrock ガードレール + 人間レビュー | AWS ネイティブ、権限認識型検索 |
+| **Amazon Bedrock KB** | FSx for ONTAP S3 AP → Bedrock KB → OpenSearch（embedding） | 利用者のアカウント内に embedding 作成 | IAM + Bedrock ガードレール + 人間レビュー | AWS ネイティブ、権限認識型検索 |
 | **Snowflake Cortex Search** | FSx for ONTAP S3 AP → External Table → COPY INTO → Cortex Search Service | Snowflake ストレージにデータコピー | Snowflake RBAC + Tags + Row Access Policy | Snowflake ネイティブ、ガバナンス付き分析 + RAG |
 
 ### Snowflake ガバナンス（FSx for ONTAP データ上）
@@ -509,7 +509,7 @@ UC 管理 Delta/Iceberg テーブル（S3 上）
 | 懸念事項 | ガバナンス制御 |
 |---------|--------------|
 | **ソースドキュメント内の PHI/PII** | インデックス作成前に匿名化パイプライン。生の PHI/PII を決してインデックスしない |
-| **エンベディング保存場所** | Bedrock Knowledge Bases は顧客管理のベクトルストア（OpenSearch Serverless）にエンベディングを保存。同一リージョン、同一アカウントを確保 |
+| **エンベディング保存場所** | Bedrock Knowledge Bases は利用者管理のベクトルストア（OpenSearch Serverless）にエンベディングを保存。同一リージョン、同一アカウントを確保 |
 | **ベクトルストア暗号化** | OpenSearch Serverless はデフォルトで保存時暗号化（AWS KMS） |
 | **エンベディング削除** | ソースドキュメント削除時、Knowledge Base を再同期して対応するエンベディングを削除 |
 | **プロンプト/レスポンスログ** | Bedrock モデル呼び出しの CloudWatch Logs を有効化。コンプライアンス要件に従い保持 |

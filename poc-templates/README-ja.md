@@ -26,7 +26,7 @@
 
 ## エンジンを選択
 
-| 顧客のプラットフォーム | モジュール | 最初のクエリまでの時間 | PoC コスト (1日) |
+| 利用者のプラットフォーム | モジュール | 最初のクエリまでの時間 | PoC コスト (1日) |
 |---|---|---|---|
 | AWS ネイティブ (Athena) | [02-athena-quickstart](02-athena-quickstart/) | 15分 | ~$0.05 |
 | Snowflake | [03-snowflake-integration](03-snowflake-integration/) | 30分 | ~$5 |
@@ -64,7 +64,7 @@ poc-templates/
 │   ├── lakeformation-setup.sh        # LF 管理者 + grant
 │   └── README.md                     # ガバナンスガイド
 ├── templates/                        # パートナー向けテンプレート
-│   ├── poc-proposal.md               # 顧客向け PoC 提案書
+│   ├── poc-proposal.md               # 利用者向け PoC 提案書
 │   ├── success-criteria.md           # Go/No-Go チェックリスト
 │   ├── cost-estimate.md              # コスト計算
 │   ├── discovery-questions.md        # 初回ミーティング質問集
@@ -147,7 +147,7 @@ poc-templates/
 
 ## パートナー向け
 
-[templates/](templates/) に顧客向け資料があります:
+[templates/](templates/) に利用者向け資料があります:
 - **初回ミーティング**: [discovery-questions.md](templates/discovery-questions.md)
 - **提案書**: [poc-proposal.md](templates/poc-proposal.md)
 - **コスト根拠**: [cost-estimate.md](templates/cost-estimate.md)

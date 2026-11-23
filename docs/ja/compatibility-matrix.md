@@ -358,7 +358,7 @@ Lakehouse テーブルフォーマット（Delta Lake、Apache Iceberg、Apache 
 | **Snowflake** | 任意のステージ上ファイル | Snowpark `SnowflakeFile.open` | ✅ 検証済み（2026-08-06） | AP 経由 Stage 上のファイルを読む Python UDF | ファイル内容を取得。SQL で表現できない非構造化処理に有用。[エビデンス](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml) |
 | **Snowflake** | 全て | AP データに対する Dynamic Table | ✅ 検証済み（2026-08-06）・制約あり | `COPY INTO` で標準テーブルへ取り込み、その標準テーブル上に Dynamic Table | `TARGET_LAG='60 seconds'`・`REFRESH_MODE=FULL` で正しくリフレッシュ。リフレッシュ履歴では約 48 秒間隔で実行され、データ変更時は `FULL`、無変更時は `NO_DATA`。**制約**: Dynamic Table は EXTERNAL TABLE を参照できない — `Object ref ... of type EXTERNAL_TABLE not supported in Dynamic Table definition`。先に標準テーブルへ取り込む必要がある。[エビデンス](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml) |
 | **Snowflake** | Iceberg | 読み取り（External Catalog） | ⚠️ 実験的 | 外部カタログ付き Snowflake Iceberg Tables | メタデータポインタの読み取りは動作 |
-| **Snowflake** | Iceberg | 書き込み（Managed Iceberg Table） | ✅ 検証済み（2026-08-06） | Snowflake External Volume 経由で、FSx for ONTAP S3 AP External Stage から COPY INTO → 顧客 S3 上の Managed Iceberg Table | エンドツーエンドで確認: External Volume を作成し `SYSTEM$VERIFY_EXTERNAL_VOLUME` の write/read/list/delete が PASSED、Managed Iceberg Table を作成、AP 経由 Stage から `COPY INTO` でロード、`SELECT` で行を取得。宛先バケットには真の Iceberg レイアウト（metadata JSON、manifest Avro、data Parquet）が生成された。External Volume には Storage Integration と同じ 2 段階の IAM 信頼設定が必要。小規模テスト。**引き続き未検証**: COPY INTO の 64 日間重複排除（64 日の経過が必要）と、外部エンジンに対する Horizon Catalog の強制。[エビデンス](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml) |
+| **Snowflake** | Iceberg | 書き込み（Managed Iceberg Table） | ✅ 検証済み（2026-08-06） | Snowflake External Volume 経由で、FSx for ONTAP S3 AP External Stage から COPY INTO → 利用者の S3 上の Managed Iceberg Table | エンドツーエンドで確認: External Volume を作成し `SYSTEM$VERIFY_EXTERNAL_VOLUME` の write/read/list/delete が PASSED、Managed Iceberg Table を作成、AP 経由 Stage から `COPY INTO` でロード、`SELECT` で行を取得。宛先バケットには真の Iceberg レイアウト（metadata JSON、manifest Avro、data Parquet）が生成された。External Volume には Storage Integration と同じ 2 段階の IAM 信頼設定が必要。小規模テスト。**引き続き未検証**: COPY INTO の 64 日間重複排除（64 日の経過が必要）と、外部エンジンに対する Horizon Catalog の強制。[エビデンス](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml) |
 | **Snowflake** | 全て | 書き込み（FSx for ONTAP S3 AP へのアンロード） | ❌ 利用不可 — **部分書き込みの危険あり** | — | 2026-08-06 実測: `COPY INTO @stage` は**拒否されない**。オブジェクトは Access Point に書き込まれ内容も正常だが、その後 Snowflake が `Remote upload failed checksum validation` で文を失敗させる。FSx for ONTAP が サーバーサイド暗号化を `aws:fsx` と報告し、これが `AWS_SSE_S3` でも `AWS_SSE_KMS` でもないことが原因。文は失敗を報告する一方で完全なオブジェクトが残るため、実行したことがある場合は孤児オブジェクトを確認すること。ステージに `ENCRYPTION=(TYPE='AWS_SSE_S3')` を設定すると、即時失敗ではなくハングする。本リポジトリの以前のリビジョンは「External Stage は設計上読み取り専用」と記載していたが、この説明は誤りだった。書き込みパスは COPY INTO → Snowflake マネージドストレージ（内部テーブルまたは S3 上の Managed Iceberg）。[エビデンス](../../verification-pack/snowflake/evidence/2026-08-06/evidence-record.yaml) |
 | **Redshift Spectrum** | Parquet/CSV | 読み取り専用 | ✅ 検証済み（2026-05-23） | Glue Catalog 経由の External Schema、AP 権限付き IAM ロール | Athena と同じパターン（インターネットオリジン AP + Glue Catalog + IAM ロール）。クエリ結果は Redshift 内に留まり、FSx for ONTAP には書き戻されない。Redshift Serverless (8 RPU) で 500 万行 COUNT が 4,277 ms — 同一データに対する Athena の 2,196 ms より低速（Serverless のコールドスタート分）。[検証エビデンス](../../verification-pack/redshift-spectrum/evidence/2026-05-23/evidence-record.yaml) |
 | **Amazon Bedrock** | ドキュメント（PDF、TXT 等） | 読み取り（Knowledge Base） | ✅ 検証済み | AP を指す S3 データソース付き Bedrock Knowledge Base | RAG アプリケーション用。ドキュメントが検索用にインデックス化 |
@@ -493,7 +493,7 @@ FSx for ONTAP S3 Access Points 上の分析ワークロードを計画する際�
 | **API 検証済み** | 基本的な S3 API 操作が FSx for ONTAP S3 AP に対して成功 | GetObject/PutObject/ListObjectsV2 が期待通りの結果を返す | 低 — API 互換性の確認のみ |
 | **機能検証済み** | 代表的なエンドツーエンドのユースケースが成功 | 完全なワークフロー: データアップロード → カタログ登録 → クエリ → 正しい結果 | 中 — パターンの動作を確認 |
 | **セキュリティ検証済み** | IAM、AP ポリシー、VPC エンドポイント、ファイルシステム権限、CloudTrail すべて確認 | 両レイヤーで不正アクセスが拒否される。監査イベントが記録される | 高 — セキュリティ態勢を確認 |
-| **本番検証済み** | 顧客 PoC または本番相当の負荷テスト済み | 同時クエリ、障害復旧、コスト検証、SLA 準拠 | 最高 — 本番提案に対応可能 |
+| **本番検証済み** | 利用者環境での PoC または本番相当の負荷テスト済み | 同時クエリ、障害復旧、コスト検証、SLA 準拠 | 最高 — 本番提案に対応可能 |
 
 ### 現在の検証ステータス
 
@@ -1043,7 +1043,7 @@ aws s3 ls s3://<AP-ALIAS>/ --profile cross-account-role
 | **期待される出力** | クエリが成功。行数が期待値と一致 |
 | **ロールバック条件** | Crawler が失敗するか不正なスキーマを生成した場合、Glue バージョニングから以前のテーブルバージョンを復元 |
 | **エスカレーション閾値** | 30 分以内に解決しない場合、データプラットフォームリードにエスカレーション |
-| **顧客影響** | 解決するまで分析クエリがエラーまたは古いデータを返す |
+| **利用者への影響** | 解決するまで分析クエリがエラーまたは古いデータを返す |
 
 ### ランブック 2 追加事項: 孤立ファイルクリーンアップ
 
@@ -1053,7 +1053,7 @@ aws s3 ls s3://<AP-ALIAS>/ --profile cross-account-role
 | **期待される出力** | 成功したジョブ実行のファイルのみが残る |
 | **ロールバック条件** | 間違ったファイルを削除した場合、ONTAP Snapshot から復元 |
 | **エスカレーション閾値** | どのファイルが孤立しているか不明な場合、削除前にエスカレーション |
-| **顧客影響** | 孤立ファイルのみなら影響なし。間違ったファイルを削除した場合はデータ損失 |
+| **利用者への影響** | 孤立ファイルのみなら影響なし。間違ったファイルを削除した場合はデータ損失 |
 
 ### ランブック 3 追加事項: AP ポリシーロールバック
 
@@ -1063,7 +1063,7 @@ aws s3 ls s3://<AP-ALIAS>/ --profile cross-account-role
 | **期待される出力** | ListObjectsV2 がエラーなしでファイルリストを返す |
 | **ロールバック条件** | 修正されたポリシーでも失敗する場合、IAM ID ポリシーと VPC エンドポイントポリシーを確認 |
 | **エスカレーション閾値** | 10 分以内に解決しない場合、セキュリティチームにエスカレーション |
-| **顧客影響** | 解決するまですべての分析アクセスがブロックされる |
+| **利用者への影響** | 解決するまですべての分析アクセスがブロックされる |
 
 ### ランブック 4 追加事項: SnapMirror フェイルオーバー
 
@@ -1073,7 +1073,7 @@ aws s3 ls s3://<AP-ALIAS>/ --profile cross-account-role
 | **期待される出力** | ファイルリストがソースボリュームの期待データと一致 |
 | **ロールバック条件** | DR ボリュームのデータが RPO を超えて古い場合、続行前にデータ損失を評価 |
 | **エスカレーション閾値** | 15 分以内に AP が AVAILABLE にならない場合、AWS サポートにエスカレーション |
-| **顧客影響** | フェイルオーバーウィンドウ中は分析が利用不可（目標: 60 分未満） |
+| **利用者への影響** | フェイルオーバーウィンドウ中は分析が利用不可（目標: 60 分未満） |
 
 ---
 

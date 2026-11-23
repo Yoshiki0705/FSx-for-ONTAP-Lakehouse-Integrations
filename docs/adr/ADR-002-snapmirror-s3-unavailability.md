@@ -50,7 +50,7 @@ ONTAP 9.10.1+ のドキュメントには SnapMirror S3（ONTAP S3 バケット�
 
 ### リスク
 - AWS が将来的に SnapMirror S3 を有効化した場合、本 ADR は Superseded となり、ADR-001 の再評価が必要
-- 顧客が「オンプレ ONTAP では使えるのに」と不満を抱くリスク → FAQ で先手を打つ
+- 利用者が「オンプレ ONTAP では使えるのに」と不満を抱くリスク → FAQ で先手を打つ
 
 ## Alternatives Considered
 

@@ -29,7 +29,7 @@ Amazon FSx for NetApp ONTAP の S3 Access Points には、通常の S3 バケッ
 
 | サービス | ネットワークパス | FSx for ONTAP S3 Access Points 互換性 |
 |---------|-------------|------------------------|
-| Athena | AWS マネージド（顧客 VPC なし） | Internet-origin 必須 |
+| Athena | AWS マネージド（利用者の VPC なし） | Internet-origin 必須 |
 | Glue ETL | AWS マネージドまたは VPC アタッチ | Internet-origin（非 VPC）または NAT Gateway（VPC） |
 | EMR Serverless | AWS マネージド | Internet-origin 必須 |
 | Lambda（VPC なし） | インターネット | Internet-origin で直接動作 |
@@ -91,7 +91,7 @@ FSx for ONTAP S3 Access Points へのアクセスがタイムアウトする場�
 SVM に DNS サーバーが設定されており（Active Directory ドメイン参加のため）、その DNS サーバーが到達不能になった場合、その SVM 上の全 S3 Access Points がタイムアウトします。以下の条件であっても発生します。
 
 - S3 Access Points のボリュームが UNIX セキュリティスタイルである
-- 顧客設定の FPolicy が無効化されている
+- 利用者が設定した FPolicy が無効化されている
 - NFS エクスポートポリシーが全アクセスを許可している
 - S3 Access Points のライフサイクル状態が AVAILABLE である
 

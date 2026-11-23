@@ -182,7 +182,7 @@ FSx for ONTAP S3 Access Points には固有のネットワーキング要件が�
 
 | インテグレーション | S3 Gateway EP | S3 Interface EP | SQS Interface EP | STS Interface EP | 備考 |
 |---|:---:|:---:|:---:|:---:|---|
-| Athena | — | — | — | — | AWS マネージド、顧客 VPC 不要 |
+| Athena | — | — | — | — | AWS マネージド、利用者の VPC 不要 |
 | Glue ETL（非 VPC） | — | — | — | — | AWS マネージド実行 |
 | Glue ETL（VPC アタッチ） | ⚠️ | オプション | — | — | Gateway EP が S3 AP トラフィックをブロックする可能性; NAT GW 使用 |
 | DuckDB Lambda（VPC） | ⚠️ | 推奨 | — | — | VPC スコープ AP には Interface EP または NAT GW が必要 |

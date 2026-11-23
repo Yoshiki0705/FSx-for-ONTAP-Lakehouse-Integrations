@@ -238,11 +238,11 @@ CREATE ICEBERG TABLE FSXN_LAKEHOUSE.PUBLIC.s3tables_metadata
 
 | アクション | 担当 | 状態 |
 |---|---|---|
-| loadTable レスポンス証拠を Snowflake に提供 | 顧客（我々） | ✅ 完了 (2026-06-02) |
-| SYSTEM$VERIFY_CATALOG_INTEGRATION 実行 | 顧客（我々） | ✅ 完了 — "Statement executed successfully" |
-| VENDED_CREDENTIALS 明示指定 + External Volume なしでテスト | 顧客（我々） | ✅ 完了 — **成功** (2026-06-05) |
-| Snowflake サポートに成功報告 | 顧客（我々） | ✅ 完了 (2026-06-08) |
-| AUTO_REFRESH、time travel、カラムレベル権限の検証 | 顧客（我々） | 🔄 フォローアップで質問済み |
+| loadTable レスポンス証拠を Snowflake に提供 | 検証者（このリポジトリ） | ✅ 完了 (2026-06-02) |
+| SYSTEM$VERIFY_CATALOG_INTEGRATION 実行 | 検証者（このリポジトリ） | ✅ 完了 — "Statement executed successfully" |
+| VENDED_CREDENTIALS 明示指定 + External Volume なしでテスト | 検証者（このリポジトリ） | ✅ 完了 — **成功** (2026-06-05) |
+| Snowflake サポートに成功報告 | 検証者（このリポジトリ） | ✅ 完了 (2026-06-08) |
+| AUTO_REFRESH、time travel、カラムレベル権限の検証 | 検証者（このリポジトリ） | 🔄 フォローアップで質問済み |
 | フォローアップ質問への回答 | Snowflake | 🔄 待ち |
 | ドキュメント改善（S3 Tables + VENDED_CREDENTIALS の KB 記事） | Snowflake | 🔄 リクエスト済み (2026-06-08) |
 

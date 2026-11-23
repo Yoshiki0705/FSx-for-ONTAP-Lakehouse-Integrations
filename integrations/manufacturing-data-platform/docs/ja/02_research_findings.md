@@ -257,7 +257,7 @@ Databricks は FSx for ONTAP に直接アクセスしない
 | オプション | タイプ | 主要特徴 |
 |----------|--------|---------|
 | ClickHouse Cloud | フルマネージド | ゼロ運用、自動スケーリング、S3 バックエンド、AWS Marketplace |
-| ClickHouse BYOC | 顧客 VPC でマネージド | データは顧客 VPC 内、EKS ベース、S3 ストレージ |
+| ClickHouse BYOC | 利用者の VPC でマネージド | データは利用者の VPC 内、EKS ベース、S3 ストレージ |
 | セルフマネージド（EC2） | 自主運用 | フルコントロール、手動スケーリング、ZooKeeper/Keeper |
 | セルフマネージド（EKS） | K8s 上で自主運用 | コンテナベース、Helm チャート利用可能 |
 | AWS ソリューション（CloudFormation） | AWS 提供テンプレート | EC2 + ZooKeeper + ELB リファレンスデプロイ |
