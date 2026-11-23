@@ -55,7 +55,7 @@ S3 AP directory design affects standalone performance and FlexCache / SnapMirror
 
 | Aspect | Value | Notes |
 |--------|-------|-------|
-| New file visibility (cache miss) | ~3-6 seconds | Validated (intra-cluster ~6s, cross-region <3s) |
+| New file visibility (cache miss) | Depends on the write path and the NFS mount | S3 Access Points write on the Origin → read over NFS on a FlexCache Cache: p50 8 ms, 7–14 ms across three runs (2026-08-09, ap-northeast-1, ONTAP 9.18.1P3D1 on both clusters, VPC peering, NFSv3, `actimeo=0`, n=30; [S3-Burst-on-ONTAP-Files record](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification-status.md)). NFS write in ap-northeast-1 → Cache read in us-west-2: under 3 seconds at ~120 ms RTT (2026-07-22, ONTAP 9.17.1, seconds granularity, no percentiles; [cross-region record](../../integrations/snapmirror-flexcache-multicloud/docs/en/README.md#cross-region-2026-07-22)). The intra-cluster "~6s" previously quoted here has no measurement record in this repository. A default NFS mount on the Cache is not measured; on a plain volume the same S3-Burst status page shows a deletion becoming visible after 2,171 ms with the default mount against 7 ms with `actimeo=0` |
 | Updated file visibility (cached) | After TTL expires (default 30s) | Adjustable via `read_after_write_flush_time` |
 | FlexCache prepopulate | Not supported via S3 AP | NFS/SMB access can pre-warm cache |
 

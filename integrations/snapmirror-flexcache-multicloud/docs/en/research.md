@@ -18,12 +18,12 @@ This research systematically evaluates the feasibility of distributing data coll
 
 | Classification | Count | Description |
 |---------------|:-----:|-------------|
-| **supported** | 32 | Confirmed via official documentation or Phase 3 validation |
-| **partially_supported** | 3 | Supported under specific conditions or platform-dependent |
+| **supported** | 31 | Confirmed via official documentation or Phase 3 validation |
+| **partially_supported** | 2 | Supported under specific conditions or platform-dependent |
 | **works_with_caveats** | 2+4 | Validated as working but with important operational constraints (original 2 + 4 cross-region validation findings) |
-| **version_gated** | 1 | Supported from ONTAP 9.18.1; not supported on tested version (9.17.1) |
-| **undocumented** | 1 | Not documented; requires hands-on validation to confirm |
-| **unsupported** | 2 | Explicitly confirmed as unsupported |
+| **version_gated** | 0 | None. FC-002 was listed here until measurement showed the Amazon FSx API refuses it on ONTAP 9.18.1; now counted under unsupported |
+| **undocumented** | 3 | Not documented; requires hands-on validation to confirm |
+| **unsupported** | 3 | Explicitly confirmed as unsupported. Includes FC-002: the Amazon FSx API refuses S3 Access Points on a FlexCache volume (measured 2026-07-24 on ONTAP 9.18.1P3D1 and 2026-09-13 on ONTAP 9.18.1P5) |
 | **Total** | **41** | |
 
 ### Key Conclusions
@@ -47,7 +47,7 @@ FSx for ONTAP S3 AP is based on ONTAP's "S3 NAS bucket (S3 multiprotocol)" mecha
 | SVM-DR unsupported with S3 NAS bucket SVMs | SM-004 | Volume-level SnapMirror only. No automatic SVM config replication |
 | ANF SnapMirror unsupported | XC-007 | Azure delivery requires CVO on Azure |
 | SnapMirror Synchronous unsupported for S3 NAS bucket | SM-001 | RPO=0 not achievable. Async only (minimum 5-min intervals) |
-| GCNV cannot be FlexCache Origin (Cache only) | FCXC-005 | Read distribution from GCNV requires SnapMirror |
+| GCNV can be a FlexCache Origin only for ONTAP-mode volumes (Google documentation); other GCNV volumes are Cache only | FCXC-005 | Read distribution from a non-ONTAP-mode GCNV volume requires SnapMirror. FSx for ONTAP paired with GCNV is not confirmed |
 | GCNV FlexCache does not support NFSv4 | FCXC-005 | NFSv3 access only to GCNV Cache Volumes |
 | FlexCache write-back not recommended for RTT > 200ms | FCXC-006 | Write-around mode recommended for cross-cloud |
 
@@ -69,10 +69,10 @@ FSx for ONTAP S3 AP is based on ONTAP's "S3 NAS bucket (S3 multiprotocol)" mecha
 | FSx for ONTAP | FSx for ONTAP (same region) | Yes | Yes | Simplest configuration |
 | FSx for ONTAP | FSx for ONTAP (cross-region) | Yes | Yes | VPC Peering / Transit Gateway |
 | FSx for ONTAP | On-premises ONTAP | Yes | Yes | Direct Connect / VPN |
-| FSx for ONTAP | CVO on GCP | Yes | Yes | Cross-cloud VPN |
-| FSx for ONTAP | CVO on Azure | Yes | Yes | Cross-cloud VPN |
-| FSx for ONTAP | GCNV | Yes | Yes (Cache only) | External Replication / FlexCache Cache |
-| FSx for ONTAP | ANF | No | No | Unsupported. Use CVO on Azure |
+| FSx for ONTAP | CVO on GCP | Yes | Not confirmed | Cross-cloud VPN. FlexCache: FCXC-003 |
+| FSx for ONTAP | CVO on Azure | Yes | Not confirmed | Cross-cloud VPN. FlexCache: FCXC-003 |
+| FSx for ONTAP | GCNV | Yes | Not confirmed | External Replication. FlexCache: FCXC-005 |
+| FSx for ONTAP | ANF | No | Not confirmed | SnapMirror unsupported (XC-007). Use CVO on Azure. FlexCache: FCXC-005 |
 
 ### S3 NAS Bucket Compatibility with FlexCache / SnapMirror
 
@@ -206,7 +206,7 @@ Since SVM-DR is blocked, volume-level SnapMirror is the only option, and all abo
 
 1. Break SnapMirror relationship
 2. Set junction path on destination volume (may be unset immediately after break)
-3. Wait ~60s for FSx API `VolumeType` to reflect `RW` (ONTAP-level is RW immediately, but FSx API has propagation lag)
+3. Wait ~60s for Amazon FSx API `VolumeType` to reflect `RW` (ONTAP-level is RW immediately, but Amazon FSx API has propagation lag)
 4. Create new S3 AP on destination volume:
 ```bash
 aws fsx create-and-attach-s3-access-point \
@@ -221,9 +221,9 @@ aws fsx create-and-attach-s3-access-point \
 - New AP gets a new ARN and alias (different from source)
 - Client applications must update to use the new S3 endpoint
 - Cross-region: S3 AP can only be attached to volumes in the same region
-- **Estimated RTO**: ~2 minutes (SnapMirror break ~instant + FSx API sync ~60s + S3 AP creation ~30s + DNS propagation ~30s)
+- **Estimated RTO**: ~2 minutes (SnapMirror break ~instant + Amazon FSx API sync ~60s + S3 AP creation ~30s + DNS propagation ~30s)
 
-**Additional finding (SM-VAL-004/007):** FSx API `describe-volumes` shows `VolumeType: DP` for ~60s after ONTAP break. S3 AP attachment requires `RW`. Automation scripts need a polling loop.
+**Additional finding (SM-VAL-004/007):** Amazon FSx API `describe-volumes` shows `VolumeType: DP` for ~60s after ONTAP break. S3 AP attachment requires `RW`. Automation scripts need a polling loop.
 
 ---
 
@@ -280,7 +280,7 @@ aws fsx create-and-attach-s3-access-point \
 | Item | Details |
 |------|---------|
 | **Finding ID** | FC-002 |
-| **Classification** | `not_supported_on_fsx` — ONTAP 9.18.1 supports S3 NAS bucket on Cache, but FSx for ONTAP S3 Access Points explicitly blocks attachment to FlexCache volumes |
+| **Classification** | `unsupported` — ONTAP 9.18.1 supports S3 NAS bucket on Cache, but FSx for ONTAP S3 Access Points explicitly blocks attachment to FlexCache volumes |
 | **Disclosure** | validation evidence (2026-07-24) |
 
 **Finding:** NetApp ONTAP documentation states that FlexCache Cache Volumes support S3 NAS bucket starting from ONTAP 9.18.1. However, FSx for ONTAP S3 Access Points — which operate at the AWS managed layer — **explicitly reject** attachment to FlexCache volumes regardless of ONTAP version.
@@ -293,13 +293,13 @@ aws fsx create-and-attach-s3-access-point \
 | FlexGroup Origin volume creation (FSx API) | ✅ | 800 GiB, VolumeStyle: FLEXGROUP |
 | S3 AP attachment to FlexGroup Origin | ✅ | AVAILABLE, S3 PutObject + ListObjectsV2 confirmed |
 | FlexCache Cache volume creation (ONTAP REST API) | ✅ | 400 GiB, write-around mode |
-| FlexCache → FSx API propagation | ✅ | ~30 min, fsvol-* ID obtained |
+| FlexCache → Amazon FSx API propagation | ✅ | ~30 min, fsvol-* ID obtained |
 | **S3 AP attachment to FlexCache Cache volume** | **❌ Blocked** | Error: `Amazon FSx is unable to attach S3access point because the volume is a FlexCache.` |
 
 **Interpretation:** FSx for ONTAP S3 Access Points and ONTAP native S3 NAS buckets are **different mechanisms** at different layers:
 
 - **ONTAP S3 NAS bucket** (`-is-s3-enabled`, `vserver object-store-server`): ONTAP-native feature. Cache Volume support added in 9.18.1.
-- **FSx for ONTAP S3 Access Points** (`aws fsx create-and-attach-s3-access-point`): AWS managed-layer feature. FlexCache volume attachment is explicitly blocked by the FSx API.
+- **FSx for ONTAP S3 Access Points** (`aws fsx create-and-attach-s3-access-point`): AWS managed-layer feature. FlexCache volume attachment is explicitly blocked by the Amazon FSx API.
 
 **Implication for FSx for ONTAP users:**
 - S3 AP on FlexCache Cache Volume is **not available** on FSx for ONTAP as of 2026-07-24
@@ -311,7 +311,7 @@ aws fsx create-and-attach-s3-access-point \
 - [NetApp Docs: FlexCache supported features](https://docs.netapp.com/us-en/ontap/flexcache/supported-unsupported-features-concept.html) — "ONTAP S3 NAS bucket: Cache — Supported beginning with ONTAP 9.18.1"
 - [NetApp Docs: FlexCache duality FAQ](https://docs.netapp.com/us-en/ontap/flexcache/flexcache-duality-faq.html) — write-around required, both clusters 9.18.1+
 - FSx for ONTAP validation error (2026-07-24, ONTAP 9.18.1P3D1): `Amazon FSx is unable to attach S3access point because the volume is a FlexCache.`
-- **Re-confirmed 2026-09-13 on ONTAP 9.18.1P5**, ap-northeast-1, against an already-mounted Cache volume that the FSx API reported as type RW with a junction path — so the documented attachment gate was satisfied and the refusal is by volume kind. Error verbatim identical. Nothing was created by the probe. [Evidence](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml), Finding B. This is now measured on two ONTAP 9.18.1 patch levels in two regions, which closes the question of whether 9.18.1 changes it: it does not.
+- **Re-confirmed 2026-09-13 on ONTAP 9.18.1P5**, ap-northeast-1, against an already-mounted Cache volume that the Amazon FSx API reported as type RW with a junction path — so the documented attachment gate was satisfied and the refusal is by volume kind. Error verbatim identical. Nothing was created by the probe. [Evidence](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml), Finding B. This is now measured on two ONTAP 9.18.1 patch levels in two regions, which closes the question of whether 9.18.1 changes it: it does not.
 
 ---
 
@@ -440,9 +440,11 @@ All paths use standard Cluster Peering with TLS 1.2 encryption (default enabled 
 | **Classification** | `unsupported` |
 | **Disclosure** | publicly verifiable |
 
-**Finding:** ANF supports only Cross-Volume Replication (CVR) — an ANF-to-ANF mechanism. External ONTAP systems (including FSx for ONTAP) cannot establish SnapMirror relationships with ANF because ANF does not expose Cluster Peering interfaces.
+**Finding:** ANF supports only Cross-Volume Replication (CVR) — an ANF-to-ANF mechanism. External ONTAP systems (including FSx for ONTAP) cannot establish SnapMirror relationships with ANF.
 
 **Technical reason:** ANF is built on Azure infrastructure and does not currently expose Intercluster LIF endpoints or Cluster Peering passphrase authentication to external systems. Its replication model is limited to ANF-to-ANF (Cross-Volume Replication).
+
+**Scope of the peering statement:** it applies to SnapMirror and CVR only. Microsoft's [cache requirements](https://learn.microsoft.com/en-us/azure/azure-netapp-files/cache-requirements) list cluster peering with the external ONTAP origin as a requirement when ANF is a FlexCache Cache (FCXC-005). How peering is exposed in that case has not been checked in this repository.
 
 **Alternatives:**
 1. FSx for ONTAP → CVO on Azure (SnapMirror) → NFS/SMB from CVO
@@ -497,15 +499,16 @@ Cross-region and cross-cloud SnapMirror transfers move data to different geograp
 |:----------:|-------|:--------------:|-----------|
 | FCXC-001 | FSx for ONTAP inter-region FlexCache | supported (validated) | Same as intra-region; VPC Peering/TGW required. Validated 2026-07-22: ap-northeast-1 → us-west-2, data propagation <3s |
 | FCXC-002 | FSx for ONTAP → On-premises (DX/VPN) | supported | Direct Connect or VPN; RTT impacts performance |
-| FCXC-003 | FSx for ONTAP → CVO (GCP/Azure) | supported | Cross-cloud VPN; write-around recommended for high RTT |
+| FCXC-003 | FSx for ONTAP → CVO (GCP/Azure) | undocumented | Not confirmed. AWS's [supported FlexCache configurations](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/using-flexcache.html) list only on-premises ONTAP ↔ FSx for ONTAP and FSx for ONTAP ↔ FSx for ONTAP; an AWS blog mentions CVO, which is not service documentation ([S3-Burst-on-ONTAP-Files review, 2026-09-20](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification-status.md)). Not validated in this repository. If built: cross-cloud VPN; write-around recommended for high RTT |
 | FCXC-004 | Intercluster LIF requirements | supported | TCP 11104/11105 + ICMP; auto-configured on FSx for ONTAP |
-| FCXC-005 | GCNV/ANF FlexCache support | partially_supported | GCNV: Cache only (not Origin), NFSv3 only. ANF: unsupported |
+| FCXC-005 | GCNV/ANF FlexCache support | undocumented | Not confirmed for a pairing with FSx for ONTAP. GCNV: Google documents that ONTAP-mode volumes can be an Origin or a Cache and other volumes only a Cache. ANF: Microsoft documents ANF as a Cache of an external ONTAP origin (source cluster ONTAP 9.15.1 or later) and states nothing about ANF as an Origin. Neither side names FSx for ONTAP, and AWS's supported-configurations list names neither ([S3-Burst-on-ONTAP-Files review, 2026-09-20](https://github.com/Yoshiki0705/S3-Burst-on-ONTAP-Files/blob/main/docs/en/verification-status.md)) |
 | FCXC-006 | Network latency impact | supported | Read-heavy: tolerant to high RTT. Write-back: <= 200ms recommended |
 | FCXC-007 | FlexCache disconnect mode | supported | Write-back: hung I/O until reconnect. Write-around: Origin reads continue |
 
 ### FCXC-005 Detail: GCNV FlexCache Constraints
 
-- GCNV supports FlexCache as **Cache only** (cannot serve as Origin)
+- GCNV ONTAP-mode volumes can be an Origin or a Cache; all other GCNV volumes can only be a Cache ([Google Cloud: create a FlexCache volume](https://cloud.google.com/netapp/volumes/docs/configure-and-use/volumes/cache-ontap-volumes/create-flexcache-volume))
+- FSx for ONTAP ↔ GCNV in either direction is not confirmed: AWS's supported-configurations list does not name it, and this repository has not validated it
 - NFSv3 access only to GCNV FlexCache Cache Volumes (NFSv4 not supported on GCNV FlexCache)
 - If GCNV is the desired data access point, use SnapMirror (External Replication) rather than FlexCache for NFSv4 requirements
 
@@ -551,7 +554,7 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 
 > Validated: ap-northeast-1 → us-west-2, ONTAP 9.17.1P7D1 both clusters
 
-### SM-VAL-008: FSx API VolumeType:DP Display Lag (Cross-Region)
+### SM-VAL-008: Amazon FSx API VolumeType:DP Display Lag (Cross-Region)
 
 | Item | Details |
 |------|---------|
@@ -559,7 +562,7 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 | **Classification** | `works_with_caveats` |
 | **Disclosure** | validation evidence |
 
-**Finding:** After SnapMirror break, FSx API continues to report `OntapVolumeType: DP` for the destination volume for **>10 minutes** in cross-region scenarios (previous same-region testing showed ~60s). However, S3 AP attachment succeeds immediately once junction path is set — the check is at the ONTAP level, not the FSx API level.
+**Finding:** After SnapMirror break, Amazon FSx API continues to report `OntapVolumeType: DP` for the destination volume for **>10 minutes** in cross-region scenarios (previous same-region testing showed ~60s). However, S3 AP attachment succeeds immediately once junction path is set — the check is at the ONTAP level, not the Amazon FSx API level.
 
 **Scope clarification:** This lag is FSx-specific (AWS control-plane synchronization delay). On-premises ONTAP does not have this issue as there is no separate control plane layer. The ONTAP REST API correctly reports `type: rw` immediately after break in both scenarios.
 
@@ -567,7 +570,7 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 - Do NOT poll `describe-volumes → OntapVolumeType` as the gate for S3 AP attachment
 - Instead: (1) Break SnapMirror, (2) Set junction path via `update-volume`, (3) Wait for junction path to appear in FSx API (~2 min), (4) Attach S3 AP immediately
 
-### SM-VAL-009: DP Volume Must Be Created via FSx API for S3 AP Attachment
+### SM-VAL-009: DP Volume Must Be Created via Amazon FSx API for S3 AP Attachment
 
 | Item | Details |
 |------|---------|
@@ -575,9 +578,9 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 | **Classification** | `works_with_caveats` |
 | **Disclosure** | validation evidence |
 
-**Finding:** Volumes created exclusively via ONTAP REST API (`POST /api/storage/volumes {type: dp}`) do NOT immediately appear in the FSx API (`describe-volumes`). FSx control plane synchronization takes approximately **30 minutes** for ONTAP-created volumes to become visible. S3 AP attachment requires a FSx volume ID (`fsvol-*`).
+**Finding:** Volumes created exclusively via ONTAP REST API (`POST /api/storage/volumes {type: dp}`) do NOT immediately appear in the Amazon FSx API (`describe-volumes`). FSx control plane synchronization takes approximately **30 minutes** for ONTAP-created volumes to become visible. S3 AP attachment requires a FSx volume ID (`fsvol-*`).
 
-**Recommended approach:** Create DP volumes using `aws fsx create-volume --ontap-configuration '{"OntapVolumeType":"DP"}'` for immediate visibility. If ONTAP REST API is used (e.g., for FlexCache which has no FSx API equivalent), wait ~30 minutes for FSx API propagation before attempting S3 AP attachment.
+**Recommended approach:** Create DP volumes using `aws fsx create-volume --ontap-configuration '{"OntapVolumeType":"DP"}'` for immediate visibility. If ONTAP REST API is used (e.g., for FlexCache which has no Amazon FSx API equivalent), wait ~30 minutes for Amazon FSx API propagation before attempting S3 AP attachment.
 
 **Workaround for ONTAP-created volumes:** Wait for FSx control plane sync (~30 min), then use the propagated `fsvol-*` ID. Do NOT recreate — the volume will eventually appear.
 
@@ -594,7 +597,7 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 | Phase | Duration | Notes |
 |-------|:--------:|-------|
 | SnapMirror break | ~instant | ONTAP REST API PATCH |
-| Junction path set + FSx API propagation | ~2 min | `update-volume` + polling |
+| Junction path set + Amazon FSx API propagation | ~2 min | `update-volume` + polling |
 | S3 AP creation (CREATING → AVAILABLE) | ~30s | `create-and-attach-s3-access-point` |
 | First successful S3 API call | ~30s | ListObjectsV2 / GetObject |
 | **Total** | **~3 min** | Cross-region. Same-region estimated ~2 min |
@@ -618,8 +621,8 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 2. Delete SVM peers (both sides) — **wait until `num_records: 0` on BOTH clusters**
 3. Delete Cluster peers
 4. Delete VPC Peering / routes
-5. Delete SVM via FSx API
-6. Delete File System via FSx API
+5. Delete SVM via Amazon FSx API
+6. Delete File System via Amazon FSx API
 
 **Never:** Delete VPC Peering before step 2 is confirmed. The two-phase SVM peer deletion protocol requires bidirectional connectivity.
 
@@ -640,16 +643,16 @@ FSx for ONTAP S3 AP returns `501 Not Implemented` for requests with `If-None-Mat
 
 By contrast, `CreateVolume` refuses the same field explicitly: `Invalid fields provided for a DP volume. JunctionPath, StorageEfficiency, SnapshotPolicy and SecurityStyle cannot be specified for a DP Volume.` The two APIs disagree on how to reject the same invalid input, and the mutating one is the quiet one.
 
-**Interaction with SM-VAL-008, which is the operationally important part.** SM-VAL-008 correctly says not to gate access point attachment on `OntapVolumeType`, because the FSx API keeps reporting `DP` for over ten minutes after a successful cross-region break. Combined with this finding, that leaves an operator unable to distinguish two states from the volume type alone:
+**Interaction with SM-VAL-008, which is the operationally important part.** SM-VAL-008 correctly says not to gate access point attachment on `OntapVolumeType`, because the Amazon FSx API keeps reporting `DP` for over ten minutes after a successful cross-region break. Combined with this finding, that leaves an operator unable to distinguish two states from the volume type alone:
 
-| Actual state | FSx API `OntapVolumeType` | `update-volume` with a junction path |
+| Actual state | Amazon FSx API `OntapVolumeType` | `update-volume` with a junction path |
 |---|---|---|
-| Broken, FSx API still lagging | `DP` | Takes effect |
+| Broken, Amazon FSx API still lagging | `DP` | Takes effect |
 | Never broken, or resynced | `DP` | Accepted, silently discarded |
 
 **The junction path itself is the only reliable signal.** Set it, then poll `DescribeVolumes` for a non-null `JunctionPath` before attempting attachment. Do not treat the `UpdateVolume` response as confirmation, and do not retry with additional flags — a silent discard looks identical to a slow propagation, and adding flags to a call that was already accepted changes nothing.
 
-**Scope, and what this does NOT mean.** This is an FSx control-plane restriction, not an ONTAP one, and it does **not** mean a DP volume cannot carry an access point. Measured 2026-09-13 in-VPC (SM-VAL-013): ONTAP mounts a DP volume, the FSx API reports that junction path after ~2298 s, and attachment then succeeds and serves reads off a live SnapMirror destination. The correct reading of SM-VAL-012 is narrow: **the FSx API is not a usable way to mount a DP volume, and it fails silently rather than loudly.** Separately, the DP subject in this run had no active SnapMirror relationship; a live destination was tested in SM-VAL-013 and behaved the same way.
+**Scope, and what this does NOT mean.** This is an FSx control-plane restriction, not an ONTAP one, and it does **not** mean a DP volume cannot carry an access point. Measured 2026-09-13 in-VPC (SM-VAL-013): ONTAP mounts a DP volume, the Amazon FSx API reports that junction path after ~2298 s, and attachment then succeeds and serves reads off a live SnapMirror destination. The correct reading of SM-VAL-012 is narrow: **the Amazon FSx API is not a usable way to mount a DP volume, and it fails silently rather than loudly.** Separately, the DP subject in this run had no active SnapMirror relationship; a live destination was tested in SM-VAL-013 and behaved the same way.
 
 ### SM-VAL-013: An S3 Access Point Serves a Live SnapMirror Destination
 
@@ -660,21 +663,21 @@ By contrast, `CreateVolume` refuses the same field explicitly: `Invalid fields p
 | **Disclosure** | validation evidence |
 | **Measured** | 2026-09-13, ap-northeast-1, ONTAP 9.18.1P5, intra-SVM async volume SnapMirror ([evidence](../../../../verification-pack/s3ap-dp-volume-attachment/evidence/2026-09-13-in-vpc/evidence-record.yaml)) |
 
-**Finding:** a SnapMirror destination can be read through an S3 access point with the relationship left running — no break, no clone. Mount the DP volume through ONTAP (`vol mount` / `PATCH nas.path`), wait for the FSx API to report the junction path, then attach. Reads succeed, `PutObject` returns `AccessDenied` because a DP volume is read-only, and the relationship stays `snapmirrored` and healthy throughout. **A subsequent SnapMirror transfer became visible and readable through the same access point within 15 s, with no access point change.**
+**Finding:** a SnapMirror destination can be read through an S3 access point with the relationship left running — no break, no clone. Mount the DP volume through ONTAP (`vol mount` / `PATCH nas.path`), wait for the Amazon FSx API to report the junction path, then attach. Reads succeed, `PutObject` returns `AccessDenied` because a DP volume is read-only, and the relationship stays `snapmirrored` and healthy throughout. **A subsequent SnapMirror transfer became visible and readable through the same access point within 15 s, with no access point change.**
 
 A FlexClone of the destination Snapshot is the alternative and differs in one property: it accepts writes, and it stays frozen at the Snapshot it was cut from.
 
 | Phase | Duration |
 |---|--:|
 | ONTAP operation (mount, or create the clone) | seconds, under 20 s |
-| FSx API reports the volume / junction path | **665 s, 1011 s, 2298 s** |
+| Amazon FSx API reports the volume / junction path | **665 s, 1011 s, 2298 s** |
 | Access point CREATING → AVAILABLE | 31-32 s |
 
 **Automation impact:** FSx control-plane propagation, not the ONTAP operation, dominates first-time setup. Poll `DescribeVolumes` for a non-null `JunctionPath` (DP route) or for the `fsvol-*` identifier to appear (clone route), and do not attempt attachment before then — it fails with `the volume is not mounted`. Three samples on one file system, and the 665 s and 2298 s cases are the same operation, so the spread is not a property of the route. Design for minutes to tens of minutes; do not quote a figure.
 
 **Engine equivalence (S3AP-DP-ATHENA-001).** Amazon Athena over a DP-backed access point returned results identical to an RW-backed control built from the same Parquet files, in one session — same rows, same aggregates, 7493 ms against 7804 ms. Partition discovery (`MSCK REPAIR`) and partition pruning both worked against the read-only volume; `INSERT` failed with S3 403 surfaced as `PERMISSION_DENIED`, leaving nothing on the volume. A partition added by a later transfer became queryable after a catalog refresh alone. Snowflake was **not** tested on a DP-backed access point — the read surface is the same, but that is inference, not measurement.
 
-**Teardown, and a diagnosis that took two passes:** deleting the FlexClone through the FSx API left the parent flagged `clone.has_flexclone=true`, and the parent then refused to delete through both APIs. The first reading — a stale flag, no clone present, not resolvable with the privileges available — was wrong. `aws fsx delete-volume` does not destroy a volume: ONTAP renames it `<name>_NNNN` and moves it into the **volume recovery queue** with type `del`, and the queued clone was still holding the parent's Snapshot. It is invisible to `/api/storage/volumes` and to `volume show` at default privilege, and appears under `privilege_level=diagnostic`, in `volume clone show`, and in `volume recovery-queue show`. `volume recovery-queue purge` cleared it and the parent then deleted normally, with `fsxadmin` privilege alone. Full account: [ONTAP-RECOVERY-QUEUE-001](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml). Also note that an access point's internal `amazon-fsx-fsvol-*` object-store bucket briefly blocks volume deletion and is **not** listed by `GET /api/protocols/s3/buckets`.
+**Teardown, and a diagnosis that took two passes:** deleting the FlexClone through the Amazon FSx API left the parent flagged `clone.has_flexclone=true`, and the parent then refused to delete through both APIs. The first reading — a stale flag, no clone present, not resolvable with the privileges available — was wrong. `aws fsx delete-volume` does not destroy a volume: ONTAP renames it `<name>_NNNN` and moves it into the **volume recovery queue** with type `del`, and the queued clone was still holding the parent's Snapshot. It is invisible to `/api/storage/volumes` and to `volume show` at default privilege, and appears under `privilege_level=diagnostic`, in `volume clone show`, and in `volume recovery-queue show`. `volume recovery-queue purge` cleared it and the parent then deleted normally, with `fsxadmin` privilege alone. Full account: [ONTAP-RECOVERY-QUEUE-001](../../../../verification-pack/ontap-features/evidence/2026-09-13/volume-recovery-queue-and-fc002.yaml). Also note that an access point's internal `amazon-fsx-fsvol-*` object-store bucket briefly blocks volume deletion and is **not** listed by `GET /api/protocols/s3/buckets`.
 
 **Not established:** whether an analytics engine reads a DP-backed access point identically to an RW-backed one (only the S3 API was exercised); cross-region behaviour; survival across a break/resync cycle with the access point in place; scale beyond four small objects; WINDOWS identity or NTFS security style.
 
@@ -694,7 +697,7 @@ A FlexClone of the destination Snapshot is the alternative and differs in one pr
 | S3 Access Point (basic) | 9.14.1 | FSx for ONTAP feature |
 | S3 NAS bucket (multiprotocol) | 9.12.1 | Underlying ONTAP mechanism |
 | S3 NAS bucket on FlexCache Origin | 9.12.1 | Origin volume with S3 AP as FlexCache source |
-| S3 NAS bucket on FlexCache Cache | **9.18.1** | Cache Volume S3 AP attachment (FC-002) |
+| S3 NAS bucket on FlexCache Cache | **9.18.1** | ONTAP native S3 NAS bucket only. FSx for ONTAP S3 Access Points cannot be attached to a FlexCache volume on any tested version (FC-002) |
 | SnapMirror Async | 9.11.1 | FSx for ONTAP baseline |
 | FlexCache (read-only) | 9.5 | Long-standing feature |
 | FlexCache write-back | 9.15.1 | Both Origin and Cache |
@@ -724,8 +727,8 @@ A FlexClone of the destination Snapshot is the alternative and differs in one pr
 ### Pattern C: Multi-Cloud (FSx for ONTAP to GCP/Azure)
 
 - **Use case**: Access AWS-collected data from GCP or Azure workloads
-- **GCP options**: GCNV External Replication (SnapMirror), GCNV FlexCache Cache, CVO on GCP
-- **Azure options**: CVO on Azure (SnapMirror/FlexCache). ANF is not supported
+- **GCP options**: GCNV External Replication (SnapMirror), CVO on GCP. FlexCache to GCNV or CVO is not confirmed (FCXC-003, FCXC-005)
+- **Azure options**: CVO on Azure (SnapMirror). ANF SnapMirror is not supported (XC-007). FlexCache to CVO or ANF is not confirmed (FCXC-003, FCXC-005)
 - **Constraints**: Cross-cloud VPN latency (20-100ms typical); write-around mode recommended
 
 ---
@@ -857,7 +860,7 @@ References:
 
 | # | Question | Finding ID | Priority | Resolution Path |
 |---|---------|:----------:|:--------:|----------------|
-| ~~1~~ | ~~Can Cache Volume have independent S3 AP attachment?~~ | FC-002 | ~~P2~~ | **Resolved**: Supported from ONTAP 9.18.1. Not supported on 9.17.1 (tested). |
+| ~~1~~ | ~~Can Cache Volume have independent S3 AP attachment?~~ | FC-002 | ~~P2~~ | **Resolved**: not attachable. The Amazon FSx API refuses with `the volume is a FlexCache` (2026-07-24, ONTAP 9.18.1P3D1, us-west-2; re-confirmed 2026-09-13, ONTAP 9.18.1P5, ap-northeast-1). |
 | 2 | GCNV External Replication minimum source ONTAP version? | XC-006 | P2 | GCP docs or validation |
 | 3 | FlexGroup + S3 AP + FlexCache Origin stability? | FC-007 | P2 | Hands-on validation |
 | 4 | ANF alternative path (via CVO on Azure) practicality? | XC-007 | P3 | Architecture + cost eval |
@@ -882,7 +885,7 @@ Validated on FSx for ONTAP (ONTAP 9.17.1P7D1, 2nd Generation, Single-AZ, ap-nort
 | TC | Scope | Result | Key Finding |
 |:--:|-------|:------:|-------------|
 | TC-01 | S3 AP + SnapMirror create + transfer | PASS | Volume-level async works with S3 AP volume |
-| TC-02 | SnapMirror break + S3 AP re-attach | PASS | ~60s FSx API lag; new AP works immediately after |
+| TC-02 | SnapMirror break + S3 AP re-attach | PASS | ~60s Amazon FSx API lag; new AP works immediately after |
 | TC-03 | S3 AP + FlexCache Origin | PASS | Cache reads data written via S3 AP |
 | TC-04 | FlexCache NFS read verification | PASS | Data integrity confirmed (checksum match) |
 | TC-05 | FlexCache write-back + S3 AP | PASS | XLD revoke on same-file; different-file is safe |

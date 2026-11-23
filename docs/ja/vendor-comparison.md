@@ -303,7 +303,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 
 | プラットフォーム | 画像 | 動画 | 音声 | ドキュメント | 方式 |
 |---------------|------|------|------|------------|------|
-| SageMaker | ✅ | ✅ | ✅ | ✅ | S3 AP 直接読み取り |
+| SageMaker | 未確認 | 未確認 | 未確認 | 未確認 | S3 Access Points 直接読み取り（このリポジトリに検証記録なし） |
 | Bedrock | ✅ | 非対応 | 非対応 | ✅ | Knowledge Base (RAG) |
 | Rekognition | ✅ | ✅ | 非対応 | 非対応 | S3 AP 直接読み取り |
 | Transcribe | 非対応 | 非対応 | ✅ | 非対応 | S3 AP 直接読み取り |
@@ -315,7 +315,7 @@ Lakehouse Platform ←→ S3 Access Point ←→ FSx for NetApp ONTAP
 | Athena | 非対応 | 非対応 | 非対応 | 非対応 | 構造化データのみ |
 | BigQuery Omni | ✅ | ✅ | 非対応 | 非対応 | Object Table |
 
-凡例: ✅ = 直接処理可能 / メタデータのみ / 非対応。
+凡例: ✅ = 直接処理可能 / メタデータのみ / 非対応。未確認 = このリポジトリに検証記録がない。
 
 ---
 
