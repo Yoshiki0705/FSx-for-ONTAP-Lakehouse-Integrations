@@ -190,7 +190,7 @@ S3 Access Points は §1 の (A) のとおり Snowflake からは Amazon S3 と�
 | **conditional writes 非サポート** | 9 テストが `If-None-Match` 等の条件付き書き込みを使うかは**テストコード未確認** | 未確認 |
 | `REGION_2` / `NOT_ACCESSIBLE_BUCKET` / 1000件超プレフィックス | テストハーネス側の準備で用意可能か | 未確認（S3 AP 環境で未検証） |
 
-**Presign（generatePresignedUrl テストに直結）**: docs.aws.amazon.com の同表は **2026-09-26 時点で `Presign — Supported`**。docs.amazonaws.cn の S3 ユーザーガイド（[access-points-service-api-support](https://docs.amazonaws.cn/en_us/AmazonS3/latest/userguide/access-points-service-api-support.html)）の FSx for ONTAP 列も **Supported**。以前は `Not supported` と記載されていた履歴があり、その経緯と AWS サポート見解（presign はクライアント側の署名計算であり、実際に走るのはサポート対象の GetObject。サポート対象外の操作に本番で依存しない）は [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns の docs/s3ap-compatibility-notes.md](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3ap-compatibility-notes.md) にある。現在の記載どおりなら generatePresignedUrl テストは S3 AP でも通る見込みだが、S3 AP での実測は未実施。
+**Presign（generatePresignedUrl テストに直結）**: docs.aws.amazon.com の同表は **2026-09-26 時点で `Presign — Supported`**。docs.amazonaws.cn の S3 ユーザーガイド（[access-points-service-api-support](https://docs.amazonaws.cn/en_us/AmazonS3/latest/userguide/access-points-service-api-support.html)）の FSx for ONTAP 列も **Supported**。以前は `Not supported` と記載されていた。presign はクライアント側の署名の計算で、実際に走るのはサポート対象の GetObject である。その経緯は [FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns の docs/s3ap-compatibility-notes.md](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns/blob/main/docs/s3ap-compatibility-notes.md) にある。現在の記載どおりなら generatePresignedUrl テストは S3 AP でも通る見込みだが、S3 AP での実測は未実施。
 
 ---
 
