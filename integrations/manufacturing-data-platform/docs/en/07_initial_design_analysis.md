@@ -208,7 +208,7 @@ The following fields are confirmed (REQ-F001, REQ-F002):
 | FlexClone | ✅ Medium | PoC data provisioning, dev/test isolation |
 | Deduplication | ⚠️ Depends | Useful if similar payload versions exist |
 | Compression | ✅ Medium | Cost reduction for large document/image payloads |
-| FabricPool | ✅ Medium | Tier old payloads to S3 Glacier |
+| FabricPool | ✅ Medium | Capacity pool tiering moves old payloads to a lower-cost tier automatically (the tier is managed by Amazon FSx; S3 Glacier Flexible Retrieval and S3 Glacier Deep Archive are not valid targets). To place payloads in the S3 Glacier classes, copy them to a general purpose bucket with an S3 Access Points server-side copy (sources, checked 2026-11-24: [Hub measurement note](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-points-server-side-copy-use-cases.md) (Japanese), [NetApp](https://docs.netapp.com/us-en/ontap/fabricpool/requirements-concept.html)) |
 | SnapLock | ⚠️ Depends | Only if regulatory retention is required |
 
 ### Native Amazon S3 Comparison

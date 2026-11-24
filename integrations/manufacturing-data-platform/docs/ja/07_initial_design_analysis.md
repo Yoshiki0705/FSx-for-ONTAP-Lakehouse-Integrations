@@ -208,7 +208,7 @@
 | FlexClone | ✅ 中 | PoC データプロビジョニング、開発/テスト分離 |
 | 重複排除 | ⚠️ 状況による | 類似ペイロードバージョンが存在する場合に有用 |
 | 圧縮 | ✅ 中 | 大容量ドキュメント/画像ペイロードのコスト削減 |
-| FabricPool | ✅ 中 | 古いペイロードを S3 Glacier に階層化 |
+| FabricPool | ✅ 中 | 古いペイロードを容量プールの階層化で自動的に低コスト階層へ移す（階層先は Amazon FSx の管理で、S3 Glacier Flexible Retrieval と S3 Glacier Deep Archive は対象外）。S3 Glacier の各クラスへ置くなら S3 Access Points のサーバー側コピーで汎用バケットへ写す（出典・確認日 2026-11-24: [Hub の実測ノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-points-server-side-copy-use-cases.md)、[NetApp](https://docs.netapp.com/us-en/ontap/fabricpool/requirements-concept.html)） |
 | SnapLock | ⚠️ 状況による | 規制対応の保持が必要な場合のみ |
 
 ### ネイティブ Amazon S3 との比較

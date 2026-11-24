@@ -154,7 +154,7 @@ FSx for ONTAP Volume (NFS/SMB)
 ```
 
 **ONTAP の価値:**
-- **FabricPool**: 古い映像を自動的に S3 Glacier にティアリング
+- **FabricPool**: 古い映像を低コストの階層へ自動で移す。FSx for ONTAP ではこの役割を容量プールの階層化が持ち、階層先は Amazon FSx が管理する領域で、利用者の S3 バケットではない。FabricPool はブロック単位の階層化で、S3 Glacier Flexible Retrieval と S3 Glacier Deep Archive は階層先に使えない。映像ファイルを S3 Glacier の各クラスへオブジェクトとして置くなら、S3 Access Points のサーバー側コピーで汎用バケットへ写す（`ap-northeast-1`、ONTAP 9.19.1P4 で 8 つのストレージクラスへの書き込みを各 1 回確認。S3 Glacier Flexible Retrieval と S3 Glacier Deep Archive から戻すときは、先にバケット側で復元が要る）。出典（2026-11-24 確認）: [Hub の実測ノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-points-server-side-copy-use-cases.md)、[NetApp: FabricPool の要件](https://docs.netapp.com/us-en/ontap/fabricpool/requirements-concept.html)
 - **Snapshot**: インシデント時点の映像を保護
 - **大容量**: 数百 TB の映像データを効率的に管理
 

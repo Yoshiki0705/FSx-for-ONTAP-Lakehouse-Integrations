@@ -154,7 +154,7 @@ Camera → NFS → FSx for ONTAP Volume → S3 AP → Rekognition Video (analysi
 ```
 
 **ONTAP Value:**
-- **FabricPool**: Auto-tier old footage to S3 Glacier
+- **FabricPool**: Automatically moves old footage to a lower-cost tier. In FSx for ONTAP, capacity pool tiering plays this role, and the tier is an area managed by Amazon FSx, not your S3 bucket. FabricPool tiers at the block level, and S3 Glacier Flexible Retrieval and S3 Glacier Deep Archive are not valid tiering targets. To place video files in the S3 Glacier classes as objects, copy them to a general purpose bucket with an S3 Access Points server-side copy (writes to 8 storage classes were each confirmed once on `ap-northeast-1`, ONTAP 9.19.1P4; restoring from S3 Glacier Flexible Retrieval or S3 Glacier Deep Archive first requires a restore on the bucket side). Sources (checked 2026-11-24): [Hub measurement note](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-points-server-side-copy-use-cases.md) (Japanese), [NetApp: FabricPool requirements](https://docs.netapp.com/us-en/ontap/fabricpool/requirements-concept.html)
 - **Snapshot**: Protect footage at incident time
 - **Scale**: Efficiently manage hundreds of TB of video data
 
