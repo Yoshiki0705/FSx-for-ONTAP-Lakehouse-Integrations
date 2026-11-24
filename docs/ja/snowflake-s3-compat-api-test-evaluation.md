@@ -186,7 +186,7 @@ S3 Access Points は §1 の (A) のとおり Snowflake からは Amazon S3 と�
 |---|---|---|
 | **Object Versioning 非サポート** | README は `BUCKET_NAME_1` にバージョニング有効を要求 → 前提を満たせない。ここに起因する failure は互換性の欠陥ではない | Public（README + AWS doc） |
 | **ETag はオブジェクトデータの MD5 ではない** | getObjectMetadata / copyObject の ETag=MD5 検証が S3 AP でも fail する見込み。仕様であって欠陥ではない | Public（AWS doc）。S3 AP での実測は未実施 |
-| **CopyObject / UploadPartCopy は同一リージョン・同一アクセスポイント内のみ** | copyObject テストが同一 AP 内で完結するか、クロス AP を試すかは**テストコード未確認** | 未確認 |
+| **CopyObject / UploadPartCopy は同一リージョン内のサーバー側コピー**（コピー元とコピー先に S3 バケットと FSx for ONTAP の S3 Access Points を使える。コピー先が FSx for ONTAP のボリュームなら暗号化は `SSE-FSX`、ストレージクラスは `FSX_ONTAP` のみ）。出典: [What's New（2026-11-22）](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/)、確認日 2026-11-24。実測は [FSx-for-ONTAP-Adoption-Playbook のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md)（2026-11-24、1 環境）にある | copyObject テストがどの組み合わせでコピーするかは、テストコードを確認していない。アカウントをまたぐコピーも確認していない | 未確認 |
 | **conditional writes 非サポート** | 9 テストが `If-None-Match` 等の条件付き書き込みを使うかは**テストコード未確認** | 未確認 |
 | `REGION_2` / `NOT_ACCESSIBLE_BUCKET` / 1000件超プレフィックス | テストハーネス側の準備で用意可能か | 未確認（S3 AP 環境で未検証） |
 
