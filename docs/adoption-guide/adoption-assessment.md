@@ -29,7 +29,7 @@ Organizations with file-based data on NAS/ONTAP face a fundamental disconnect:
 Amazon FSx for ONTAP S3 Access Points enable S3 API access to file data stored on FSx for ONTAP volumes without data movement. Applications and AWS services that work with S3 can directly read and write file data through the access point.
 
 **Key technical facts** (per [AWS documentation](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/accessing-data-via-s3-access-points.html)):
-- Supported S3 operations: GetObject, PutObject, DeleteObject, ListObjectsV2, HeadObject, Multipart Upload, CopyObject (same access point only)
+- Supported S3 operations: GetObject, PutObject, DeleteObject, ListObjectsV2, HeadObject, Multipart Upload, CopyObject (server-side copy; the source and destination can be S3 buckets and FSx for ONTAP S3 Access Points within one Region; [What's New, 2026-11-22](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/), confirmed 2026-11-24), UploadPartCopy
 - Dual-layer authorization: IAM policy evaluation + file system user permissions (UNIX or Windows)
 - Latency: Tens of milliseconds range, consistent with S3 bucket access
 - Throughput: Depends on FSx for ONTAP file system provisioned throughput capacity

@@ -218,8 +218,8 @@ aws athena start-query-execution \
 
 | 制約 | 詳細 | ソース |
 |------|------|--------|
-| Rename 操作なし | S3 API にはネイティブの rename がない。CopyObject は同一アクセスポイント内のみサポート。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
-| マルチパート閾値を超える rename は**マルチパート**コピーになる | rename は常に 1 回の `CopyObject` ではない。`fs.s3a.multipart.threshold` を超えると S3A は `UploadPartCopy` を発行し、同一アクセスポイント内の `UploadPartCopy` は copy-source のキーがパーセントエンコードを要する場合に現時点で `NoSuchKey` を返す。**AWS は不具合として区分し修正が進行中のため、暫定として扱う。**[rename が分岐する 2 つの S3 呼び出し](#rename-が分岐する-2-つの-s3-呼び出し)を参照 | 閾値の意味は Hadoop [core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml)。`UploadPartCopy` の失敗は[Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)での実測で、本リポジトリでは未再現 |
+| Rename 操作なし | S3 API にはネイティブの rename がない。CopyObject はサーバー側のコピーで、同一リージョン内であればコピー元とコピー先に S3 バケットと FSx for ONTAP の S3 Access Points を使える（コピー先が FSx for ONTAP のボリュームなら暗号化は `SSE-FSX`、ストレージクラスは `FSX_ONTAP` のみ）。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html)、[What's New（2026-11-22）](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/)、確認日 2026-11-24 |
+| マルチパート閾値を超える rename は**マルチパート**コピーになる | rename は常に 1 回の `CopyObject` ではない。`fs.s3a.multipart.threshold` を超えると S3A は `UploadPartCopy` を発行する。2026-08 に Serverless-Patterns で、同一アクセスポイント内の `UploadPartCopy` が copy-source のキーのパーセントエンコードを要する場合に `NoSuchKey` を返す事象が記録された。2026-11-24 に FSx-for-ONTAP-Adoption-Playbook が再確認したところ再現しなかった（8 MiB のオブジェクト、`/` を含むキー、2 パート）。8 MiB より大きいオブジェクトは確認していない。[rename が分岐する 2 つの S3 呼び出し](#rename-が分岐する-2-つの-s3-呼び出し)を参照 | 閾値の意味は Hadoop [core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml)。2026-08 の失敗は[Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)での実測で、本リポジトリでは再現していない。2026-11-24 の再確認は [FSx-for-ONTAP-Adoption-Playbook のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md)（1 環境） |
 | 最大アップロードサイズ: 50 GiB | 単一オブジェクトのアップロードは 50 GiB まで。それを超えるオブジェクトはダウンロードは可能だがアップロードは不可。マルチパートアップロードはサポート。**本リポジトリが設定しているパートサイズは上限を大きく下回る** — [上限に対するパートサイズの余裕](#上限に対するパートサイズの余裕)を参照 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | Object Versioning なし | S3 Object Versioning は非サポート | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | 条件付き書き込みなし | Conditional writes（`If-None-Match`）は非サポート — HTTP 501 `NotImplemented` を返す。2026-05-22 に自環境で 501 を確認。実装予定を述べた公開情報は見つけられておらず `open` です。S3 ネイティブ conditional writes（2024年8月提供開始）との parity を求める機能要望を提出済み。Delta Lake、Iceberg、Hudi のトランザクショナル書き込みをブロック。 | [API サポート](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
@@ -237,7 +237,7 @@ aws athena start-query-execution \
 ### rename が分岐する 2 つの S3 呼び出し
 
 本ページの他の箇所では「rename は CopyObject + DeleteObject にフォールバックする」と書いて
-います。**これは機構の半分で、現時点で失敗するのは書かれていない側です。**
+います。**これは機構の半分で、書かれていない側が `UploadPartCopy` です。2026-08 にここで失敗が記録されましたが、2026-11-24 の再確認では再現しませんでした。**
 
 Hadoop の `fs.s3a.multipart.threshold` はアップロードとコピーの両方の分割サイズを制御し、
 「rename() はソースファイルのコピーを伴うため、rename されるファイルのパーティションサイズも
@@ -247,8 +247,8 @@ Hadoop の `fs.s3a.multipart.threshold` はアップロードとコピーの両�
 
 | rename 対象のファイルサイズ | 発行される呼び出し | FSx for ONTAP S3 AP での状態 |
 |---|---|---|
-| `fs.s3a.multipart.threshold` 以下 | `CopyObject` | 同一アクセスポイント内でサポート |
-| `fs.s3a.multipart.threshold` を超える | `UploadPartCopy` | copy-source のキーがパーセントエンコードを要する場合、現時点で `NoSuchKey` を返す |
+| `fs.s3a.multipart.threshold` 以下 | `CopyObject` | サポート。FSx-for-ONTAP-Adoption-Playbook が 2026-11-24 に、同じ Access Point の中と、S3 バケットとの間（双方向）と、別のファイルシステムの Access Point との間で、8 MiB のオブジェクトの成功を確認（1 環境） |
+| `fs.s3a.multipart.threshold` を超える | `UploadPartCopy` | FSx-for-ONTAP-Adoption-Playbook の同じ確認で、`/` を含むキーをコピー元にした 2 パートのコピーが成功。2026-08 の `NoSuchKey` の記録は再現しなかった。8 MiB より大きいオブジェクトは確認していない |
 
 `integrations/delta-lake-oss/config/spark-defaults.conf` はこの閾値を `268435456`（256 MiB）に
 設定し、`spark.sql.files.maxPartitionBytes` にも同じ値を設定しています。**出力パートサイズが
@@ -257,13 +257,12 @@ Hadoop の `fs.s3a.multipart.threshold` はアップロードとコピーの両�
 効いています。Athena CTAS と DuckDB の `COPY ... TO` は最終キーへ直接書き込み rename を行わない
 ため、サイズに関係なくこの経路に触れません。
 
-**これは設計ルールではなく暫定として扱ってください。** AWS は `UploadPartCopy` の失敗を修正が
-進行中の不具合として区分しており、修正されれば解除されます。ここから 2 点が導かれます。
+**2026-08 の `NoSuchKey` の記録は、2026-11-24 の FSx-for-ONTAP-Adoption-Playbook の再確認で再現しませんでした。** 再確認の対象は 8 MiB のオブジェクト（2 パート）で、それより大きいオブジェクトは確認していません。この事象の修正を示す AWS の公開情報は見つけていません。ここから 2 点が導かれます。
 
 - **copy-source のキーを前提に設計しないこと。** 「キーに `/` を含めない」はプレフィックスで
   整理するレイアウトと両立せず、原因より長く残ります。**ノブは閾値であってキーの命名では
   ありません。**
-- **範囲内の暫定措置は、出力パートファイルを閾値未満に保つことです。** 既存の
+- **出力パートファイルを閾値未満に保つ措置は、大きいオブジェクトでの再確認が済むまで保険として残せます。** 既存の
   **バイト値で比較してください。本ページは同じ数字に 2 つの接頭辞を使っています。** 閾値は
   `268435456` バイト、「128 MB 以上」の統合目標は約 134,000,000 バイト、ワークロード
   サイジング表の「出力ファイル 128-256 MB を目標」は上限で約 256,000,000 バイトです。
@@ -272,10 +271,15 @@ Hadoop の `fs.s3a.multipart.threshold` はアップロードとコピーの両�
   `fs.s3a.multipart.threshold` を上げる手もありますが、同じ値がアップロード側も支配するため
   アップロードの挙動も変わります。
 
-**本リポジトリでは未再現です。** `UploadPartCopy` の失敗は
+**本リポジトリでは未再現です。** 2026-08 の `UploadPartCopy` の失敗は
 [Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns)
-での実測です。本リポジトリで確立したのは、**Spark / Glue の書き込み経路が設定上この呼び出しに
-到達しうる**という点のみで、この誤りを再現した実行はありません。
+での実測の記録です。本リポジトリで確立したのは、**Spark / Glue の書き込み経路が設定上この呼び出しに
+到達しうる**という点のみで、この誤りを再現した実行はありません。2026-11-24 に
+[FSx-for-ONTAP-Adoption-Playbook のノート](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md)
+が、`ap-northeast-1` の第 1 世代 `SINGLE_AZ_1`（ONTAP 9.19.1P4）で 8 MiB のオブジェクトを再確認し、
+再現しませんでした。AWS の告知は [What's New（2026-11-22）](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/)
+で、確認日は 2026-11-24 です。8 MiB より大きいオブジェクト、アカウントをまたぐコピー、FlexCache
+ボリューム上の Access Point は確認していません。
 
 ### 上限に対するパートサイズの余裕
 
@@ -306,7 +310,7 @@ Lakehouse テーブルフォーマット（Delta Lake、Apache Iceberg、Apache 
 
 | 要件 | Delta Lake | Apache Iceberg | Apache Hudi | FSx for ONTAP S3 AP サポート |
 |------|-----------|----------------|-------------|-------------------|
-| コミット用アトミック rename | 必須（\_delta\_log/） | 不要（メタデータポインタ使用） | 必須（タイムライン） | **利用不可** — 同一 AP 内での CopyObject + DeleteObject が回避策 |
+| コミット用アトミック rename | 必須（\_delta\_log/） | 不要（メタデータポインタ使用） | 必須（タイムライン） | **利用不可** — CopyObject + DeleteObject が回避策（2 回の呼び出しで、アトミックではない） |
 | 書き込み後の一貫したリスト | 必須 | 必須 | 必須 | サポート（ONTAP が一貫性を提供） |
 | PutObject | 必須 | 必須 | 必須 | サポート |
 | DeleteObject | vacuum/クリーンアップに必須 | 有効期限切れに必須 | 必須 | サポート |
@@ -537,7 +541,7 @@ Writer                          S3 (or FSx for ONTAP S3 AP)
   │  ──── Rename(tmp/... → 00001.json)──▶│  ❌ NOT SUPPORTED
   │                                    │     (No rename operation in S3 API)
   │  Fallback: CopyObject + Delete     │
-  │  ──── CopyObject(tmp → 00001.json)─▶│  ⚠️ Supported (same AP only)
+  │  ──── CopyObject(tmp → 00001.json)─▶│  ⚠️ Supported (2 calls, not atomic)
   │  ──── DeleteObject(tmp/...)────────▶│  ✅ Supported
   │                                    │
   │  4. Verify commit (conditional)    │

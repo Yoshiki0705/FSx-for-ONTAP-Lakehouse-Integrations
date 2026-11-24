@@ -226,8 +226,8 @@ Before reviewing the compatibility matrix, understand these fundamental constrai
 
 | Constraint | Detail | Source |
 |-----------|--------|--------|
-| No Rename operation | S3 API does not have a native rename. CopyObject is supported only within the same access point. | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
-| Rename above the multipart threshold becomes a **multipart** copy | A rename is not always one `CopyObject`. Past `fs.s3a.multipart.threshold` S3A issues `UploadPartCopy` instead, and `UploadPartCopy` within one access point currently returns `NoSuchKey` when the copy-source key needs percent-encoding. **AWS classifies this as a defect with a fix in progress, so treat it as interim.** See [Rename crosses two different S3 calls](#rename-crosses-two-different-s3-calls-interim) | Hadoop [core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml) for the threshold semantics; the `UploadPartCopy` failure is measured in [Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns), not here |
+| No Rename operation | S3 API does not have a native rename. CopyObject is a server-side copy; within one Region the source and destination can be S3 buckets and FSx for ONTAP S3 Access Points (when the destination is an FSx for ONTAP volume, encryption is `SSE-FSX` and the storage class is `FSX_ONTAP` only). | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html), [What's New, 2026-11-22](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/), confirmed 2026-11-24 |
+| Rename above the multipart threshold becomes a **multipart** copy | A rename is not always one `CopyObject`. Past `fs.s3a.multipart.threshold` S3A issues `UploadPartCopy` instead. In 2026-08, Serverless-Patterns recorded `UploadPartCopy` within one access point returning `NoSuchKey` when the copy-source key needs percent-encoding. FSx-for-ONTAP-Adoption-Playbook re-checked on 2026-11-24 and did not reproduce it (8 MiB object, a key containing `/`, 2 parts). Objects larger than 8 MiB have not been checked. See [Rename crosses two different S3 calls](#rename-crosses-two-different-s3-calls-interim) | Hadoop [core-default.xml](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/core-default.xml) for the threshold semantics; the 2026-08 failure was measured in [Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns) and has not been reproduced here; the 2026-11-24 re-check is in the [FSx-for-ONTAP-Adoption-Playbook note](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md) (one environment, in Japanese) |
 | Max upload size: 50 GiB | Single object upload limited to 50 GiB; larger objects can be downloaded but not uploaded. Multipart upload supported. **The part sizes this repository configures are far below the ceiling** — see [Part sizes are not near the ceiling](#part-sizes-are-not-near-the-ceiling) | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | No Object Versioning | S3 Object Versioning is not supported | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
 | No conditional writes | Conditional writes (`If-None-Match`) are not supported — returns HTTP 501 `NotImplemented`. Observed here 2026-05-22. Whether it is planned is `open` — no published statement was found. Feature request submitted for parity with S3 native conditional writes (available since Aug 2024). Blocks Delta Lake, Iceberg, and Hudi transactional writes. | [API support](https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/access-points-for-fsxn-object-api-support.html) |
@@ -245,7 +245,7 @@ Before reviewing the compatibility matrix, understand these fundamental constrai
 ### Rename crosses two different S3 calls (interim)
 
 Everywhere else this page says "rename falls back to CopyObject + DeleteObject". That is
-only half of the mechanism, and the missing half is the half that currently fails.
+only half of the mechanism. The missing half is `UploadPartCopy`, where a failure was recorded in 2026-08 and did not reproduce on 2026-11-24.
 
 Hadoop's `fs.s3a.multipart.threshold` is documented as controlling upload **and** copy size,
 and explicitly "also controls the partition size in renamed files, as rename() involves
@@ -255,8 +255,8 @@ So one config decides which S3 call a rename becomes:
 
 | Renamed file size | Call issued | Status on an FSx for ONTAP S3 AP |
 |---|---|---|
-| ≤ `fs.s3a.multipart.threshold` | `CopyObject` | Supported within the same access point |
-| > `fs.s3a.multipart.threshold` | `UploadPartCopy` | Currently returns `NoSuchKey` when the copy-source key needs percent-encoding |
+| ≤ `fs.s3a.multipart.threshold` | `CopyObject` | Supported. FSx-for-ONTAP-Adoption-Playbook confirmed 8 MiB objects on 2026-11-24 within one access point, between an S3 bucket and an access point in both directions, and between access points on different file systems (one environment) |
+| > `fs.s3a.multipart.threshold` | `UploadPartCopy` | The same FSx-for-ONTAP-Adoption-Playbook check succeeded for a 2-part copy whose source key contains `/`. The 2026-08 `NoSuchKey` record did not reproduce. Objects larger than 8 MiB have not been checked |
 
 `integrations/delta-lake-oss/config/spark-defaults.conf` sets that threshold to
 `268435456` (256 MiB), and sets `spark.sql.files.maxPartitionBytes` to the same value, so
@@ -266,14 +266,12 @@ committer is configured anywhere in this repository, which means the default
 paths. Athena CTAS and DuckDB `COPY ... TO` write their final keys directly and never
 rename, so they are out of reach of this regardless of size.
 
-**Treat this as interim, not as a design rule.** AWS classifies the `UploadPartCopy`
-failure as a defect with a fix in progress, so the fix will remove it. Two consequences
-follow from that:
+**The 2026-08 `NoSuchKey` record did not reproduce when FSx-for-ONTAP-Adoption-Playbook re-checked it on 2026-11-24.** The re-check covered an 8 MiB object (2 parts); larger objects have not been checked. No public AWS statement of a fix for this behaviour has been found. Two consequences follow:
 
 - **Do not design around the copy-source key.** "Avoid `/` in keys" is incompatible with
   prefix-organized layouts and would outlive its cause. The threshold is the knob, not the
   key naming.
-- **The in-scope interim measure is to keep output part files below the threshold.**
+- **Keeping output part files below the threshold can stay as insurance until larger objects have been re-checked.**
   Compare in bytes, because this page uses both prefixes on the same digits: the threshold
   is `268435456` bytes; the "≥ 128 MB" consolidation target is ~134,000,000 bytes; and the
   workload sizing table's "target 128-256 MB output files" tops out at ~256,000,000 bytes.
@@ -282,10 +280,16 @@ follow from that:
   `fs.s3a.multipart.threshold` also works but changes upload behaviour too, because the
   same value governs both.
 
-**Not reproduced here.** The `UploadPartCopy` failure is measured in
+**Not reproduced here.** The 2026-08 `UploadPartCopy` failure is a measurement recorded in
 [Serverless-Patterns](https://github.com/Yoshiki0705/FSx-for-ONTAP-S3AccessPoints-Serverless-Patterns);
 what is established in this repository is only that the Spark and Glue write paths can
-reach the call by configuration. No run in this repository has produced the error.
+reach the call by configuration. No run in this repository has produced the error. On 2026-11-24 the
+[FSx-for-ONTAP-Adoption-Playbook note](https://github.com/Yoshiki0705/FSx-for-ONTAP-Adoption-Playbook/blob/main/docs/ja/domains/data-utilization/notes/s3-access-point-constraints.md)
+(in Japanese) re-checked an 8 MiB object on a first-generation `SINGLE_AZ_1` file system (ONTAP 9.19.1P4) in
+`ap-northeast-1` and did not reproduce it. The AWS announcement is
+[What's New, 2026-11-22](https://aws.amazon.com/about-aws/whats-new/2026/11/s3-access-points-server-side-copy-fsx/),
+confirmed 2026-11-24. Objects larger than 8 MiB, cross-account copy, and access points on FlexCache
+volumes have not been checked.
 
 ### Part sizes are not near the ceiling
 
@@ -316,7 +320,7 @@ Lakehouse table formats (Delta Lake, Apache Iceberg, Apache Hudi) rely on specif
 
 | Requirement | Delta Lake | Apache Iceberg | Apache Hudi | FSx for ONTAP S3 AP Support |
 |-------------|-----------|----------------|-------------|-------------------|
-| Atomic rename for commit | Required (\_delta\_log/) | Not required (uses metadata pointers) | Required (timeline) | **Not available** — CopyObject + DeleteObject as workaround within same AP |
+| Atomic rename for commit | Required (\_delta\_log/) | Not required (uses metadata pointers) | Required (timeline) | **Not available** — CopyObject + DeleteObject as workaround (two calls, not atomic) |
 | Consistent list-after-write | Required | Required | Required | Supported (ONTAP provides consistency) |
 | PutObject | Required | Required | Required | Supported |
 | DeleteObject | Required for vacuum/cleanup | Required for expiration | Required | Supported |
@@ -549,7 +553,7 @@ Writer                          S3 (or FSx for ONTAP S3 AP)
   │  ──── Rename(tmp/... → 00001.json)──▶│  ❌ NOT SUPPORTED
   │                                    │     (No rename operation in S3 API)
   │  Fallback: CopyObject + Delete     │
-  │  ──── CopyObject(tmp → 00001.json)─▶│  ⚠️ Supported (same AP only)
+  │  ──── CopyObject(tmp → 00001.json)─▶│  ⚠️ Supported (2 calls, not atomic)
   │  ──── DeleteObject(tmp/...)────────▶│  ✅ Supported
   │                                    │
   │  4. Verify commit (conditional)    │
