@@ -1245,7 +1245,7 @@ ANF のレプリケーション機能は「Azure NetApp Files volume (source) in
 - **宛先での暗号化**: NVE の場合、宛先ボリュームは独自の volume-level key で暗号化される。NAE の場合、宛先 aggregate の key で暗号化される。ソースと宛先で異なる暗号化キーが使用される
 - **鍵管理**: 宛先クラスターで独自の Key Management（Onboard Key Manager (OKM) または external KMIP server）の設定が必要。クラウド間で暗号化キーは自動同期されない
 - **混在構成**: ソースとデスティネーションは NVE、NAE、plaintext の任意の組み合わせが可能
-- **FSx for ONTAP 固有**: FSx for ONTAP はデフォルトで全ボリュームが暗号化される（AWS KMS 統合）。宛先が FSx for ONTAP 以外の場合、宛先側での暗号化設定を個別に実施する必要がある
+- **FSx for ONTAP 固有**: FSx for ONTAP の保存時暗号化の既定は、ファイルシステム単位の AWS KMS キーによる暗号化で、NVE/NAE ではない。NVE は、データ SVM に外部キーマネージャー（KMIP か AWS KMS）を設定して足す層で、既定では有効ではない（[NetApp Community: Encryption options for Amazon FSx for NetApp ONTAP](https://community.netapp.com/community/discussion/461606/encryption-options-for-amazon-fsx-for-netapp-ontap)、2025-06-17）。宛先が FSx for ONTAP 以外の場合、宛先側での暗号化設定を個別に実施する必要がある
 
 **エビデンス:**
 - [NetApp KB — Does NVE encrypt data during SnapMirror transfer?](https://kb.netapp.com/on-prem/ontap/dm/Encryption-KBs/Does_NVE_encrypt_data_during_transfer_when_using_SnapMiror)
@@ -1893,7 +1893,7 @@ GCP ドキュメントによると、GCNV FlexCache でも「Enhanced availabili
 | S3 NAS bucket + FlexCache Origin | 9.12.1 | N/A | ✅ (undocumented) | ✅ | ✅ | — | — |
 | S3 NAS bucket + FlexCache Cache | 9.18.1 | 9.18.1 | ? | ? | ? | — | — |
 | Cluster Peering Encryption (TLS) | 9.6 | 9.6 | ✅ | ✅ | ✅ | ✅ | N/A |
-| NAE/NVE | 9.1 | 9.1 | ✅ (default) | ✅ | ✅ | ✅ | ✅ |
+| NAE/NVE | 9.1 | 9.1 | NVE は追加の層（データ SVM に外部キーマネージャー: KMIP か AWS KMS）。既定では無効（注） | ✅ | ✅ | ✅ | ✅ |
 
 **凡例:**
 - ✅ = サポート済み（公式ドキュメントで確認）
@@ -1901,6 +1901,7 @@ GCP ドキュメントによると、GCNV FlexCache でも「Enhanced availabili
 - ? = 未確認（ドキュメント不在または要検証）
 - — = 該当なし（組み合わせが成立しない）
 - N/A = 該当プラットフォームでは利用不可（機能がプラットフォーム固有）
+- 注（NAE/NVE の FSx for ONTAP 列）: FSx for ONTAP の保存時暗号化の既定は、ファイルシステム単位の AWS KMS キーによる暗号化で、NVE ではない。NVE は、データ SVM に外部キーマネージャー（KMIP か AWS KMS）を設定して足す層で、既定では有効ではない。NAE はこの出典に記載がない。出典: [NetApp Community: Encryption options for Amazon FSx for NetApp ONTAP](https://community.netapp.com/community/discussion/461606/encryption-options-for-amazon-fsx-for-netapp-ontap)（2025-06-17）
 
 ---
 

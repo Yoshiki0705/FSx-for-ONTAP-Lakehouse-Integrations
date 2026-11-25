@@ -469,7 +469,7 @@ All paths use standard Cluster Peering with TLS 1.2 encryption (default enabled 
 
 **Cluster Peering Encryption:** TLS 1.2 AES-256 GCM, default enabled since ONTAP 9.6 for new peer relationships. No performance impact per NetApp KB. All data transferred between clusters is encrypted in transit.
 
-**Encryption at rest (NAE/NVE):** At the storage layer, SnapMirror decrypts data at the source WAFL layer before transfer (since encryption keys are cluster-local), transmits over TLS-encrypted link, and the destination re-encrypts with its own key. Source/destination can independently use NVE, NAE, or plaintext — the at-rest encryption configuration is independent on each side.
+**Encryption at rest (NAE/NVE):** At the storage layer, SnapMirror decrypts data at the source WAFL layer before transfer (since encryption keys are cluster-local), transmits over TLS-encrypted link, and the destination re-encrypts with its own key. Source/destination can independently use NVE, NAE, or plaintext — the at-rest encryption configuration is independent on each side. On FSx for ONTAP, the default encryption at rest is the file system's AWS KMS key, not NVE; NVE is an added layer that you set up on a data SVM with an external key manager (KMIP or AWS KMS), and it is not on by default ([NetApp Community: Encryption options for Amazon FSx for NetApp ONTAP](https://community.netapp.com/community/discussion/461606/encryption-options-for-amazon-fsx-for-netapp-ontap), 2025-06-17).
 
 **Snapshot + S3 AP write consistency:** ONTAP Snapshots are crash-consistent by default. Each completed S3 API PutObject is atomically committed to WAFL. SnapMirror transfers Snapshot-based content — always file-system consistent.
 
